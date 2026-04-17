@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
 import { aiLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
@@ -9,72 +8,107 @@ import { logger } from '../utils/logger.js';
 
 const router = Router();
 
-// Neutral, professional Arabic female voices available on Microsoft's free
-// Edge-TTS service. Salma (Egyptian) is the default — warm and clear.
-const VOICES = {
-  salma:   'ar-EG-SalmaNeural',    // Female, Egyptian Arabic (default)
-  zariyah: 'ar-SA-ZariyahNeural',  // Female, Saudi Arabic
-  shakir:  'ar-EG-ShakirNeural',   // Male, Egyptian (fallback if user wants)
-};
+// Arabic Text-to-Speech via Google Translate's unofficial TTS endpoint.
+// Why not Microsoft Edge-TTS? Hostinger's shared hosting blocks outbound
+// WebSocket connections to speech.platform.bing.com, so the msedge-tts
+// library fails at handshake. Google Translate's TTS is plain HTTPS GET,
+// always reachable, free, and the ar voice is a clear adult female.
+//
+// Tradeoffs:
+// - ~200 char limit per request → we split long text into chunks and stream
+//   the MP3 concatenated (MP3 frame format tolerates concatenation).
+// - Unofficial endpoint — could break if Google changes it, but has been
+//   stable for 10+ years.
+
+const MAX_CHARS_PER_CHUNK = 180;
+
+function splitForTTS(text) {
+  const clean = text.trim().replace(/\s+/g, ' ');
+  if (clean.length <= MAX_CHARS_PER_CHUNK) return [clean];
+
+  // Split on sentence terminators first (., !, ?, Arabic period ۔).
+  const pieces = clean.split(/([.!?،؛])/).reduce((acc, part, i, arr) => {
+    if (i % 2 === 0) acc.push(part + (arr[i + 1] || ''));
+    return acc;
+  }, []);
+
+  const chunks = [];
+  let current = '';
+  for (const p of pieces) {
+    const next = (current ? current + ' ' : '') + p.trim();
+    if (next.length <= MAX_CHARS_PER_CHUNK) {
+      current = next;
+    } else {
+      if (current) chunks.push(current);
+      if (p.length > MAX_CHARS_PER_CHUNK) {
+        // Single giant sentence — hard-split on spaces.
+        let s = p.trim();
+        while (s.length > MAX_CHARS_PER_CHUNK) {
+          let cut = s.lastIndexOf(' ', MAX_CHARS_PER_CHUNK);
+          if (cut < 50) cut = MAX_CHARS_PER_CHUNK;
+          chunks.push(s.slice(0, cut).trim());
+          s = s.slice(cut).trim();
+        }
+        current = s;
+      } else {
+        current = p.trim();
+      }
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks.filter(Boolean);
+}
+
+async function fetchChunk(text, lang = 'ar', textLen = 0) {
+  const url = new URL('https://translate.google.com/translate_tts');
+  url.searchParams.set('ie', 'UTF-8');
+  url.searchParams.set('q', text);
+  url.searchParams.set('tl', lang);
+  url.searchParams.set('client', 'tw-ob');
+  url.searchParams.set('ttsspeed', '0.95');
+  url.searchParams.set('total', '1');
+  url.searchParams.set('idx', '0');
+  url.searchParams.set('textlen', String(textLen || text.length));
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8',
+      'Referer': 'https://translate.google.com/',
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Google TTS HTTP ${res.status}`);
+  }
+  return Buffer.from(await res.arrayBuffer());
+}
 
 const ttsSchema = z.object({
   text: z.string().min(1).max(2000),
-  voice: z.enum(['salma', 'zariyah', 'shakir']).default('salma'),
-  rate: z.string().optional(),   // e.g. "+5%", "-10%"
-  pitch: z.string().optional(),  // e.g. "+10Hz"
+  voice: z.string().optional(),   // accepted but ignored (Google picks regional voice)
+  rate: z.string().optional(),    // ignored for simplicity
 });
-
-// Cache a single TTS instance per voice to avoid re-handshaking every call.
-const ttsInstances = new Map();
-async function getTTS(voiceKey) {
-  if (ttsInstances.has(voiceKey)) return ttsInstances.get(voiceKey);
-  const tts = new MsEdgeTTS();
-  await tts.setMetadata(VOICES[voiceKey], OUTPUT_FORMAT.AUDIO_24KHZ_96KBITRATE_MONO_MP3);
-  ttsInstances.set(voiceKey, tts);
-  return tts;
-}
 
 router.post('/', requireUser, aiLimiter, asyncHandler(async (req, res) => {
   const body = ttsSchema.parse(req.body);
+  const chunks = splitForTTS(body.text);
 
-  let tts;
   try {
-    tts = await getTTS(body.voice);
+    const buffers = [];
+    for (const chunk of chunks) {
+      const buf = await fetchChunk(chunk, 'ar', body.text.length);
+      buffers.push(buf);
+    }
+    const combined = Buffer.concat(buffers);
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', String(combined.length));
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.end(combined);
   } catch (err) {
-    logger.error('Edge TTS connect failed', { message: err.message });
+    logger.error('TTS failed', { message: err.message, chunks: chunks.length });
     throw new HttpError(502, 'TTS service unavailable');
   }
-
-  // Optional prosody tuning via SSML.
-  const ssmlText = (body.rate || body.pitch)
-    ? `<prosody rate="${body.rate || '+0%'}" pitch="${body.pitch || '+0Hz'}">${escapeSsml(body.text)}</prosody>`
-    : escapeSsml(body.text);
-
-  let stream;
-  try {
-    const result = await tts.toStream(ssmlText);
-    stream = result.audioStream;
-  } catch (err) {
-    logger.error('TTS stream failed', { message: err.message });
-    // Reset instance so next call re-handshakes.
-    ttsInstances.delete(body.voice);
-    throw new HttpError(502, 'TTS stream error');
-  }
-
-  res.setHeader('Content-Type', 'audio/mpeg');
-  res.setHeader('Cache-Control', 'public, max-age=300');
-  stream.on('data', (chunk) => res.write(chunk));
-  stream.on('end', () => res.end());
-  stream.on('error', (err) => {
-    logger.error('TTS stream error', { message: err.message });
-    ttsInstances.delete(body.voice);
-    if (!res.headersSent) res.status(502).json({ error: 'TTS stream error' });
-    else res.end();
-  });
 }));
-
-function escapeSsml(text) {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 export default router;
