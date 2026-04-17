@@ -2,7 +2,12 @@
 // Mirrors the tables described in §5 of the project brief.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "library" (Node-API) avoids spawning a child process for the query engine,
+  // which Passenger on Hostinger restricts and causes runtime 500s in prod.
+  engineType    = "library"
+  // Build for our local dev platform + the Hostinger RHEL-based server.
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {

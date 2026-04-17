@@ -63,14 +63,92 @@ app.get('/admin/*', (_req, res) => {
   });
 });
 
-app.get('/', (_req, res) => {
-  res.json({
-    app: 'InterviewAI Arabia',
-    company: 'شركة برمجلي',
-    website: 'https://barmagly.tech',
-    admin: '/admin',
-    health: '/api/health',
-  });
+app.get('/', (req, res) => {
+  // JSON for API clients (Accept: application/json), HTML landing page for browsers.
+  if (req.accepts(['html', 'json']) === 'json') {
+    return res.json({
+      app: 'InterviewAI Arabia',
+      company: 'شركة برمجلي',
+      website: 'https://barmagly.tech',
+      admin: '/admin',
+      health: '/api/health',
+    });
+  }
+  res.type('html').send(`<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>InterviewAI Arabia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:'Cairo',system-ui,sans-serif;color:#fff;
+      background:linear-gradient(135deg,#0F5AA8 0%,#0A3F75 60%,#081E3A 100%);display:flex;align-items:center;justify-content:center;padding:24px}
+    .wrap{max-width:760px;width:100%}
+    .logo{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+    .logo .mark{width:56px;height:56px;border-radius:14px;background:#fff;color:#0A3F75;
+      display:grid;place-items:center;font-weight:800;font-size:26px}
+    h1{font-size:34px;margin:0 0 6px;font-weight:800}
+    .tagline{color:#D7E3F5;margin:0 0 32px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:28px}
+    .card{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);
+      border-radius:14px;padding:18px 18px 16px;text-decoration:none;color:#fff;transition:.15s}
+    .card:hover{background:rgba(255,255,255,0.14);transform:translateY(-2px)}
+    .card .label{color:#BFD2EA;font-size:12px;margin-bottom:6px}
+    .card .title{font-weight:700;font-size:18px;margin-bottom:4px}
+    .card .desc{color:#D7E3F5;font-size:13px;line-height:1.6}
+    footer{color:#A9BEDC;font-size:13px;border-top:1px solid rgba(255,255,255,0.12);padding-top:18px}
+    code{background:rgba(0,0,0,0.3);padding:2px 8px;border-radius:6px;font-size:12px}
+    a{color:#F39C12}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">
+      <div class="mark">A</div>
+      <div>
+        <h1>InterviewAI Arabia</h1>
+        <p class="tagline">مدرّب المقابلات الوظيفية بالذكاء الاصطناعي</p>
+      </div>
+    </div>
+
+    <div class="grid">
+      <a class="card" href="/admin/">
+        <div class="label">للمشرفين</div>
+        <div class="title">لوحة التحكم</div>
+        <div class="desc">إدارة المستخدمين، الأسئلة، الاشتراكات، والتحليلات.</div>
+      </a>
+      <a class="card" href="/api/health">
+        <div class="label">للمطوّرين</div>
+        <div class="title">حالة الخادم</div>
+        <div class="desc">فحص صحة الـ API والاتصال بقاعدة البيانات.</div>
+      </a>
+      <a class="card" href="/api/categories">
+        <div class="label">REST API</div>
+        <div class="title">الأقسام المتاحة</div>
+        <div class="desc">قائمة فئات المقابلات (برمجة، محاسبة، تسويق، ...)</div>
+      </a>
+      <a class="card" href="https://barmagly.tech" target="_blank" rel="noopener">
+        <div class="label">الشركة</div>
+        <div class="title">شركة برمجلي</div>
+        <div class="desc">barmagly.tech · 01010254819</div>
+      </a>
+    </div>
+
+    <footer>
+      هذا الرابط هو الـ <strong>Backend API</strong> للتطبيق. المستخدمون يتفاعلون مع التطبيق عبر نسخة أندرويد (APK). للوصول للواجهة الإدارية اضغط على <a href="/admin/">/admin</a>.
+      <br/><br/>
+      <code>GET /api/health</code> ·
+      <code>POST /api/auth/login</code> ·
+      <code>GET /api/categories</code> ·
+      <code>POST /api/sessions/start</code>
+    </footer>
+  </div>
+</body>
+</html>`);
 });
 
 app.use(notFound);
