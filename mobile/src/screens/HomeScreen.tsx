@@ -158,13 +158,7 @@ export function HomeScreen({ navigation }: any) {
             transition={{ type: 'timing', duration: 420, delay: 120 }}
           >
             <Pressable
-              onPress={() => {
-                // If exactly one free category exists, jump straight to it; else prompt.
-                const freeCats = categories.filter((c) => !c.isPremium);
-                const target = freeCats[0] || categories[0];
-                if (!target) return;
-                navigation.navigate('Meeting', { categoryId: target.id, categoryName: target.nameAr });
-              }}
+              onPress={() => navigation.navigate('MeetingSetup')}
               style={({ pressed }) => [
                 styles.meetingCta,
                 {

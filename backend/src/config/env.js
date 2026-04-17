@@ -34,6 +34,13 @@ const schema = z.object({
   GOOGLE_PLAY_PACKAGE_NAME: z.string().default('tech.barmagly.interviewai'),
   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: z.string().optional().default(''),
   GOOGLE_PLAY_ENABLED: z.coerce.boolean().default(false),
+
+  // Paymob (Egypt) — subscription payment gateway
+  PAYMOB_ENABLED: z.coerce.boolean().default(false),
+  PAYMOB_API_KEY: z.string().optional().default(''),
+  PAYMOB_INTEGRATION_ID: z.string().optional().default(''),
+  PAYMOB_IFRAME_ID: z.string().optional().default(''),
+  PAYMOB_HMAC_SECRET: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

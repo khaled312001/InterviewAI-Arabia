@@ -7,6 +7,7 @@ import { useAppTheme } from '../theme/useTheme';
 
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { MeetingScreen } from '../screens/MeetingScreen';
+import { MeetingSetupScreen } from '../screens/MeetingSetupScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignUpScreen } from '../screens/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
@@ -34,7 +35,8 @@ export type RootStackParamList = {
   Feedback: { answerId: string; feedback: any; tokensUsed: number; nextQuestion: any; sessionId: string };
   SessionSummary: { sessionId: string };
   Subscription: undefined;
-  Meeting: { categoryId: number; categoryName: string };
+  MeetingSetup: { categoryId?: number } | undefined;
+  Meeting: { categoryId: number; categoryName: string; context?: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -101,6 +103,7 @@ export function RootNavigator() {
           <Stack.Screen name="Feedback" component={FeedbackScreen} options={{ headerShown: true, title: 'التقييم' }} />
           <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} options={{ headerShown: true, title: 'ملخص الجلسة' }} />
           <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ headerShown: true, title: 'الاشتراك المميز' }} />
+          <Stack.Screen name="MeetingSetup" component={MeetingSetupScreen} options={{ headerShown: true, title: 'إعداد المقابلة' }} />
           <Stack.Screen name="Meeting" component={MeetingScreen} options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: true, title: 'الإعدادات' }} />
         </>

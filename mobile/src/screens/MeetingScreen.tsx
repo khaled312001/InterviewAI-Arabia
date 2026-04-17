@@ -42,19 +42,29 @@ function formatDuration(ms: number) {
 }
 
 export function MeetingScreen({ route, navigation }: any) {
-  const { categoryId, categoryName } = route.params;
+  const { categoryId, categoryName, context } = route.params;
+  const hrGender: 'male' | 'female' = context?.gender === 'male' ? 'male' : 'female';
+  const hrName = hrGender === 'male' ? 'أحمد' : 'سارة';
+  const hrSeed = hrGender === 'male' ? 'ahmed-hr' : 'sara-hr';
+  const hrColor = hrGender === 'male' ? '#2D6CE0' : '#E85D75';
+  const hrAvatar = `https://api.dicebear.com/7.x/personas/svg?seed=${hrSeed}&backgroundColor=${hrColor.replace('#', '')}&radius=50`;
+
   const theme = useAppTheme();
   const textBold = { fontFamily: theme.typography.fontFamilyBold };
   const textRegular = { fontFamily: theme.typography.fontFamily };
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const mouthAnimRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accumulatedFinalRef = useRef<string>('');
   const startedAtRef = useRef<number>(Date.now());
   const tipCounterRef = useRef(0);
+  const [mouthLevel, setMouthLevel] = useState(0); // 0..1, drives lip animation
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [tips, setTips] = useState<Tip[]>([]);
@@ -165,13 +175,44 @@ export function MeetingScreen({ route, navigation }: any) {
     setListening(false);
   };
 
-  // -------------------------- server TTS (Salma) --------------------------
+  // -------------------------- server TTS + audio-reactive mouth --------------------------
+  // Pipes the TTS audio through a Web Audio AnalyserNode so we can read the
+  // volume envelope in realtime and scale the HR's mouth with it. Poor-man's
+  // lip-sync — doesn't produce actual viseme shapes, but visually ties the
+  // mouth movement to the voice so the avatar feels alive.
+  const stopMouthAnim = () => {
+    if (mouthAnimRef.current !== null) {
+      cancelAnimationFrame(mouthAnimRef.current);
+      mouthAnimRef.current = null;
+    }
+    setMouthLevel(0);
+  };
+
+  const startMouthAnim = () => {
+    if (!analyserRef.current) return;
+    const analyser = analyserRef.current;
+    const buf = new Uint8Array(analyser.fftSize);
+    const tick = () => {
+      analyser.getByteTimeDomainData(buf);
+      // Compute RMS amplitude (0..1) and map to mouth opening.
+      let sumSq = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sumSq += v * v;
+      }
+      const rms = Math.sqrt(sumSq / buf.length);
+      // Amplify so typical speech volume reaches ~0.8-1.0 opening.
+      const level = Math.min(1, rms * 6);
+      setMouthLevel(level);
+      mouthAnimRef.current = requestAnimationFrame(tick);
+    };
+    mouthAnimRef.current = requestAnimationFrame(tick);
+  };
+
   const speak = useCallback(async (text: string, onDone?: () => void) => {
     if (Platform.OS !== 'web') { onDone?.(); return; }
     try {
       setAiSpeaking(true);
-      // Fetch the MP3 from our backend. Include the auth token since /api/tts
-      // requires a user JWT (rate-limited).
       const token = await secureStorage.getItem('access_token');
       const res = await fetch(`${API_BASE}/tts`, {
         method: 'POST',
@@ -179,35 +220,60 @@ export function MeetingScreen({ route, navigation }: any) {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ text, voice: 'salma', rate: '+3%' }),
+        body: JSON.stringify({
+          text,
+          gender: hrGender,
+          language: 'ar',
+        }),
       });
       if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
 
-      if (audioRef.current) {
-        try { audioRef.current.pause(); } catch {}
-      }
+      if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
+      stopMouthAnim();
+
       const audio = new Audio(url);
+      audio.crossOrigin = 'anonymous';
       audioRef.current = audio;
-      audio.onended = () => {
+
+      // Wire Web Audio analyser once, reuse on subsequent utterances.
+      try {
+        if (!audioCtxRef.current) {
+          const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+          audioCtxRef.current = new Ctx();
+        }
+        const ctx = audioCtxRef.current!;
+        if (ctx.state === 'suspended') { try { await ctx.resume(); } catch {} }
+        const src = ctx.createMediaElementSource(audio);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        src.connect(analyser);
+        analyser.connect(ctx.destination);
+        analyserRef.current = analyser;
+      } catch (e) {
+        // Analyser setup can fail in some browsers; the audio still plays.
+      }
+
+      audio.onplay = () => startMouthAnim();
+      const cleanup = () => {
         setAiSpeaking(false);
+        stopMouthAnim();
         URL.revokeObjectURL(url);
         onDone?.();
       };
-      audio.onerror = () => {
-        setAiSpeaking(false);
-        URL.revokeObjectURL(url);
-        onDone?.();
-      };
+      audio.onended = cleanup;
+      audio.onerror = cleanup;
       await audio.play();
     } catch (err) {
       setAiSpeaking(false);
+      stopMouthAnim();
       // eslint-disable-next-line no-console
       console.warn('TTS failed — will proceed silently', err);
       onDone?.();
     }
-  }, []);
+  }, [hrGender]);
 
   // -------------------------- backend turn --------------------------
   const sendTurn = useCallback(async (userMessage: string) => {
@@ -215,7 +281,7 @@ export function MeetingScreen({ route, navigation }: any) {
     try {
       const history = turns.map((t) => ({ role: t.role, content: t.content }));
       const { data } = await api.post('/meeting/turn', {
-        categoryId, history, userMessage, language: 'ar',
+        categoryId, history, userMessage, language: 'ar', context,
       });
       const aiTurn: Turn = { role: 'assistant', content: data.reply, at: Date.now() };
       setTurns((prev) => [...prev, aiTurn]);
@@ -284,7 +350,7 @@ export function MeetingScreen({ route, navigation }: any) {
     try {
       setThinking(true);
       const { data } = await api.post('/meeting/finish', {
-        categoryId, history, language: 'ar',
+        categoryId, history, language: 'ar', context,
       });
       setEvaluation(data.evaluation);
     } catch (err: any) {
@@ -384,20 +450,55 @@ export function MeetingScreen({ route, navigation }: any) {
       <View style={styles.body}>
         {/* Left/main: AI avatar stage */}
         <View style={styles.stage}>
-          <MotiView
-            from={{ scale: 1 }}
-            animate={{ scale: aiSpeaking ? 1.04 : 1 }}
-            transition={{ type: 'timing', duration: 500, loop: aiSpeaking, repeatReverse: true }}
-            style={styles.avatarOuter}
-          >
-            {aiSpeaking && <View style={styles.avatarPulse1} />}
-            {aiSpeaking && <View style={styles.avatarPulse2} />}
-            <View style={styles.avatarCore}>
-              <Text style={[styles.avatarInitial, textBold]}>س</Text>
+          <View style={styles.avatarOuter}>
+            {aiSpeaking && (
+              <MotiView
+                from={{ scale: 0.9, opacity: 0.5 }}
+                animate={{ scale: 1 + mouthLevel * 0.25, opacity: 0.25 + mouthLevel * 0.5 }}
+                transition={{ type: 'timing', duration: 80 }}
+                style={[styles.avatarPulse1, { backgroundColor: hrColor + '28' }]}
+              />
+            )}
+            {aiSpeaking && (
+              <MotiView
+                from={{ scale: 0.95, opacity: 0.4 }}
+                animate={{ scale: 1 + mouthLevel * 0.15, opacity: 0.3 + mouthLevel * 0.5 }}
+                transition={{ type: 'timing', duration: 80 }}
+                style={[styles.avatarPulse2, { backgroundColor: hrColor + '40' }]}
+              />
+            )}
+            <View style={[styles.avatarCore, { backgroundColor: hrColor, borderColor: hrColor + '88' }]}>
+              {Platform.OS === 'web' ? (
+                // @ts-ignore — direct img for the SVG avatar
+                <img
+                  src={hrAvatar}
+                  alt={hrName}
+                  width={160}
+                  height={160}
+                  style={{ width: 160, height: 160, borderRadius: 80, display: 'block' }}
+                />
+              ) : (
+                <Text style={[styles.avatarInitial, textBold]}>{hrName[0]}</Text>
+              )}
+              {/* Audio-reactive mouth overlay — grows/shrinks with voice amplitude */}
+              {aiSpeaking && (
+                <View
+                  style={[
+                    styles.mouthOverlay,
+                    {
+                      height: 6 + mouthLevel * 22,
+                      width: 28 + mouthLevel * 18,
+                      opacity: 0.55 + mouthLevel * 0.45,
+                    },
+                  ]}
+                />
+              )}
             </View>
-          </MotiView>
-          <Text style={[styles.avatarName, textBold]}>سارة</Text>
-          <Text style={[styles.avatarRole, textRegular]}>مسؤولة الموارد البشرية</Text>
+          </View>
+          <Text style={[styles.avatarName, textBold]}>{hrName}</Text>
+          <Text style={[styles.avatarRole, textRegular]}>
+            {hrGender === 'male' ? 'مسؤول الموارد البشرية' : 'مسؤولة الموارد البشرية'}
+          </Text>
 
           {thinking && (
             <View style={styles.statusBadge}>
@@ -582,11 +683,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(45,108,224,0.28)',
   },
   avatarCore: {
-    width: 160, height: 160, borderRadius: 80, backgroundColor: '#2D6CE0',
+    width: 160, height: 160, borderRadius: 80,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 3, overflow: 'hidden',
+    position: 'relative',
   },
   avatarInitial: { color: '#fff', fontSize: 72, lineHeight: 82 },
+  mouthOverlay: {
+    position: 'absolute',
+    bottom: 32,
+    backgroundColor: 'rgba(20, 25, 39, 0.75)',
+    borderRadius: 999,
+  },
   avatarName: { color: '#fff', fontSize: 22 },
   avatarRole: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
 

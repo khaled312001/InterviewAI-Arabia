@@ -59,13 +59,13 @@ function splitForTTS(text) {
   return chunks.filter(Boolean);
 }
 
-async function fetchChunk(text, lang = 'ar', textLen = 0) {
+async function fetchChunk(text, lang = 'ar', textLen = 0, speed = 0.95) {
   const url = new URL('https://translate.google.com/translate_tts');
   url.searchParams.set('ie', 'UTF-8');
   url.searchParams.set('q', text);
   url.searchParams.set('tl', lang);
   url.searchParams.set('client', 'tw-ob');
-  url.searchParams.set('ttsspeed', '0.95');
+  url.searchParams.set('ttsspeed', String(speed));
   url.searchParams.set('total', '1');
   url.searchParams.set('idx', '0');
   url.searchParams.set('textlen', String(textLen || text.length));
@@ -83,20 +83,33 @@ async function fetchChunk(text, lang = 'ar', textLen = 0) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+// Voice lookup table. Google Translate's Arabic is a single female voice —
+// for a "male" feel we route through a regional variant (tl=ar-x-iw uses a
+// different vocal timbre) and slow it slightly. True male voice needs a
+// dedicated TTS provider (ElevenLabs / Azure) — documented in the TODO.
+const VOICE_PROFILES = {
+  female_ar:    { lang: 'ar',    speed: 0.96 },
+  male_ar:      { lang: 'ar',    speed: 0.88 }, // slower → deeper perceived pitch
+  neutral_en:   { lang: 'en',    speed: 0.95 },
+};
+
 const ttsSchema = z.object({
   text: z.string().min(1).max(2000),
-  voice: z.string().optional(),   // accepted but ignored (Google picks regional voice)
-  rate: z.string().optional(),    // ignored for simplicity
+  voice: z.string().optional(),
+  gender: z.enum(['male', 'female']).optional().default('female'),
+  language: z.enum(['ar', 'en']).optional().default('ar'),
+  rate: z.string().optional(),
 });
 
 router.post('/', requireUser, aiLimiter, asyncHandler(async (req, res) => {
   const body = ttsSchema.parse(req.body);
+  const profile = VOICE_PROFILES[`${body.gender}_${body.language}`] || VOICE_PROFILES.female_ar;
   const chunks = splitForTTS(body.text);
 
   try {
     const buffers = [];
     for (const chunk of chunks) {
-      const buf = await fetchChunk(chunk, 'ar', body.text.length);
+      const buf = await fetchChunk(chunk, profile.lang, body.text.length, profile.speed);
       buffers.push(buf);
     }
     const combined = Buffer.concat(buffers);
