@@ -1,3 +1,4 @@
+import { StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,14 +49,25 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
-          paddingTop: 4, paddingBottom: 6, height: 62,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          paddingTop: 8,
+          paddingBottom: 10,
+          height: 68,
         },
-        tabBarLabelStyle: { fontFamily: theme.typography.fontFamily, fontSize: 12 },
-        tabBarIcon: ({ color, size }) => {
-          const map: Record<string, any> = {
-            Home: 'home', History: 'time', Stats: 'stats-chart', Profile: 'person',
+        tabBarLabelStyle: {
+          fontFamily: theme.typography.fontFamilyBold,
+          fontSize: 11,
+          marginTop: 2,
+        },
+        tabBarIcon: ({ color, focused }) => {
+          const map: Record<string, { filled: any; outlined: any }> = {
+            Home: { filled: 'home', outlined: 'home-outline' },
+            History: { filled: 'time', outlined: 'time-outline' },
+            Stats: { filled: 'stats-chart', outlined: 'stats-chart-outline' },
+            Profile: { filled: 'person', outlined: 'person-outline' },
           };
-          return <Ionicons name={map[route.name] || 'ellipse'} size={size} color={color} />;
+          const pair = map[route.name] || { filled: 'ellipse', outlined: 'ellipse-outline' };
+          return <Ionicons name={focused ? pair.filled : pair.outlined} size={22} color={color} />;
         },
       })}
     >

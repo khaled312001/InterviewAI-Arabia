@@ -6,7 +6,7 @@ import { requireUser } from '../middleware/auth.js';
 import { env } from '../config/env.js';
 import { aiLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
-import { evaluateAnswer } from '../services/claudeService.js';
+import { evaluateAnswer } from '../services/aiService.js';
 
 const router = Router();
 

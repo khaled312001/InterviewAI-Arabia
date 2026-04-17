@@ -1,7 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import ar from './ar.json';
-import en from './en.json';
+import ar from './ar';
+import en from './en';
 
 // Arabic-first by design — we ignore the browser/device locale on launch so
 // users always start in the native app language. They can switch to English

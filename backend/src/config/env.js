@@ -16,7 +16,15 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
+  // AI provider — default to Groq (free tier, OpenAI-compatible).
+  AI_ENABLED: z.coerce.boolean().default(false),
+  AI_PROVIDER: z.enum(['groq', 'openrouter', 'gemini', 'claude']).default('groq'),
+  AI_MODEL: z.string().optional().default(''),
+  GROQ_API_KEY: z.string().optional().default(''),
+  OPENROUTER_API_KEY: z.string().optional().default(''),
+  GEMINI_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
+  // Legacy — kept so existing .env files don't break.
   CLAUDE_MODEL: z.string().default('claude-haiku-4-5-20251001'),
   CLAUDE_ENABLED: z.coerce.boolean().default(false),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
