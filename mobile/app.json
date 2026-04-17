@@ -26,6 +26,16 @@
       },
       "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "com.android.vending.BILLING"]
     },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "InterviewAI Arabia",
+      "shortName": "InterviewAI",
+      "lang": "ar",
+      "themeColor": "#0F5AA8",
+      "backgroundColor": "#0F5AA8",
+      "description": "مدرّب المقابلات الوظيفية بالذكاء الاصطناعي — شركة برمجلي"
+    },
     "plugins": [
       "expo-localization",
       "expo-secure-store",

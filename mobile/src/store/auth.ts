@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { secureStorage } from '../storage/secureStorage';
 import { api, AuthEvents } from '../api/client';
 
 export interface AppUser {
@@ -24,10 +24,10 @@ interface AuthState {
 }
 
 async function persistTokens(token: string | null, refreshToken: string | null) {
-  if (token) await SecureStore.setItemAsync('access_token', token);
-  else await SecureStore.deleteItemAsync('access_token');
-  if (refreshToken) await SecureStore.setItemAsync('refresh_token', refreshToken);
-  else await SecureStore.deleteItemAsync('refresh_token');
+  if (token) await secureStorage.setItem('access_token', token);
+  else await secureStorage.deleteItem('access_token');
+  if (refreshToken) await secureStorage.setItem('refresh_token', refreshToken);
+  else await secureStorage.deleteItem('refresh_token');
 }
 
 export const useAuth = create<AuthState>((set, get) => ({
@@ -37,8 +37,8 @@ export const useAuth = create<AuthState>((set, get) => ({
   loading: false,
 
   hydrate: async () => {
-    const token = await SecureStore.getItemAsync('access_token');
-    const refreshToken = await SecureStore.getItemAsync('refresh_token');
+    const token = await secureStorage.getItem('access_token');
+    const refreshToken = await secureStorage.getItem('refresh_token');
     if (!token) return;
     set({ token, refreshToken });
     try {

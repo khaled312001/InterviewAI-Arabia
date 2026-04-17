@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { I18nManager, View, ActivityIndicator } from 'react-native';
+import { I18nManager, Platform, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
@@ -19,14 +19,20 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        if (!I18nManager.isRTL) {
+        if (Platform.OS === 'web') {
+          // Web: set RTL at the document level; I18nManager is a no-op.
+          if (typeof document !== 'undefined') {
+            document.documentElement.setAttribute('dir', 'rtl');
+            document.documentElement.setAttribute('lang', 'ar');
+          }
+        } else if (!I18nManager.isRTL) {
           I18nManager.allowRTL(true);
           I18nManager.forceRTL(true);
         }
         await Font.loadAsync({
           'Cairo-Regular': 'https://fonts.gstatic.com/s/cairo/v28/SLXgc1nY6HkvangCZcNDJfbMDB4.ttf',
           'Cairo-Bold':    'https://fonts.gstatic.com/s/cairo/v28/SLXLc1nY6Hkvalrvbf8fHT4m.ttf',
-        });
+        }).catch(() => { /* non-fatal on web; system Arabic fonts work fine */ });
         await hydrate();
       } finally {
         setReady(true);

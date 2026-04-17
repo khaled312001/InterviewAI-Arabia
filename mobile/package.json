@@ -8,6 +8,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build:web": "expo export --platform web --output-dir dist",
     "build:android": "eas build -p android --profile production"
   },
   "dependencies": {
@@ -17,6 +18,7 @@
     "@react-navigation/native-stack": "^6.11.0",
     "@react-navigation/bottom-tabs": "^6.6.1",
     "axios": "^1.7.9",
+    "@expo/metro-runtime": "~3.2.3",
     "expo": "~51.0.39",
     "expo-font": "~12.0.10",
     "expo-localization": "~15.0.3",
@@ -24,6 +26,8 @@
     "expo-splash-screen": "~0.27.7",
     "expo-status-bar": "~1.12.1",
     "expo-system-ui": "~3.0.7",
+    "react-dom": "18.2.0",
+    "react-native-web": "~0.19.10",
     "i18next": "^23.16.8",
     "moti": "^0.29.0",
     "react": "18.2.0",

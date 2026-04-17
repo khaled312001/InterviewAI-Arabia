@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
 import morgan from 'morgan';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -63,8 +64,17 @@ app.get('/admin/*', (_req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  // JSON for API clients (Accept: application/json), HTML landing page for browsers.
+// Serve Expo-web user app (built from /mobile via `expo export --platform web`).
+// Static assets first; for any unmatched non-API GET, fall through to index.html
+// so client-side navigation works (SPA mode).
+const webDist = path.resolve(__dirname, '..', 'public', 'web');
+const webIndex = path.join(webDist, 'index.html');
+app.use(express.static(webDist, { index: false, fallthrough: true }));
+
+const webIndexExists = fs.existsSync(webIndex);
+
+app.get('/', (req, res, next) => {
+  // API clients asking for JSON explicitly get the metadata.
   if (req.accepts(['html', 'json']) === 'json') {
     return res.json({
       app: 'InterviewAI Arabia',
@@ -74,6 +84,8 @@ app.get('/', (req, res) => {
       health: '/api/health',
     });
   }
+  // Browsers get the Expo-web user app if it's built.
+  if (webIndexExists) return res.sendFile(webIndex);
   res.type('html').send(`<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -149,6 +161,14 @@ app.get('/', (req, res) => {
   </div>
 </body>
 </html>`);
+});
+
+// SPA fallback: any non-API GET with no static match returns the web app shell
+// so client-side React Navigation can handle the route.
+app.get(/^\/(?!api\/|admin\/?).*/, (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  if (webIndexExists) return res.sendFile(webIndex);
+  next();
 });
 
 app.use(notFound);
