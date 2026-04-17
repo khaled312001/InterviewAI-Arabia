@@ -1,5 +1,13 @@
-import 'dotenv/config';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 import { z } from 'zod';
+
+// Load .env from the backend package root regardless of process.cwd().
+// Passenger (Hostinger) spawns the Node process with CWD set to the Apache
+// document root, not our backend/ dir — so we must anchor to this file.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
