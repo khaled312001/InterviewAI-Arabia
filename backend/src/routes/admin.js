@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { z } from 'zod';
 
 import { prisma } from '../db/prisma.js';
+import { query, queryOne } from '../db/mysql.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { requireAdmin, signAdminToken } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
@@ -36,17 +37,30 @@ router.get('/auth/me', requireAdmin(), asyncHandler(async (req, res) => {
 /* -------------------------  users management  -------------------------- */
 
 router.get('/users', requireAdmin(), asyncHandler(async (req, res) => {
+  // Uses mysql2 directly: Prisma's library engine panics with "timer has
+  // gone away" on the Hostinger OpenSSL 1.1.x runtime for findMany queries
+  // with where+orderBy+skip+take. Raw SQL works reliably.
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
   const q = (req.query.q || '').toString().trim();
-  const where = q ? { OR: [{ email: { contains: q } }, { name: { contains: q } }] } : {};
-  const [users, total] = await Promise.all([
-    prisma.user.findMany({
-      where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit,
-    }),
-    prisma.user.count({ where }),
+
+  const where = q ? 'WHERE email LIKE ? OR name LIKE ?' : '';
+  const params = q ? [`%${q}%`, `%${q}%`] : [];
+
+  const [users, countRow] = await Promise.all([
+    query(
+      `SELECT id, email, name, language, plan, daily_questions_used AS dailyQuestionsUsed,
+              last_reset_date AS lastResetDate, is_disabled AS isDisabled,
+              created_at AS createdAt
+       FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    ),
+    queryOne(`SELECT COUNT(*) AS n FROM users ${where}`, params),
   ]);
-  res.json({ users, page, limit, total });
+  // Normalize 0/1 ints to booleans (matches Prisma's output shape).
+  for (const u of users) u.isDisabled = !!u.isDisabled;
+  res.json({ users, page, limit, total: Number(countRow?.n || 0) });
 }));
 
 router.patch('/users/:id', requireAdmin('super_admin', 'moderator'), asyncHandler(async (req, res) => {
@@ -66,12 +80,24 @@ router.delete('/users/:id', requireAdmin('super_admin'), asyncHandler(async (req
 }));
 
 router.get('/users/:id/sessions', requireAdmin(), asyncHandler(async (req, res) => {
-  const sessions = await prisma.session.findMany({
-    where: { userId: BigInt(req.params.id) },
-    orderBy: { startedAt: 'desc' },
-    take: 100,
-    include: { category: true, _count: { select: { answers: true } } },
-  });
+  const userId = req.params.id;
+  const sessions = await query(
+    `SELECT s.id, s.total_score AS totalScore, s.started_at AS startedAt, s.ended_at AS endedAt,
+            s.category_id AS categoryId,
+            c.name_ar AS categoryNameAr, c.name_en AS categoryNameEn, c.icon AS categoryIcon,
+            (SELECT COUNT(*) FROM answers a WHERE a.session_id = s.id) AS answersCount
+     FROM sessions s
+     JOIN categories c ON c.id = s.category_id
+     WHERE s.user_id = ?
+     ORDER BY s.started_at DESC LIMIT 100`,
+    [userId]
+  );
+  for (const s of sessions) {
+    s.category = { id: s.categoryId, nameAr: s.categoryNameAr, nameEn: s.categoryNameEn, icon: s.categoryIcon };
+    delete s.categoryNameAr; delete s.categoryNameEn; delete s.categoryIcon;
+    s._count = { answers: Number(s.answersCount) };
+    delete s.answersCount;
+  }
   res.json({ sessions });
 }));
 
@@ -113,14 +139,32 @@ const questionSchema = z.object({
 router.get('/questions', requireAdmin(), asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
-  const where = req.query.categoryId ? { categoryId: Number(req.query.categoryId) } : {};
-  const [questions, total] = await Promise.all([
-    prisma.question.findMany({
-      where, orderBy: { id: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: true },
-    }),
-    prisma.question.count({ where }),
+  const offset = (page - 1) * limit;
+  const categoryId = req.query.categoryId ? Number(req.query.categoryId) : null;
+
+  const where = categoryId ? 'WHERE q.category_id = ?' : '';
+  const params = categoryId ? [categoryId] : [];
+
+  const [questions, countRow] = await Promise.all([
+    query(
+      `SELECT q.id, q.category_id AS categoryId, q.question_ar AS questionAr,
+              q.question_en AS questionEn, q.difficulty, q.usage_count AS usageCount,
+              q.is_active AS isActive, q.created_at AS createdAt,
+              c.name_ar AS categoryNameAr, c.name_en AS categoryNameEn, c.icon AS categoryIcon
+       FROM questions q
+       JOIN categories c ON c.id = q.category_id
+       ${where}
+       ORDER BY q.id DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    ),
+    queryOne(`SELECT COUNT(*) AS n FROM questions q ${where}`, params),
   ]);
-  res.json({ questions, page, limit, total });
+  for (const q of questions) {
+    q.isActive = !!q.isActive;
+    q.category = { id: q.categoryId, nameAr: q.categoryNameAr, nameEn: q.categoryNameEn, icon: q.categoryIcon };
+    delete q.categoryNameAr; delete q.categoryNameEn; delete q.categoryIcon;
+  }
+  res.json({ questions, page, limit, total: Number(countRow?.n || 0) });
 }));
 
 router.post('/questions', requireAdmin('super_admin', 'content_editor'), asyncHandler(async (req, res) => {
@@ -149,11 +193,19 @@ router.delete('/questions/:id', requireAdmin('super_admin', 'content_editor'), a
 /* ---------------------------  subscriptions  --------------------------- */
 
 router.get('/subscriptions', requireAdmin(), asyncHandler(async (_req, res) => {
-  const subs = await prisma.subscription.findMany({
-    orderBy: { expiresAt: 'desc' },
-    take: 200,
-    include: { user: { select: { id: true, email: true, name: true, plan: true } } },
-  });
+  const subs = await query(
+    `SELECT s.id, s.user_id AS userId, s.google_purchase_token AS googlePurchaseToken,
+            s.product_id AS productId, s.status, s.started_at AS startedAt,
+            s.expires_at AS expiresAt,
+            u.email AS userEmail, u.name AS userName, u.plan AS userPlan
+     FROM subscriptions s
+     JOIN users u ON u.id = s.user_id
+     ORDER BY s.expires_at DESC LIMIT 200`
+  );
+  for (const s of subs) {
+    s.user = { id: s.userId, email: s.userEmail, name: s.userName, plan: s.userPlan };
+    delete s.userEmail; delete s.userName; delete s.userPlan;
+  }
   res.json({ subscriptions: subs });
 }));
 
@@ -172,60 +224,100 @@ router.get('/analytics/overview', requireAdmin(), asyncHandler(async (_req, res)
   const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
-  const [totalUsers, activeToday, premiumUsers, newUsers30d, sessionsToday, answers30d] = await Promise.all([
-    prisma.user.count(),
-    prisma.session.groupBy({ by: ['userId'], where: { startedAt: { gte: today } } }).then((r) => r.length),
-    prisma.user.count({ where: { plan: 'premium' } }),
-    prisma.user.count({ where: { createdAt: { gte: since } } }),
-    prisma.session.count({ where: { startedAt: { gte: today } } }),
-    prisma.answer.count({ where: { createdAt: { gte: since } } }),
+  const [
+    { n: totalUsers },
+    { n: premiumUsers },
+    { n: newUsers30d },
+    { n: sessionsToday },
+    { n: answers30d },
+    { n: activeToday },
+  ] = await Promise.all([
+    queryOne('SELECT COUNT(*) AS n FROM users'),
+    queryOne('SELECT COUNT(*) AS n FROM users WHERE plan = "premium"'),
+    queryOne('SELECT COUNT(*) AS n FROM users WHERE created_at >= ?', [since]),
+    queryOne('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ?', [today]),
+    queryOne('SELECT COUNT(*) AS n FROM answers WHERE created_at >= ?', [since]),
+    queryOne('SELECT COUNT(DISTINCT user_id) AS n FROM sessions WHERE started_at >= ?', [today]),
   ]);
 
   res.json({
-    totalUsers, activeToday, premiumUsers, newUsers30d, sessionsToday, answers30d,
-    conversionRate: totalUsers ? (premiumUsers / totalUsers) : 0,
+    totalUsers: Number(totalUsers), activeToday: Number(activeToday),
+    premiumUsers: Number(premiumUsers), newUsers30d: Number(newUsers30d),
+    sessionsToday: Number(sessionsToday), answers30d: Number(answers30d),
+    conversionRate: Number(totalUsers) ? (Number(premiumUsers) / Number(totalUsers)) : 0,
   });
 }));
 
 router.get('/analytics/popular-categories', requireAdmin(), asyncHandler(async (_req, res) => {
-  const rows = await prisma.session.groupBy({
-    by: ['categoryId'],
-    _count: { _all: true },
-    orderBy: { _count: { categoryId: 'desc' } },
-    take: 20,
-  });
-  const categories = await prisma.category.findMany({
-    where: { id: { in: rows.map((r) => r.categoryId) } },
-  });
-  const map = Object.fromEntries(categories.map((c) => [c.id, c]));
+  const rows = await query(
+    `SELECT s.category_id AS categoryId, c.name_ar AS nameAr, c.name_en AS nameEn, c.icon,
+            c.is_premium AS isPremium, COUNT(*) AS sessionCount
+     FROM sessions s
+     JOIN categories c ON c.id = s.category_id
+     GROUP BY s.category_id, c.name_ar, c.name_en, c.icon, c.is_premium
+     ORDER BY sessionCount DESC LIMIT 20`
+  );
   res.json({
-    rows: rows.map((r) => ({ category: map[r.categoryId], sessions: r._count._all })),
+    rows: rows.map((r) => ({
+      category: { id: r.categoryId, nameAr: r.nameAr, nameEn: r.nameEn, icon: r.icon, isPremium: !!r.isPremium },
+      sessions: Number(r.sessionCount),
+    })),
   });
 }));
 
 router.get('/ai-usage', requireAdmin(), asyncHandler(async (_req, res) => {
   const since = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-  const logs = await prisma.claudeApiLog.findMany({
-    where: { createdAt: { gte: since } },
-    orderBy: { createdAt: 'desc' },
-    take: 500,
+  const [logs, summary] = await Promise.all([
+    query(
+      `SELECT id, user_id AS userId, model, input_tokens AS inputTokens,
+              output_tokens AS outputTokens, latency_ms AS latencyMs,
+              success, error_message AS errorMessage, created_at AS createdAt
+       FROM claude_api_logs WHERE created_at >= ? ORDER BY created_at DESC LIMIT 500`,
+      [since]
+    ),
+    queryOne(
+      `SELECT COUNT(*) AS n, SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens
+       FROM claude_api_logs WHERE created_at >= ?`,
+      [since]
+    ),
+  ]);
+  for (const l of logs) l.success = !!l.success;
+  res.json({
+    logs,
+    summary: {
+      _count: { _all: Number(summary?.n || 0) },
+      _sum: {
+        inputTokens: Number(summary?.inputTokens || 0),
+        outputTokens: Number(summary?.outputTokens || 0),
+      },
+    },
   });
-  const summary = await prisma.claudeApiLog.aggregate({
-    where: { createdAt: { gte: since } },
-    _sum: { inputTokens: true, outputTokens: true },
-    _count: { _all: true },
-  });
-  res.json({ logs, summary });
 }));
 
 /* -----------------------  content moderation  ---------------------- */
 
 router.get('/reports', requireAdmin(), asyncHandler(async (_req, res) => {
-  const reports = await prisma.answerReport.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    include: { answer: { include: { question: true } }, reporter: { select: { id: true, email: true } } },
-  });
+  const reports = await query(
+    `SELECT r.id, r.answer_id AS answerId, r.reporter_id AS reporterId,
+            r.reason, r.resolved, r.created_at AS createdAt,
+            a.user_answer AS answerText, a.ai_score AS aiScore,
+            q.id AS questionId, q.question_ar AS questionAr,
+            u.email AS reporterEmail
+     FROM answer_reports r
+     JOIN answers a ON a.id = r.answer_id
+     JOIN questions q ON q.id = a.question_id
+     JOIN users u ON u.id = r.reporter_id
+     ORDER BY r.created_at DESC LIMIT 100`
+  );
+  for (const r of reports) {
+    r.resolved = !!r.resolved;
+    r.answer = {
+      id: r.answerId, userAnswer: r.answerText, aiScore: r.aiScore,
+      question: { id: r.questionId, questionAr: r.questionAr },
+    };
+    r.reporter = { id: r.reporterId, email: r.reporterEmail };
+    delete r.answerText; delete r.questionId; delete r.questionAr; delete r.reporterEmail; delete r.aiScore;
+  }
   res.json({ reports });
 }));
 
@@ -240,7 +332,7 @@ router.post('/reports/:id/resolve', requireAdmin('super_admin', 'moderator'), as
 /* ---------------------------  settings  ----------------------------- */
 
 router.get('/settings', requireAdmin(), asyncHandler(async (_req, res) => {
-  const rows = await prisma.appSetting.findMany();
+  const rows = await query('SELECT `key`, `value` FROM app_settings');
   res.json({ settings: Object.fromEntries(rows.map((r) => [r.key, r.value])) });
 }));
 
@@ -256,8 +348,12 @@ router.put('/settings', requireAdmin('super_admin'), asyncHandler(async (req, re
 /* -----------------------  admin users (RBAC)  --------------------- */
 
 router.get('/admins', requireAdmin('super_admin'), asyncHandler(async (_req, res) => {
-  const admins = await prisma.adminUser.findMany({ orderBy: { createdAt: 'desc' } });
-  res.json({ admins: admins.map(({ passwordHash: _ph, ...rest }) => rest) });
+  const admins = await query(
+    `SELECT id, email, name, role, is_active AS isActive, created_at AS createdAt
+     FROM admin_users ORDER BY created_at DESC`
+  );
+  for (const a of admins) a.isActive = !!a.isActive;
+  res.json({ admins });
 }));
 
 router.post('/admins', requireAdmin('super_admin'), asyncHandler(async (req, res) => {

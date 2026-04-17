@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { prisma } from '../db/prisma.js';
+import { query, queryOne } from '../db/mysql.js';
 import { requireUser } from '../middleware/auth.js';
 import { env } from '../config/env.js';
 import { aiLimiter } from '../middleware/rateLimit.js';
@@ -184,22 +185,39 @@ router.get('/:id', requireUser, asyncHandler(async (req, res) => {
 }));
 
 router.get('/', requireUser, asyncHandler(async (req, res) => {
+  // Raw mysql2 — findMany panics under Hostinger OpenSSL 1.1.x.
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
-  const [items, total] = await Promise.all([
-    prisma.session.findMany({
-      where: { userId: req.userId },
-      orderBy: { startedAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        category: { select: { id: true, nameAr: true, nameEn: true, icon: true } },
-        _count: { select: { answers: true } },
-      },
-    }),
-    prisma.session.count({ where: { userId: req.userId } }),
+  const offset = (page - 1) * limit;
+
+  const [items, totalRow] = await Promise.all([
+    query(
+      `SELECT s.id, s.user_id AS userId, s.category_id AS categoryId,
+              s.total_score AS totalScore, s.started_at AS startedAt, s.ended_at AS endedAt,
+              c.name_ar AS categoryNameAr, c.name_en AS categoryNameEn, c.icon AS categoryIcon,
+              (SELECT COUNT(*) FROM answers a WHERE a.session_id = s.id) AS answersCount
+       FROM sessions s
+       JOIN categories c ON c.id = s.category_id
+       WHERE s.user_id = ?
+       ORDER BY s.started_at DESC
+       LIMIT ? OFFSET ?`,
+      [req.userId.toString(), limit, offset]
+    ),
+    queryOne('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?', [req.userId.toString()]),
   ]);
-  res.json({ sessions: items, page, limit, total });
+
+  for (const s of items) {
+    s.category = {
+      id: s.categoryId,
+      nameAr: s.categoryNameAr,
+      nameEn: s.categoryNameEn,
+      icon: s.categoryIcon,
+    };
+    s._count = { answers: Number(s.answersCount) };
+    delete s.categoryNameAr; delete s.categoryNameEn; delete s.categoryIcon;
+    delete s.answersCount;
+  }
+  res.json({ sessions: items, page, limit, total: Number(totalRow?.n || 0) });
 }));
 
 export default router;
