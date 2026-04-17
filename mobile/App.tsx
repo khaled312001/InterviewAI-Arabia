@@ -20,11 +20,14 @@ export default function App() {
     (async () => {
       try {
         if (Platform.OS === 'web') {
-          // Web: set RTL at the document level; I18nManager is a no-op.
+          // Web: set RTL at the document level AND tell react-native-web so it
+          // flips logical styles (marginStart/End, textAlign: 'start', etc.).
           if (typeof document !== 'undefined') {
             document.documentElement.setAttribute('dir', 'rtl');
             document.documentElement.setAttribute('lang', 'ar');
           }
+          I18nManager.allowRTL(true);
+          I18nManager.forceRTL(true);
         } else if (!I18nManager.isRTL) {
           I18nManager.allowRTL(true);
           I18nManager.forceRTL(true);
