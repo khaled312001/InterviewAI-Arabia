@@ -7,7 +7,9 @@ generator client {
   // which Passenger on Hostinger restricts and causes runtime 500s in prod.
   engineType    = "library"
   // Build for our local dev platform + the Hostinger RHEL-based server.
-  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+  // Hostinger's CloudLinux ships OpenSSL 1.1.x with Node 22; include 1.1.x
+  // targets first so Prisma picks the matching engine and doesn't panic.
+  binaryTargets = ["native", "rhel-openssl-1.1.x", "rhel-openssl-3.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
