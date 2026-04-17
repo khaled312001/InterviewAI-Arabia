@@ -19,6 +19,7 @@ import categoryRoutes from './routes/categories.js';
 import sessionRoutes from './routes/sessions.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import adminRoutes from './routes/admin.js';
+import meetingRoutes from './routes/meeting.js';
 import { startCronJobs } from './services/cron.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/meeting', meetingRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Serve built admin SPA (copied here by deploy.sh)

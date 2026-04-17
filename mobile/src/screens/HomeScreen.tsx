@@ -150,6 +150,52 @@ export function HomeScreen({ navigation }: any) {
           </MotiView>
         </View>
 
+        {/* -------- Meeting CTA -------- */}
+        <View style={styles.section}>
+          <MotiView
+            from={{ opacity: 0, translateY: 10 }}
+            animate={{ opacity: 1, translateY: 0 }}
+            transition={{ type: 'timing', duration: 420, delay: 120 }}
+          >
+            <Pressable
+              onPress={() => {
+                // If exactly one free category exists, jump straight to it; else prompt.
+                const freeCats = categories.filter((c) => !c.isPremium);
+                const target = freeCats[0] || categories[0];
+                if (!target) return;
+                navigation.navigate('Meeting', { categoryId: target.id, categoryName: target.nameAr });
+              }}
+              style={({ pressed }) => [
+                styles.meetingCta,
+                {
+                  backgroundColor: '#10B981',
+                  opacity: pressed ? 0.92 : 1,
+                  transform: [{ scale: pressed ? 0.99 : 1 }],
+                },
+              ]}
+            >
+              <View style={styles.meetingCtaIconWrap}>
+                <Ionicons name="videocam" size={26} color="#10B981" />
+                <View style={styles.meetingCtaLive}>
+                  <Text style={[textBold, { color: '#fff', fontSize: 9 }]}>LIVE</Text>
+                </View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.meetingCtaTitleRow}>
+                  <Text style={[styles.meetingCtaTitle, textBold]}>مقابلة مباشرة مع سارة</Text>
+                  <View style={styles.meetingCtaNewBadge}>
+                    <Text style={[textBold, { color: '#10B981', fontSize: 9 }]}>جديد</Text>
+                  </View>
+                </View>
+                <Text style={[styles.meetingCtaSubtitle, textRegular]}>
+                  مقابلة فيديو بالصوت والكاميرا مع مسؤولة موارد بشرية ذكية
+                </Text>
+              </View>
+              <Ionicons name="chevron-back" size={20} color="#fff" />
+            </Pressable>
+          </MotiView>
+        </View>
+
         {/* -------- Categories -------- */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
@@ -442,4 +488,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   scoreText: { fontSize: 15 },
+
+  // Meeting CTA
+  meetingCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    gap: 14,
+    ...Platform.select({
+      ios: { shadowColor: '#10B981', shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
+      android: { elevation: 5 },
+      default: { boxShadow: '0 8px 24px rgba(16,185,129,0.35)' },
+    }),
+  },
+  meetingCtaIconWrap: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  meetingCtaLive: {
+    position: 'absolute', top: -6, left: -6,
+    paddingHorizontal: 6, paddingVertical: 2,
+    backgroundColor: '#EF4444', borderRadius: 999,
+    borderWidth: 2, borderColor: '#10B981',
+  },
+  meetingCtaTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  meetingCtaTitle: { color: '#fff', fontSize: 16 },
+  meetingCtaNewBadge: {
+    backgroundColor: '#fff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+  },
+  meetingCtaSubtitle: { color: 'rgba(255,255,255,0.88)', fontSize: 12, marginTop: 4, lineHeight: 18 },
 });
