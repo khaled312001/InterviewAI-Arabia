@@ -1,0 +1,190 @@
+// Prisma schema — InterviewAI Arabia
+// Mirrors the tables described in §5 of the project brief.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Language {
+  ar
+  en
+}
+
+enum Plan {
+  free
+  premium
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum SubscriptionStatus {
+  active
+  expired
+  cancelled
+}
+
+enum AdminRole {
+  super_admin
+  moderator
+  content_editor
+}
+
+model User {
+  id                  BigInt    @id @default(autoincrement())
+  email               String    @unique @db.VarChar(191)
+  passwordHash        String    @map("password_hash") @db.VarChar(255)
+  name                String    @db.VarChar(120)
+  language            Language  @default(ar)
+  plan                Plan      @default(free)
+  dailyQuestionsUsed  Int       @default(0) @map("daily_questions_used")
+  lastResetDate       DateTime? @map("last_reset_date") @db.Date
+  isDisabled          Boolean   @default(false) @map("is_disabled")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  sessions      Session[]
+  subscriptions Subscription[]
+  reports       AnswerReport[]
+
+  @@map("users")
+}
+
+model Category {
+  id        Int     @id @default(autoincrement())
+  nameAr    String  @map("name_ar") @db.VarChar(120)
+  nameEn    String  @map("name_en") @db.VarChar(120)
+  icon      String? @db.VarChar(64)
+  isPremium Boolean @default(false) @map("is_premium")
+  sortOrder Int     @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  questions Question[]
+  sessions  Session[]
+
+  @@map("categories")
+}
+
+model Question {
+  id         BigInt     @id @default(autoincrement())
+  categoryId Int        @map("category_id")
+  questionAr String     @map("question_ar") @db.Text
+  questionEn String     @map("question_en") @db.Text
+  difficulty Difficulty @default(medium)
+  usageCount Int        @default(0) @map("usage_count")
+  isActive   Boolean    @default(true) @map("is_active")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+
+  @@index([categoryId, isActive])
+  @@map("questions")
+}
+
+model Session {
+  id         BigInt    @id @default(autoincrement())
+  userId     BigInt    @map("user_id")
+  categoryId Int       @map("category_id")
+  totalScore Int       @default(0) @map("total_score")
+  startedAt  DateTime  @default(now()) @map("started_at")
+  endedAt    DateTime? @map("ended_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+  answers  Answer[]
+
+  @@index([userId, startedAt])
+  @@map("sessions")
+}
+
+model Answer {
+  id         BigInt   @id @default(autoincrement())
+  sessionId  BigInt   @map("session_id")
+  questionId BigInt   @map("question_id")
+  userAnswer String   @map("user_answer") @db.Text
+  aiScore    Int?     @map("ai_score")
+  aiFeedback String?  @map("ai_feedback") @db.LongText
+  tokensUsed Int?     @map("tokens_used")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  session  Session         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question        @relation(fields: [questionId], references: [id])
+  reports  AnswerReport[]
+
+  @@index([sessionId])
+  @@map("answers")
+}
+
+model Subscription {
+  id                  BigInt             @id @default(autoincrement())
+  userId              BigInt             @map("user_id")
+  googlePurchaseToken String             @unique @map("google_purchase_token") @db.VarChar(255)
+  productId           String             @map("product_id") @db.VarChar(120)
+  status              SubscriptionStatus @default(active)
+  startedAt           DateTime           @default(now()) @map("started_at")
+  expiresAt           DateTime           @map("expires_at")
+  rawPayload          String?            @map("raw_payload") @db.LongText
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+model AdminUser {
+  id           BigInt    @id @default(autoincrement())
+  email        String    @unique @db.VarChar(191)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  name         String    @db.VarChar(120)
+  role         AdminRole @default(moderator)
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("admin_users")
+}
+
+model AnswerReport {
+  id        BigInt   @id @default(autoincrement())
+  answerId  BigInt   @map("answer_id")
+  reporterId BigInt  @map("reporter_id")
+  reason    String   @db.VarChar(255)
+  resolved  Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  answer   Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  reporter User   @relation(fields: [reporterId], references: [id])
+
+  @@map("answer_reports")
+}
+
+model ClaudeApiLog {
+  id          BigInt   @id @default(autoincrement())
+  userId      BigInt?  @map("user_id")
+  model       String   @db.VarChar(64)
+  inputTokens Int      @map("input_tokens")
+  outputTokens Int     @map("output_tokens")
+  latencyMs   Int      @map("latency_ms")
+  success     Boolean  @default(true)
+  errorMessage String? @map("error_message") @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("claude_api_logs")
+}
+
+model AppSetting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}

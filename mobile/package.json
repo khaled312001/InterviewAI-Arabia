@@ -1,0 +1,45 @@
+{
+  "name": "interviewai-arabia-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "build:android": "eas build -p android --profile production"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^14.0.4",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-navigation/native": "^6.1.18",
+    "@react-navigation/native-stack": "^6.11.0",
+    "@react-navigation/bottom-tabs": "^6.6.1",
+    "axios": "^1.7.9",
+    "expo": "~51.0.39",
+    "expo-font": "~12.0.10",
+    "expo-localization": "~15.0.3",
+    "expo-secure-store": "~13.0.2",
+    "expo-splash-screen": "~0.27.7",
+    "expo-status-bar": "~1.12.1",
+    "expo-system-ui": "~3.0.7",
+    "i18next": "^23.16.8",
+    "moti": "^0.29.0",
+    "react": "18.2.0",
+    "react-i18next": "^15.2.0",
+    "react-native": "0.74.5",
+    "react-native-gesture-handler": "~2.16.2",
+    "react-native-mmkv": "^2.12.2",
+    "react-native-reanimated": "~3.10.1",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "3.31.1",
+    "react-native-svg": "15.2.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@types/react": "~18.2.79",
+    "typescript": "~5.3.3"
+  }
+}

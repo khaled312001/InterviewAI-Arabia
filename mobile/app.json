@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "InterviewAI Arabia",
+    "slug": "interviewai-arabia",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "interviewai",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F5AA8"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tech.barmagly.interviewai"
+    },
+    "android": {
+      "package": "tech.barmagly.interviewai",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F5AA8"
+      },
+      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "com.android.vending.BILLING"]
+    },
+    "plugins": [
+      "expo-localization",
+      "expo-secure-store",
+      "expo-font"
+    ],
+    "extra": {
+      "apiBaseUrl": "https://intervie-ai-arabia.barmagly.tech/api",
+      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
+    }
+  }
+}

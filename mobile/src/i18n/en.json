@@ -1,0 +1,76 @@
+{
+  "app": { "name": "InterviewAI Arabia", "tagline": "Practice interviews with AI" },
+  "common": {
+    "next": "Next", "back": "Back", "save": "Save", "cancel": "Cancel", "retry": "Retry",
+    "loading": "Loading...", "error": "Something went wrong", "skip": "Skip",
+    "finish": "Finish", "getStarted": "Get started"
+  },
+  "auth": {
+    "login": "Log in", "register": "Sign up", "email": "Email", "password": "Password",
+    "name": "Name", "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account? Sign up",
+    "hasAccount": "Already have an account? Log in",
+    "resetTitle": "Reset password",
+    "resetDescription": "Enter your email and we'll send you a reset link.",
+    "resetSent": "If that email exists, we've sent a message."
+  },
+  "onboarding": {
+    "slide1Title": "Practice real interviews",
+    "slide1Body": "Get realistic questions in professional Arabic.",
+    "slide2Title": "Instant AI feedback",
+    "slide2Body": "See your strengths, weaknesses, and improvement tips.",
+    "slide3Title": "Upgrade for more",
+    "slide3Body": "Unlimited questions, specialized tracks, and detailed reports."
+  },
+  "home": {
+    "hello": "Hello, {{name}}",
+    "yourPlan": "Your plan",
+    "free": "Free", "premium": "Premium",
+    "questionsLeft": "Remaining today: {{count}}",
+    "categories": "Pick a field",
+    "recent": "Recent sessions",
+    "noSessions": "No sessions yet — start your first interview now!",
+    "startSession": "Start interview"
+  },
+  "interview": {
+    "title": "Question {{current}} / {{total}}",
+    "question": "Question",
+    "yourAnswer": "Type your answer here...",
+    "submit": "Submit answer",
+    "thinking": "AI is evaluating your answer...",
+    "next": "Next question",
+    "endSession": "End session",
+    "limitReached": "You've used all free questions for today",
+    "upgrade": "Upgrade to Premium"
+  },
+  "feedback": {
+    "score": "Score", "strengths": "Strengths", "weaknesses": "Improvement areas",
+    "improvement": "Tip", "modelAnswer": "Model answer"
+  },
+  "summary": {
+    "title": "Session summary", "totalScore": "Total score",
+    "questionsAnswered": "Questions answered", "share": "Share results",
+    "again": "New session", "home": "Home"
+  },
+  "profile": {
+    "title": "Profile", "edit": "Edit profile", "language": "Language",
+    "changePassword": "Change password", "currentPassword": "Current password",
+    "newPassword": "New password", "logout": "Log out"
+  },
+  "history": { "title": "History", "empty": "You haven't finished any session yet." },
+  "stats": {
+    "title": "Your stats", "totalSessions": "Total sessions",
+    "averageScore": "Average score", "totalAnswers": "Total answers",
+    "breakdown": "Breakdown by field"
+  },
+  "subscription": {
+    "title": "Premium", "subtitle": "Unlimited questions, specialized tracks, detailed reports",
+    "monthly": "Monthly — 29 EGP", "yearly": "Yearly — 249 EGP",
+    "current": "Active until {{date}}", "subscribe": "Subscribe now", "manage": "Manage"
+  },
+  "settings": {
+    "title": "Settings", "language": "Language", "notifications": "Notifications",
+    "darkMode": "Dark mode", "system": "System", "light": "Light", "dark": "Dark",
+    "about": "About", "contact": "Contact us"
+  }
+}
