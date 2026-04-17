@@ -35,8 +35,9 @@ function systemPrompt({ categoryName, userName, language = 'ar' }) {
       `5. بعد أي إجابة، علّقي بجملة قصيرة (إيجابية أو استفهامية) ثم انتقلي للسؤال التالي.`,
       `6. لا تذكري أبدًا أنكِ ذكاء اصطناعي أو نموذج لغوي — أنتِ سارة، موظفة حقيقية.`,
       `7. عندما يصل عدد الأسئلة إلى 5-6، اختتمي المقابلة بشكره وإعطائه انطباع عام قصير (جملتان).`,
-      `8. أرجعي دائمًا JSON صالح بهذا الشكل فقط، بدون أي شيء خارجه:`,
-      `{"reply": "نص الرد المنطوق", "status": "active" | "closing", "note": "ملاحظة داخلية مختصرة عن الأداء حتى الآن"}`,
+      `8. مدرّب المهارات: بعد كل إجابة من المرشح، قدّمي له 1-2 نصائح سريعة في خانة "tips" لتحسين إجابته القادمة (مثل "اذكر نتائج قابلة للقياس"، "استخدم طريقة STAR"). النصائح للمرشح فقط، لا تذكريها في ردك المنطوق. اترك "tips" فارغة [] في أول رسالة ترحيب.`,
+      `9. أرجعي دائمًا JSON صالح بهذا الشكل فقط، بدون أي شيء خارجه:`,
+      `{"reply": "نص الرد المنطوق", "status": "active" | "closing", "note": "ملاحظة داخلية", "tips": ["نصيحة قصيرة للمرشح"]}`,
     ].join('\n');
   }
   return [
@@ -51,8 +52,9 @@ function systemPrompt({ categoryName, userName, language = 'ar' }) {
     `5. Brief acknowledgment after each answer, then next question.`,
     `6. Never mention you are an AI or language model — you are Sarah.`,
     `7. After 5-6 questions, close the interview with thanks and a short impression (2 sentences).`,
-    `8. Return ONLY valid JSON:`,
-    `{"reply": "spoken text", "status": "active" | "closing", "note": "internal short performance note"}`,
+    `8. Coaching: after each candidate answer, add 1-2 short tips in the "tips" array to help them improve their next answer (e.g. "Cite measurable outcomes", "Use STAR method"). Never speak these aloud. Empty array [] on the opener.`,
+    `9. Return ONLY valid JSON:`,
+    `{"reply": "spoken text", "status": "active" | "closing", "note": "internal note", "tips": ["coaching tip"]}`,
   ].join('\n');
 }
 
@@ -99,7 +101,7 @@ function parseReply(raw) {
   }
   if (p?.reply) return p;
   // Last resort: treat the whole text as the spoken reply.
-  return { reply: trimmed.slice(0, 500), status: 'active', note: '' };
+  return { reply: trimmed.slice(0, 500), status: 'active', note: '', tips: [] };
 }
 
 /* ----------------------------  routes  ---------------------------- */
@@ -187,6 +189,7 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
       reply: parsed.reply,
       status: parsed.status === 'closing' ? 'closing' : 'active',
       note: parsed.note || '',
+      tips: Array.isArray(parsed.tips) ? parsed.tips.slice(0, 3) : [],
       tokensUsed: inputTokens + outputTokens,
       turnIndex: body.history.length + (body.userMessage ? 1 : 0),
     });

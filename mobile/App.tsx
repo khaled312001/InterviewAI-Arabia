@@ -4,7 +4,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Font from 'expo-font';
 import './src/i18n';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useAuth } from './src/store/auth';
@@ -25,6 +24,28 @@ export default function App() {
           if (typeof document !== 'undefined') {
             document.documentElement.setAttribute('dir', 'rtl');
             document.documentElement.setAttribute('lang', 'ar');
+            // Inject the Cairo Google Fonts stylesheet once. Loading TTFs via
+            // expo-font's Font.loadAsync 404s because Google rotates asset
+            // hashes; the CSS2 API is the stable, canonical loader.
+            if (!document.getElementById('cairo-font')) {
+              const link = document.createElement('link');
+              link.id = 'cairo-font';
+              link.rel = 'stylesheet';
+              link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap';
+              document.head.appendChild(link);
+            }
+            // Alias Cairo-Regular / Cairo-Bold → local Cairo weights, so the
+            // font family names used across the RN theme work natively on web.
+            if (!document.getElementById('cairo-aliases')) {
+              const style = document.createElement('style');
+              style.id = 'cairo-aliases';
+              style.textContent = `
+                @font-face { font-family: 'Cairo-Regular'; src: local('Cairo'); font-weight: 400; font-style: normal; }
+                @font-face { font-family: 'Cairo-Bold';    src: local('Cairo'); font-weight: 700; font-style: normal; }
+                html, body, #root { font-family: 'Cairo','IBM Plex Sans Arabic',system-ui,sans-serif; }
+              `;
+              document.head.appendChild(style);
+            }
           }
           I18nManager.allowRTL(true);
           I18nManager.forceRTL(true);
@@ -32,10 +53,6 @@ export default function App() {
           I18nManager.allowRTL(true);
           I18nManager.forceRTL(true);
         }
-        await Font.loadAsync({
-          'Cairo-Regular': 'https://fonts.gstatic.com/s/cairo/v28/SLXgc1nY6HkvangCZcNDJfbMDB4.ttf',
-          'Cairo-Bold':    'https://fonts.gstatic.com/s/cairo/v28/SLXLc1nY6Hkvalrvbf8fHT4m.ttf',
-        }).catch(() => { /* non-fatal on web; system Arabic fonts work fine */ });
         await hydrate();
       } finally {
         setReady(true);

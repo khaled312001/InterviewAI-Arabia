@@ -1,27 +1,37 @@
 // Zoom-like mock-interview meeting with an AI HR persona named "Sarah".
-// Web-first: uses browser getUserMedia + Web Speech API (STT + TTS). Falls
-// back gracefully on unsupported browsers. Native support will be layered
-// on top later with expo-camera + expo-speech.
+// Web-first: browser getUserMedia for camera/mic + Web SpeechRecognition
+// for Arabic STT + server TTS (Microsoft Edge ar-EG-SalmaNeural) for a
+// guaranteed professional female Arabic voice.
+//
+// Smart silence detection: the recognizer stays open continuously and only
+// commits the user's utterance after ~2.5s of silence — so thinking pauses
+// don't cut them off.
+//
+// Live coaching: each of Sarah's turns returns a "tips" array (suggestions
+// for the candidate's NEXT answer). They fade into a side panel without
+// interrupting the conversation flow.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Platform, ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MotiView } from 'moti';
+import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../api/client';
+import { api, API_BASE } from '../api/client';
 import { useAppTheme } from '../theme/useTheme';
+import { secureStorage } from '../storage/secureStorage';
 
 type TurnRole = 'assistant' | 'user';
 interface Turn { role: TurnRole; content: string; at: number }
+interface Tip { id: number; text: string; at: number }
 
-// Narrow window.* access so TypeScript is happy on web-only APIs.
+// Silence window: how long after the last transcription event we treat the
+// user as "done speaking". 2.5s feels natural and handles thinking pauses.
+const SILENCE_MS = 2500;
+
 const SR: any = Platform.OS === 'web' && typeof window !== 'undefined'
   ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
-  : null;
-const SYN: SpeechSynthesis | null = Platform.OS === 'web' && typeof window !== 'undefined'
-  ? window.speechSynthesis
   : null;
 
 function formatDuration(ms: number) {
@@ -31,14 +41,6 @@ function formatDuration(ms: number) {
   return `${m}:${s}`;
 }
 
-function pickArabicVoice(): SpeechSynthesisVoice | null {
-  if (!SYN) return null;
-  const voices = SYN.getVoices();
-  // Prefer female Arabic voices when available.
-  const preferred = voices.find(v => /ar/i.test(v.lang) && /female|sara|zira|noura|amira|hana|latifa/i.test(v.name));
-  return preferred || voices.find(v => /ar/i.test(v.lang)) || null;
-}
-
 export function MeetingScreen({ route, navigation }: any) {
   const { categoryId, categoryName } = route.params;
   const theme = useAppTheme();
@@ -46,12 +48,16 @@ export function MeetingScreen({ route, navigation }: any) {
   const textRegular = { fontFamily: theme.typography.fontFamily };
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accumulatedFinalRef = useRef<string>('');
   const startedAtRef = useRef<number>(Date.now());
-  const pendingAudioRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const tipCounterRef = useRef(0);
 
   const [turns, setTurns] = useState<Turn[]>([]);
+  const [tips, setTips] = useState<Tip[]>([]);
   const [interim, setInterim] = useState('');
   const [thinking, setThinking] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
@@ -63,7 +69,7 @@ export function MeetingScreen({ route, navigation }: any) {
   const [evaluation, setEvaluation] = useState<any>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
 
-  // ------------------------ camera / mic setup ------------------------
+  // -------------------------- media init --------------------------
   useEffect(() => {
     if (Platform.OS !== 'web') {
       setMediaError('هذه الميزة متاحة على نسخة الويب حاليًا. سنضيف دعم الموبايل قريبًا.');
@@ -84,46 +90,61 @@ export function MeetingScreen({ route, navigation }: any) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play().catch(() => {});
         }
-      } catch (err: any) {
-        setMediaError('لم نستطع الوصول للكاميرا أو المايك. يرجى السماح بالصلاحيات.');
+      } catch {
+        setMediaError('لم نستطع الوصول للكاميرا أو المايك. يرجى السماح بالصلاحيات وإعادة المحاولة.');
       }
     })();
 
-    // Tick duration every second.
     const tick = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 1000);
     return () => {
       clearInterval(tick);
       stopRecognition();
-      if (SYN) SYN.cancel();
+      if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ------------------------ Recognition helpers ------------------------
+  // -------------------------- smart STT --------------------------
   const startRecognition = useCallback(() => {
     if (!SR || !micOn) return;
     if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} }
+    accumulatedFinalRef.current = '';
+
     const rec = new SR();
     rec.lang = 'ar-EG';
-    rec.continuous = false;
+    rec.continuous = true;      // stay open; we'll decide when to commit via silence timer
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
-    let finalText = '';
+    const armSilence = () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        if (accumulatedFinalRef.current.trim()) {
+          try { rec.stop(); } catch {}
+        }
+      }, SILENCE_MS);
+    };
+
     rec.onresult = (e: any) => {
       let interimText = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
+        if (r.isFinal) accumulatedFinalRef.current += r[0].transcript + ' ';
         else interimText += r[0].transcript;
       }
       setInterim(interimText);
+      armSilence();
+    };
+    rec.onspeechstart = () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     };
     rec.onend = () => {
       setListening(false);
       setInterim('');
-      if (finalText.trim()) sendUserMessage(finalText.trim());
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      const final = accumulatedFinalRef.current.trim();
+      accumulatedFinalRef.current = '';
+      if (final) sendUserMessage(final);
     };
     rec.onerror = (e: any) => {
       setListening(false);
@@ -132,34 +153,63 @@ export function MeetingScreen({ route, navigation }: any) {
         console.warn('SR error', e.error);
       }
     };
+
     rec.start();
     recognitionRef.current = rec;
     setListening(true);
   }, [micOn]);
 
   const stopRecognition = () => {
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
     if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} recognitionRef.current = null; }
     setListening(false);
   };
 
-  // ------------------------ TTS ------------------------
-  const speak = (text: string, onDone?: () => void) => {
-    if (!SYN) { onDone?.(); return; }
-    SYN.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'ar-EG';
-    utter.rate = 0.95;
-    utter.pitch = 1.05;
-    const voice = pickArabicVoice();
-    if (voice) utter.voice = voice;
-    utter.onstart = () => setAiSpeaking(true);
-    utter.onend = () => { setAiSpeaking(false); onDone?.(); };
-    utter.onerror = () => { setAiSpeaking(false); onDone?.(); };
-    pendingAudioRef.current = utter;
-    SYN.speak(utter);
-  };
+  // -------------------------- server TTS (Salma) --------------------------
+  const speak = useCallback(async (text: string, onDone?: () => void) => {
+    if (Platform.OS !== 'web') { onDone?.(); return; }
+    try {
+      setAiSpeaking(true);
+      // Fetch the MP3 from our backend. Include the auth token since /api/tts
+      // requires a user JWT (rate-limited).
+      const token = await secureStorage.getItem('access_token');
+      const res = await fetch(`${API_BASE}/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ text, voice: 'salma', rate: '+3%' }),
+      });
+      if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
 
-  // ------------------------ backend turn ------------------------
+      if (audioRef.current) {
+        try { audioRef.current.pause(); } catch {}
+      }
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => {
+        setAiSpeaking(false);
+        URL.revokeObjectURL(url);
+        onDone?.();
+      };
+      audio.onerror = () => {
+        setAiSpeaking(false);
+        URL.revokeObjectURL(url);
+        onDone?.();
+      };
+      await audio.play();
+    } catch (err) {
+      setAiSpeaking(false);
+      // eslint-disable-next-line no-console
+      console.warn('TTS failed — will proceed silently', err);
+      onDone?.();
+    }
+  }, []);
+
+  // -------------------------- backend turn --------------------------
   const sendTurn = useCallback(async (userMessage: string) => {
     setThinking(true);
     try {
@@ -169,11 +219,28 @@ export function MeetingScreen({ route, navigation }: any) {
       });
       const aiTurn: Turn = { role: 'assistant', content: data.reply, at: Date.now() };
       setTurns((prev) => [...prev, aiTurn]);
+
+      // Surface live coaching tips (if any).
+      if (Array.isArray(data.tips) && data.tips.length) {
+        const now = Date.now();
+        const newTips: Tip[] = data.tips.map((text: string) => ({
+          id: ++tipCounterRef.current, text, at: now,
+        }));
+        setTips((prev) => [...newTips, ...prev].slice(0, 8));
+      }
+
       const closing = data.status === 'closing';
       if (closing) setMeetingState('closing');
       speak(data.reply, () => {
-        if (closing) finishMeeting([...turns, ...(userMessage ? [{ role: 'user' as const, content: userMessage, at: Date.now() }] : []), aiTurn]);
-        else if (micOn) setTimeout(startRecognition, 400);
+        if (closing) {
+          finishMeeting([
+            ...turns,
+            ...(userMessage ? [{ role: 'user' as const, content: userMessage, at: Date.now() }] : []),
+            aiTurn,
+          ]);
+        } else if (micOn) {
+          setTimeout(startRecognition, 500);
+        }
       });
     } catch (err: any) {
       Alert.alert('خطأ', err?.response?.data?.error || err.message);
@@ -181,18 +248,16 @@ export function MeetingScreen({ route, navigation }: any) {
       setThinking(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, turns, micOn, startRecognition]);
+  }, [categoryId, turns, micOn, startRecognition, speak]);
 
   const sendUserMessage = useCallback(async (text: string) => {
     setTurns((prev) => [...prev, { role: 'user', content: text, at: Date.now() }]);
     await sendTurn(text);
   }, [sendTurn]);
 
-  // ------------------------ start meeting ------------------------
   const startMeeting = useCallback(async () => {
     startedAtRef.current = Date.now();
     setMeetingState('active');
-    // Ask Sarah for the opener with no user message.
     try {
       setThinking(true);
       const { data } = await api.post('/meeting/turn', {
@@ -201,22 +266,21 @@ export function MeetingScreen({ route, navigation }: any) {
       const opener: Turn = { role: 'assistant', content: data.reply, at: Date.now() };
       setTurns([opener]);
       speak(data.reply, () => {
-        if (micOn) setTimeout(startRecognition, 400);
+        if (micOn) setTimeout(startRecognition, 500);
       });
     } catch (err: any) {
       Alert.alert('خطأ', err?.response?.data?.error || err.message);
     } finally {
       setThinking(false);
     }
-  }, [categoryId, micOn, startRecognition]);
+  }, [categoryId, micOn, startRecognition, speak]);
 
-  // ------------------------ end meeting ------------------------
   const finishMeeting = useCallback(async (finalTurns?: Turn[]) => {
     stopRecognition();
-    if (SYN) SYN.cancel();
+    if (audioRef.current) { try { audioRef.current.pause(); } catch {} }
     setMeetingState('ended');
     const history = (finalTurns ?? turns).map((t) => ({ role: t.role, content: t.content }));
-    if (history.length < 2) { return; }
+    if (history.length < 2) return;
     try {
       setThinking(true);
       const { data } = await api.post('/meeting/finish', {
@@ -230,7 +294,7 @@ export function MeetingScreen({ route, navigation }: any) {
     }
   }, [categoryId, turns]);
 
-  // ------------------------ mic toggle ------------------------
+  // -------------------------- media controls --------------------------
   const toggleMic = () => {
     const next = !micOn;
     setMicOn(next);
@@ -247,7 +311,7 @@ export function MeetingScreen({ route, navigation }: any) {
     tracks.forEach((t) => (t.enabled = next));
   };
 
-  // ------------------------ render ------------------------
+  // -------------------------- render --------------------------
   if (mediaError) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}>
@@ -267,34 +331,29 @@ export function MeetingScreen({ route, navigation }: any) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}>
         <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-          <Text style={[styles.resultTitle, textBold, { color: theme.colors.text }]}>
-            تقييم المقابلة
-          </Text>
+          <Text style={[styles.resultTitle, textBold, { color: theme.colors.text }]}>تقييم المقابلة</Text>
           <View style={[styles.scoreBig, { backgroundColor: theme.colors.primary }]}>
             <Text style={[styles.scoreBigLabel, textRegular]}>الدرجة الإجمالية</Text>
             <Text style={[styles.scoreBigNum, textBold]}>{evaluation.overall_score}/10</Text>
             <Text style={[styles.scoreBigSummary, textRegular]}>{evaluation.summary}</Text>
           </View>
-          <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-            <Text style={[styles.cardTitle, textBold, { color: theme.colors.success }]}>نقاط القوة</Text>
+          <View style={[styles.resCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={[styles.resCardTitle, textBold, { color: theme.colors.success }]}>نقاط القوة</Text>
             {(evaluation.strengths || []).map((s: string, i: number) => (
               <Text key={i} style={[textRegular, { color: theme.colors.text, lineHeight: 22 }]}>• {s}</Text>
             ))}
           </View>
-          <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-            <Text style={[styles.cardTitle, textBold, { color: theme.colors.warning }]}>نقاط التحسين</Text>
+          <View style={[styles.resCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={[styles.resCardTitle, textBold, { color: theme.colors.warning }]}>نقاط التحسين</Text>
             {(evaluation.weaknesses || []).map((s: string, i: number) => (
               <Text key={i} style={[textRegular, { color: theme.colors.text, lineHeight: 22 }]}>• {s}</Text>
             ))}
           </View>
-          <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-            <Text style={[styles.cardTitle, textBold, { color: theme.colors.primary }]}>النصيحة</Text>
+          <View style={[styles.resCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={[styles.resCardTitle, textBold, { color: theme.colors.primary }]}>النصيحة</Text>
             <Text style={[textRegular, { color: theme.colors.text, lineHeight: 22 }]}>{evaluation.advice}</Text>
           </View>
-          <Pressable
-            onPress={() => navigation.navigate('Main')}
-            style={[styles.btn, { backgroundColor: theme.colors.primary }]}
-          >
+          <Pressable onPress={() => navigation.navigate('Main')} style={[styles.btn, { backgroundColor: theme.colors.primary }]}>
             <Text style={[textBold, { color: '#fff' }]}>العودة للرئيسية</Text>
           </Pressable>
         </ScrollView>
@@ -304,7 +363,6 @@ export function MeetingScreen({ route, navigation }: any) {
 
   return (
     <View style={[styles.root, { backgroundColor: '#0A0E1A' }]}>
-      {/* Top bar */}
       <SafeAreaView edges={['top']}>
         <View style={styles.topBar}>
           <View style={styles.topBarLeft}>
@@ -316,75 +374,113 @@ export function MeetingScreen({ route, navigation }: any) {
               {' · '}{formatDuration(elapsed)}
             </Text>
           </View>
-          <Pressable
-            onPress={() => finishMeeting()}
-            style={styles.endBtn}
-          >
+          <Pressable onPress={() => finishMeeting()} style={styles.endBtn}>
             <Ionicons name="call" size={16} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
             <Text style={[textBold, { color: '#fff', fontSize: 13 }]}>إنهاء</Text>
           </Pressable>
         </View>
       </SafeAreaView>
 
-      {/* Main stage: AI avatar */}
-      <View style={styles.stage}>
-        <MotiView
-          from={{ scale: 1 }}
-          animate={{ scale: aiSpeaking ? 1.04 : 1 }}
-          transition={{ type: 'timing', duration: 500, loop: aiSpeaking, repeatReverse: true }}
-          style={styles.avatarOuter}
-        >
-          {aiSpeaking && <View style={styles.avatarPulse1} />}
-          {aiSpeaking && <View style={styles.avatarPulse2} />}
-          <View style={styles.avatarCore}>
-            <Text style={[styles.avatarInitial, textBold]}>س</Text>
-          </View>
-        </MotiView>
-        <Text style={[styles.avatarName, textBold]}>سارة</Text>
-        <Text style={[styles.avatarRole, textRegular]}>مسؤولة الموارد البشرية</Text>
-
-        {thinking && (
-          <View style={styles.thinkingBadge}>
-            <ActivityIndicator color="#fff" size="small" />
-            <Text style={[textRegular, { color: '#fff', marginStart: 8 }]}>تفكّر...</Text>
-          </View>
-        )}
-        {listening && !thinking && (
-          <View style={[styles.thinkingBadge, { backgroundColor: 'rgba(16,185,129,0.25)', borderColor: 'rgba(16,185,129,0.5)' }]}>
-            <View style={styles.micDot} />
-            <Text style={[textRegular, { color: '#fff', marginStart: 8 }]}>أستمع إليك...</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Live transcript (last AI reply + user interim) */}
-      <View style={styles.captionArea}>
-        {turns.length > 0 && (
+      <View style={styles.body}>
+        {/* Left/main: AI avatar stage */}
+        <View style={styles.stage}>
           <MotiView
-            key={turns[turns.length - 1].at}
-            from={{ opacity: 0, translateY: 6 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: 'timing', duration: 280 }}
-            style={styles.captionCard}
+            from={{ scale: 1 }}
+            animate={{ scale: aiSpeaking ? 1.04 : 1 }}
+            transition={{ type: 'timing', duration: 500, loop: aiSpeaking, repeatReverse: true }}
+            style={styles.avatarOuter}
           >
-            <Text style={[styles.captionLabel, textBold]}>
-              {turns[turns.length - 1].role === 'assistant' ? 'سارة' : 'أنت'}
-            </Text>
-            <Text style={[styles.captionText, textRegular]}>
-              {turns[turns.length - 1].content}
-            </Text>
+            {aiSpeaking && <View style={styles.avatarPulse1} />}
+            {aiSpeaking && <View style={styles.avatarPulse2} />}
+            <View style={styles.avatarCore}>
+              <Text style={[styles.avatarInitial, textBold]}>س</Text>
+            </View>
           </MotiView>
-        )}
-        {interim ? (
-          <Text style={[styles.interim, textRegular]}>{interim}</Text>
-        ) : null}
+          <Text style={[styles.avatarName, textBold]}>سارة</Text>
+          <Text style={[styles.avatarRole, textRegular]}>مسؤولة الموارد البشرية</Text>
+
+          {thinking && (
+            <View style={styles.statusBadge}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={[textRegular, { color: '#fff', marginStart: 8 }]}>تفكّر...</Text>
+            </View>
+          )}
+          {listening && !thinking && (
+            <View style={[styles.statusBadge, { backgroundColor: 'rgba(16,185,129,0.25)', borderColor: 'rgba(16,185,129,0.5)' }]}>
+              <View style={styles.micDot} />
+              <Text style={[textRegular, { color: '#fff', marginStart: 8 }]}>أستمع إليك...</Text>
+            </View>
+          )}
+
+          {/* Caption of last turn */}
+          <View style={styles.captionArea}>
+            {turns.length > 0 && (
+              <MotiView
+                key={turns[turns.length - 1].at}
+                from={{ opacity: 0, translateY: 6 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ type: 'timing', duration: 260 }}
+                style={styles.captionCard}
+              >
+                <Text style={[styles.captionLabel, textBold]}>
+                  {turns[turns.length - 1].role === 'assistant' ? 'سارة' : 'أنت'}
+                </Text>
+                <Text style={[styles.captionText, textRegular]}>
+                  {turns[turns.length - 1].content}
+                </Text>
+              </MotiView>
+            )}
+            {interim ? (
+              <Text style={[styles.interim, textRegular]}>{interim}</Text>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Right: live coaching tips panel */}
+        <View style={styles.tipsPanel}>
+          <View style={styles.tipsPanelHead}>
+            <Ionicons name="sparkles" size={16} color="#F5B12F" />
+            <Text style={[textBold, { color: '#fff', fontSize: 13, marginStart: 6 }]}>مدرّبك المباشر</Text>
+          </View>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ gap: 8 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <AnimatePresence>
+              {tips.length === 0 ? (
+                <View style={styles.tipsEmpty}>
+                  <Text style={[textRegular, { color: 'rgba(255,255,255,0.55)', fontSize: 12, textAlign: 'center' }]}>
+                    نصائح لحظية ستظهر هنا بعد كل إجابة لمساعدتك على تحسين أدائك.
+                  </Text>
+                </View>
+              ) : (
+                tips.map((tip, idx) => (
+                  <MotiView
+                    key={tip.id}
+                    from={{ opacity: 0, translateX: -20 }}
+                    animate={{ opacity: 1, translateX: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ type: 'timing', duration: 320, delay: idx * 40 }}
+                    style={styles.tipCard}
+                  >
+                    <Ionicons name="bulb" size={14} color="#F5B12F" style={{ marginTop: 2 }} />
+                    <Text style={[textRegular, { color: '#fff', flex: 1, lineHeight: 20, fontSize: 13 }]}>
+                      {tip.text}
+                    </Text>
+                  </MotiView>
+                ))
+              )}
+            </AnimatePresence>
+          </ScrollView>
+        </View>
       </View>
 
       {/* PiP user camera */}
       {Platform.OS === 'web' && (
         <View style={styles.pipWrap}>
           <View style={styles.pip}>
-            {/* @ts-ignore — direct HTMLVideoElement on web only */}
+            {/* @ts-ignore — web-only HTMLVideoElement */}
             <video
               ref={videoRef as any}
               autoPlay
@@ -392,14 +488,12 @@ export function MeetingScreen({ route, navigation }: any) {
               playsInline
               style={{
                 width: '100%', height: '100%', objectFit: 'cover',
-                transform: 'scaleX(-1)', // mirror like native video calls
+                transform: 'scaleX(-1)',
                 display: camOn ? 'block' : 'none',
               }}
             />
             {!camOn && (
-              <View style={styles.pipOff}>
-                <Ionicons name="videocam-off" size={26} color="#fff" />
-              </View>
+              <View style={styles.pipOff}><Ionicons name="videocam-off" size={26} color="#fff" /></View>
             )}
             <View style={styles.pipLabel}>
               <Text style={[textBold, { color: '#fff', fontSize: 11 }]}>أنت</Text>
@@ -430,7 +524,7 @@ export function MeetingScreen({ route, navigation }: any) {
               <Ionicons name={camOn ? 'videocam' : 'videocam-off'} size={22} color="#fff" />
             </Pressable>
             <Pressable
-              onPress={() => { if (!thinking && !aiSpeaking) startRecognition(); }}
+              onPress={() => { if (!thinking && !aiSpeaking && !listening) startRecognition(); }}
               disabled={!micOn || thinking || aiSpeaking || listening}
               style={[
                 styles.ctrlBtn,
@@ -440,7 +534,7 @@ export function MeetingScreen({ route, navigation }: any) {
                 },
               ]}
             >
-              <Ionicons name={listening ? 'radio' : 'mic-circle-outline'} size={22} color="#fff" />
+              <Ionicons name={listening ? 'radio' : 'mic-circle-outline'} size={24} color="#fff" />
             </Pressable>
             <Pressable
               onPress={() => finishMeeting()}
@@ -459,14 +553,9 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   root: { flex: 1, position: 'relative' },
 
-  // top bar
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12, backgroundColor: 'rgba(0,0,0,0.35)',
   },
   topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
@@ -477,12 +566,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444', borderRadius: 999,
   },
 
-  // stage
-  stage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  body: { flex: 1, flexDirection: 'row' },
+  stage: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
+
   avatarOuter: {
     width: 180, height: 180, borderRadius: 90,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
   avatarPulse1: {
     position: 'absolute', width: '140%', height: '140%', borderRadius: 9999,
@@ -493,8 +582,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(45,108,224,0.28)',
   },
   avatarCore: {
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: '#2D6CE0',
+    width: 160, height: 160, borderRadius: 80, backgroundColor: '#2D6CE0',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 3, borderColor: 'rgba(255,255,255,0.18)',
   },
@@ -502,7 +590,7 @@ const styles = StyleSheet.create({
   avatarName: { color: '#fff', fontSize: 22 },
   avatarRole: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
 
-  thinkingBadge: {
+  statusBadge: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 999, marginTop: 14,
@@ -511,43 +599,46 @@ const styles = StyleSheet.create({
   },
   micDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
 
-  // caption
-  captionArea: {
-    paddingHorizontal: 20, gap: 8, minHeight: 60,
-    paddingBottom: 6,
-  },
+  captionArea: { marginTop: 14, alignItems: 'center', width: '100%', maxWidth: 640, gap: 8 },
   captionCard: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    maxWidth: 640,
-    alignSelf: 'center',
-    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', width: '100%',
   },
   captionLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginBottom: 4 },
   captionText: { color: '#fff', fontSize: 15, lineHeight: 24 },
-  interim: {
-    color: 'rgba(255,255,255,0.65)', fontStyle: 'italic', fontSize: 13,
-    textAlign: 'center',
+  interim: { color: 'rgba(255,255,255,0.65)', fontStyle: 'italic', fontSize: 13, textAlign: 'center' },
+
+  // Tips side panel (hidden on narrow screens via width)
+  tipsPanel: {
+    width: 280,
+    paddingVertical: 16, paddingHorizontal: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderStartWidth: 1, borderStartColor: 'rgba(255,255,255,0.08)',
+    gap: 10,
+  },
+  tipsPanelHead: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  tipsEmpty: { padding: 12 },
+  tipCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    backgroundColor: 'rgba(245,177,47,0.1)',
+    borderWidth: 1, borderColor: 'rgba(245,177,47,0.25)',
+    padding: 10, borderRadius: 10,
   },
 
-  // PiP
-  pipWrap: {
-    position: 'absolute', bottom: 110, left: 20,
-  },
+  pipWrap: { position: 'absolute', bottom: 110, left: 20 },
   pip: {
-    width: 140, height: 100, borderRadius: 12,
-    overflow: 'hidden',
+    width: 140, height: 100, borderRadius: 12, overflow: 'hidden',
     backgroundColor: '#1F2533',
     borderWidth: 2, borderColor: 'rgba(255,255,255,0.22)',
     position: 'relative',
   },
   pipOff: {
-    position: 'absolute', inset: 0,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#1F2533',
+    position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#1F2533',
   },
   pipLabel: {
     position: 'absolute', bottom: 4, left: 6,
@@ -555,12 +646,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 6,
   },
 
-  // bottom
   bottomWrap: { paddingBottom: 20, paddingTop: 10 },
-  controls: {
-    flexDirection: 'row', justifyContent: 'center', gap: 14,
-    paddingHorizontal: 20,
-  },
+  controls: { flexDirection: 'row', justifyContent: 'center', gap: 14, paddingHorizontal: 20 },
   ctrlBtn: {
     width: 56, height: 56, borderRadius: 28,
     alignItems: 'center', justifyContent: 'center',
@@ -569,29 +656,19 @@ const styles = StyleSheet.create({
   startBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     alignSelf: 'center',
-    paddingVertical: 14, paddingHorizontal: 28,
-    borderRadius: 999,
+    paddingVertical: 14, paddingHorizontal: 28, borderRadius: 999,
   },
 
-  // Error state
   errWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 28 },
   errTitle: { fontSize: 20 },
   errBody: { fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  btn: {
-    paddingVertical: 12, paddingHorizontal: 20,
-    borderRadius: 12, marginTop: 8, alignItems: 'center',
-  },
+  btn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 8, alignItems: 'center' },
 
-  // Evaluation
   resultTitle: { fontSize: 24, textAlign: 'center', marginVertical: 8 },
-  scoreBig: {
-    borderRadius: 20, padding: 22, alignItems: 'center', gap: 6,
-  },
+  scoreBig: { borderRadius: 20, padding: 22, alignItems: 'center', gap: 6 },
   scoreBigLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 13 },
   scoreBigNum: { color: '#fff', fontSize: 54 },
   scoreBigSummary: { color: 'rgba(255,255,255,0.9)', fontSize: 14, textAlign: 'center', lineHeight: 22, marginTop: 6 },
-  card: {
-    borderRadius: 14, padding: 16, borderWidth: StyleSheet.hairlineWidth, gap: 6,
-  },
-  cardTitle: { fontSize: 15, marginBottom: 4 },
+  resCard: { borderRadius: 14, padding: 16, borderWidth: StyleSheet.hairlineWidth, gap: 6 },
+  resCardTitle: { fontSize: 15, marginBottom: 4 },
 });
