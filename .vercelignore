@@ -1,0 +1,21 @@
+# Files Vercel doesn't need at build time.
+# (Vercel ignores .git, node_modules already by default.)
+
+# Keep mobile/ source out of the deploy — we only need the *built* dist
+# (which our buildCommand copies into backend/public/web).
+mobile/node_modules
+mobile/.expo
+mobile/android
+mobile/ios
+
+# Never ship local env or build outputs that aren't the deployed ones.
+**/.env
+**/.env.local
+**/.env.*.local
+backend/logs
+backend/tmp
+backend/stderr.log
+
+# Hostinger ops scripts — not needed on Vercel.
+scripts/deploy.sh
+backend/ecosystem.config.cjs

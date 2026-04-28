@@ -49,6 +49,10 @@ const schema = z.object({
   PAYMOB_INTEGRATION_ID: z.string().optional().default(''),
   PAYMOB_IFRAME_ID: z.string().optional().default(''),
   PAYMOB_HMAC_SECRET: z.string().optional().default(''),
+
+  // Cron secret — Vercel Cron sends Authorization: Bearer <CRON_SECRET>.
+  // Required on Vercel so the public /api/cron/* endpoints aren't abusable.
+  CRON_SECRET: z.string().optional().default(''),
 });
 
 const parsed = schema.safeParse(process.env);

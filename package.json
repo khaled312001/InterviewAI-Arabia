@@ -1,0 +1,19 @@
+{
+  "name": "interviewai-arabia",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Arabic-first AI interview coach — monorepo (backend + admin + mobile/web)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix admin && npm install --prefix mobile",
+    "build:admin": "npm run build --prefix admin && rm -rf backend/public/admin && mkdir -p backend/public && cp -r admin/dist backend/public/admin",
+    "build:web": "npm run build:web --prefix mobile && rm -rf backend/public/web && cp -r mobile/dist backend/public/web",
+    "build:vercel": "npm run build:admin && npm run build:web",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:admin": "npm run dev --prefix admin",
+    "dev:mobile": "npm run web --prefix mobile"
+  },
+  "dependencies": {
+    "serverless-http": "^3.2.0"
+  }
+}
