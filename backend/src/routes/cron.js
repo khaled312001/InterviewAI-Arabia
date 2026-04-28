@@ -36,7 +36,7 @@ router.all('/daily-reset', requireCronAuth, asyncHandler(async (_req, res) => {
   res.json({ ok: true, affected: result.affectedRows, at: today.toISOString() });
 }));
 
-// Hourly subscription expiry sweep.
+// Subscription expiry sweep — kept callable directly for ops/manual runs.
 router.all('/expire-subscriptions', requireCronAuth, asyncHandler(async (_req, res) => {
   const now = new Date();
   const expired = await query(
@@ -51,6 +51,44 @@ router.all('/expire-subscriptions', requireCronAuth, asyncHandler(async (_req, r
   await query(`UPDATE users SET plan = 'free' WHERE id IN (${userIds.map(() => '?').join(',')})`, userIds);
   logger.info('Cron: expire-subscriptions', { count: expired.length });
   res.json({ ok: true, expired: expired.length });
+}));
+
+// Combined daily cron — Vercel Hobby allows only one schedule per cron, and
+// each must run at most once per day. We fold both jobs (quota reset +
+// subscription expiry) into one endpoint with one schedule. Runs at 22:00
+// UTC = ~00:00 Africa/Cairo. On Hostinger this endpoint is unused (in-
+// process node-cron handles each job on its own cadence).
+router.all('/daily', requireCronAuth, asyncHandler(async (_req, res) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const now = new Date();
+
+  // 1. Daily quota reset
+  const reset = await query(
+    'UPDATE users SET daily_questions_used = 0, last_reset_date = ?',
+    [today]
+  );
+
+  // 2. Expire subscriptions whose expires_at has passed
+  const expired = await query(
+    'SELECT id, user_id FROM subscriptions WHERE status = "active" AND expires_at < ?',
+    [now]
+  );
+  let expiredCount = 0;
+  if (expired.length) {
+    const ids = expired.map((s) => s.id);
+    const userIds = [...new Set(expired.map((s) => s.user_id.toString()))];
+    await query(`UPDATE subscriptions SET status = 'expired' WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+    await query(`UPDATE users SET plan = 'free' WHERE id IN (${userIds.map(() => '?').join(',')})`, userIds);
+    expiredCount = expired.length;
+  }
+
+  logger.info('Cron: daily', { quotaReset: reset.affectedRows, expired: expiredCount });
+  res.json({
+    ok: true,
+    quotaReset: reset.affectedRows,
+    subscriptionsExpired: expiredCount,
+    at: now.toISOString(),
+  });
 }));
 
 export default router;

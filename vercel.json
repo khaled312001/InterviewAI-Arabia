@@ -18,12 +18,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/daily-reset",
+      "path": "/api/cron/daily",
       "schedule": "0 22 * * *"
-    },
-    {
-      "path": "/api/cron/expire-subscriptions",
-      "schedule": "5 * * * *"
     }
   ],
   "headers": [
