@@ -11,10 +11,13 @@
     }
   },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/admin", "destination": "/admin/index.html" },
-    { "source": "/admin/(.*)", "destination": "/admin/index.html" },
-    { "source": "/((?!_next|_expo|assets|admin|api|favicon|robots|sitemap).*)", "destination": "/index.html" }
+    { "source": "/api/(.*)",     "destination": "/api/index.js" },
+    { "source": "/admin",        "destination": "/admin/index.html" },
+    { "source": "/admin/(.*)",   "destination": "/admin/index.html" },
+    { "source": "/_expo/(.*)",   "destination": "/web/_expo/$1" },
+    { "source": "/assets/(.*)",  "destination": "/web/assets/$1" },
+    { "source": "/metadata.json","destination": "/web/metadata.json" },
+    { "source": "/((?!api/|admin/|_expo/|assets/|web/|favicon|robots|sitemap).*)", "destination": "/web/index.html" }
   ],
   "crons": [
     {
