@@ -13,13 +13,16 @@ const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | u
 // Override the absolute URL via EXPO_PUBLIC_API_BASE_URL at build time, OR
 // via Constants.expoConfig.extra.apiBaseUrl in app.json. Hostinger fallback
 // stays available for the legacy single-domain deployment.
-const BACKEND_VERCEL  = 'https://interviewai-arabia-backend.vercel.app/api';
+const BACKEND_VERCEL  = 'https://interview-ai-arabia-backend.vercel.app/api';
 const HOSTINGER_API   = 'https://intervie-ai-arabia.barmagly.tech/api';
 
 let resolved: string;
 if (envUrl) {
   resolved = envUrl;
-} else if (configUrl) {
+} else if (Platform.OS !== 'web' && configUrl) {
+  // configUrl from app.json is the native fallback (since native apps have
+  // no current origin). On web we ignore it so the BACKEND_VERCEL constant
+  // wins over any stale value in app.json.
   resolved = configUrl;
 } else if (
   Platform.OS === 'web'
