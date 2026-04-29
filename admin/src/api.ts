@@ -1,6 +1,15 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+// Frontend on Vercel, backend on Hostinger — talk to the absolute API
+// origin unless overridden via VITE_API_BASE_URL. Same-origin /api works
+// only when the admin SPA is served from Hostinger itself.
+const fallback =
+  typeof window !== 'undefined' &&
+  window.location?.hostname === 'intervie-ai-arabia.barmagly.tech'
+    ? '/api'
+    : 'https://intervie-ai-arabia.barmagly.tech/api';
+
+const baseURL = import.meta.env.VITE_API_BASE_URL || fallback;
 
 export const api = axios.create({ baseURL });
 

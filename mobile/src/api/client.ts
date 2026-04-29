@@ -6,17 +6,23 @@ import { secureStorage } from '../storage/secureStorage';
 const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
 const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | undefined;
 
-// On web, ALWAYS hit the same origin (`/api`) — whether the bundle is served
-// from Vercel, Hostinger, or localhost. This keeps the deployment portable
-// and avoids cross-origin traffic. Native apps still use the configured URL
-// from app.json (or the env override) since they have no "current origin".
+// Architecture: frontend (admin + web) deploys to Vercel as static; backend
+// (Express API + Prisma + MySQL) lives on Hostinger. The frontend therefore
+// always calls the Hostinger origin cross-origin. Same-origin /api is used
+// only when we're literally being served from Hostinger itself (legacy).
+const HOSTINGER_API = 'https://intervie-ai-arabia.barmagly.tech/api';
+
 let resolved: string;
 if (envUrl) {
   resolved = envUrl;
-} else if (Platform.OS === 'web') {
+} else if (
+  Platform.OS === 'web'
+  && typeof window !== 'undefined'
+  && window.location?.hostname === 'intervie-ai-arabia.barmagly.tech'
+) {
   resolved = '/api';
 } else {
-  resolved = configUrl || 'https://intervie-ai-arabia.barmagly.tech/api';
+  resolved = configUrl || HOSTINGER_API;
 }
 export const API_BASE = resolved;
 

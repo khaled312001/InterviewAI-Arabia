@@ -2,29 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "backend/public",
-  "installCommand": "npm run install:all",
+  "installCommand": "npm run install:frontend",
   "framework": null,
-  "functions": {
-    "api/index.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
-    { "source": "/api/test",     "destination": "/api/test" },
-    { "source": "/api/(.*)",     "destination": "/api/index.js" },
-    { "source": "/admin",        "destination": "/admin/index.html" },
-    { "source": "/admin/(.*)",   "destination": "/admin/index.html" },
-    { "source": "/_expo/(.*)",   "destination": "/web/_expo/$1" },
-    { "source": "/assets/(.*)",  "destination": "/web/assets/$1" },
-    { "source": "/metadata.json","destination": "/web/metadata.json" },
-    { "source": "/((?!api/|admin/|_expo/|assets/|web/|favicon|robots|sitemap).*)", "destination": "/web/index.html" }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/daily",
-      "schedule": "0 22 * * *"
-    }
+    { "source": "/admin",         "destination": "/admin/index.html" },
+    { "source": "/admin/(.*)",    "destination": "/admin/index.html" },
+    { "source": "/_expo/(.*)",    "destination": "/web/_expo/$1" },
+    { "source": "/assets/(.*)",   "destination": "/web/assets/$1" },
+    { "source": "/metadata.json", "destination": "/web/metadata.json" },
+    { "source": "/((?!admin/|_expo/|assets/|web/|favicon|robots|sitemap).*)", "destination": "/web/index.html" }
   ],
   "headers": [
     {

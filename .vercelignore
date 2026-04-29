@@ -1,21 +1,32 @@
-# Files Vercel doesn't need at build time.
-# (Vercel ignores .git, node_modules already by default.)
+# Files Vercel doesn't need for the static frontend deploy. The backend
+# code lives here for the monorepo source-of-truth, but Hostinger runs
+# the API — Vercel just needs the built admin/ and web/ static bundles.
 
-# Keep mobile/ source out of the deploy — we only need the *built* dist
-# (which our buildCommand copies into backend/public/web).
+# Backend code — ignored on Vercel (Hostinger Passenger runs it).
+# We still need backend/public/ during build because admin + web bundles
+# are copied there, so we explicitly keep that folder.
+backend/src
+backend/prisma
+backend/node_modules
+backend/logs
+backend/tmp
+backend/stderr.log
+backend/ecosystem.config.cjs
+backend/package.json
+backend/package-lock.json
+backend/.env
+backend/.env.example
+
+# Mobile source — only the built dist ships (copied into backend/public/web).
 mobile/node_modules
 mobile/.expo
 mobile/android
 mobile/ios
 
-# Never ship local env or build outputs that aren't the deployed ones.
+# Local env files
 **/.env
 **/.env.local
 **/.env.*.local
-backend/logs
-backend/tmp
-backend/stderr.log
 
-# Hostinger ops scripts — not needed on Vercel.
+# Hostinger ops scripts — not used on Vercel.
 scripts/deploy.sh
-backend/ecosystem.config.cjs
