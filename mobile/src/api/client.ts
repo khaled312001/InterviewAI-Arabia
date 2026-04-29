@@ -6,11 +6,19 @@ import { secureStorage } from '../storage/secureStorage';
 const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
 const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | undefined;
 
-// On web, default to a relative /api so the same-origin backend serves requests
-// (the web bundle is served from the same subdomain as the API).
-const webDefault = '/api';
-const nativeDefault = 'https://intervie-ai-arabia.barmagly.tech/api';
-export const API_BASE = envUrl || configUrl || (Platform.OS === 'web' ? webDefault : nativeDefault);
+// On web, ALWAYS hit the same origin (`/api`) — whether the bundle is served
+// from Vercel, Hostinger, or localhost. This keeps the deployment portable
+// and avoids cross-origin traffic. Native apps still use the configured URL
+// from app.json (or the env override) since they have no "current origin".
+let resolved: string;
+if (envUrl) {
+  resolved = envUrl;
+} else if (Platform.OS === 'web') {
+  resolved = '/api';
+} else {
+  resolved = configUrl || 'https://intervie-ai-arabia.barmagly.tech/api';
+}
+export const API_BASE = resolved;
 
 export const api = axios.create({ baseURL: API_BASE, timeout: 30000 });
 
