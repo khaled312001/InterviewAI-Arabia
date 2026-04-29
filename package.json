@@ -1,17 +1,15 @@
 {
   "name": "interviewai-arabia",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "Arabic-first AI interview coach — frontend (Vercel) + backend on Hostinger",
+  "description": "InterviewAI Arabia — frontend (admin dashboard + Expo web). Deploys to Vercel as static. API lives in InterviewAI-Arabia-Backend.",
   "engines": { "node": ">=20" },
   "scripts": {
-    "install:all":      "npm install --include=dev --prefix backend && npm install --include=dev --prefix admin && npm install --include=dev --prefix mobile",
-    "install:frontend": "npm install --include=dev --prefix admin && npm install --include=dev --prefix mobile",
-    "build:admin":      "npm run build --prefix admin && rm -rf backend/public/admin && mkdir -p backend/public && cp -r admin/dist backend/public/admin",
-    "build:web":        "npm run build:web --prefix mobile && rm -rf backend/public/web && cp -r mobile/dist backend/public/web",
-    "build:vercel":     "npm run build:admin && npm run build:web",
-    "dev:backend":      "npm run dev --prefix backend",
-    "dev:admin":        "npm run dev --prefix admin",
-    "dev:mobile":       "npm run web --prefix mobile"
+    "install:all":  "npm install --include=dev --prefix admin && npm install --include=dev --prefix mobile",
+    "build:admin":  "npm run build --prefix admin && rm -rf public/admin && mkdir -p public && cp -r admin/dist public/admin",
+    "build:web":    "npm run build:web --prefix mobile && rm -rf public/web && cp -r mobile/dist public/web",
+    "build:vercel": "npm run build:admin && npm run build:web",
+    "dev:admin":    "npm run dev --prefix admin",
+    "dev:mobile":   "npm run web --prefix mobile"
   }
 }

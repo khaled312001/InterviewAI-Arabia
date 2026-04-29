@@ -1,32 +1,13 @@
-# Files Vercel doesn't need for the static frontend deploy. The backend
-# code lives here for the monorepo source-of-truth, but Hostinger runs
-# the API — Vercel just needs the built admin/ and web/ static bundles.
+# Frontend repo — Vercel builds admin + Expo web into public/ and serves
+# them statically. The API has its own repo (InterviewAI-Arabia-Backend).
 
-# Backend code — ignored on Vercel (Hostinger Passenger runs it).
-# We still need backend/public/ during build because admin + web bundles
-# are copied there, so we explicitly keep that folder.
-backend/src
-backend/prisma
-backend/node_modules
-backend/logs
-backend/tmp
-backend/stderr.log
-backend/ecosystem.config.cjs
-backend/package.json
-backend/package-lock.json
-backend/.env
-backend/.env.example
-
-# Mobile source — only the built dist ships (copied into backend/public/web).
 mobile/node_modules
 mobile/.expo
 mobile/android
 mobile/ios
+admin/node_modules
 
 # Local env files
 **/.env
 **/.env.local
 **/.env.*.local
-
-# Hostinger ops scripts — not used on Vercel.
-scripts/deploy.sh

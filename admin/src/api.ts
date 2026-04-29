@@ -1,13 +1,16 @@
 import axios from 'axios';
 
-// Frontend on Vercel, backend on Hostinger — talk to the absolute API
-// origin unless overridden via VITE_API_BASE_URL. Same-origin /api works
-// only when the admin SPA is served from Hostinger itself.
+// Frontend (this repo) and backend (InterviewAI-Arabia-Backend) deploy as
+// separate Vercel projects. By default we hit the backend's Vercel URL
+// from the absolute origin; same-origin /api stays available when the
+// admin SPA is served from the legacy single-domain Hostinger box.
+// Override via VITE_API_BASE_URL at build time.
+const BACKEND_VERCEL = 'https://interviewai-arabia-backend.vercel.app/api';
 const fallback =
   typeof window !== 'undefined' &&
   window.location?.hostname === 'intervie-ai-arabia.barmagly.tech'
     ? '/api'
-    : 'https://intervie-ai-arabia.barmagly.tech/api';
+    : BACKEND_VERCEL;
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || fallback;
 

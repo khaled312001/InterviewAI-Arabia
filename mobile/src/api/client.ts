@@ -6,15 +6,21 @@ import { secureStorage } from '../storage/secureStorage';
 const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
 const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | undefined;
 
-// Architecture: frontend (admin + web) deploys to Vercel as static; backend
-// (Express API + Prisma + MySQL) lives on Hostinger. The frontend therefore
-// always calls the Hostinger origin cross-origin. Same-origin /api is used
-// only when we're literally being served from Hostinger itself (legacy).
-const HOSTINGER_API = 'https://intervie-ai-arabia.barmagly.tech/api';
+// Two-repo architecture:
+//   - Frontend (this) → Vercel project A: interview-ai-arabia.vercel.app
+//   - Backend (sibling repo InterviewAI-Arabia-Backend)
+//                       → Vercel project B: interviewai-arabia-backend.vercel.app
+// Override the absolute URL via EXPO_PUBLIC_API_BASE_URL at build time, OR
+// via Constants.expoConfig.extra.apiBaseUrl in app.json. Hostinger fallback
+// stays available for the legacy single-domain deployment.
+const BACKEND_VERCEL  = 'https://interviewai-arabia-backend.vercel.app/api';
+const HOSTINGER_API   = 'https://intervie-ai-arabia.barmagly.tech/api';
 
 let resolved: string;
 if (envUrl) {
   resolved = envUrl;
+} else if (configUrl) {
+  resolved = configUrl;
 } else if (
   Platform.OS === 'web'
   && typeof window !== 'undefined'
@@ -22,7 +28,7 @@ if (envUrl) {
 ) {
   resolved = '/api';
 } else {
-  resolved = configUrl || HOSTINGER_API;
+  resolved = BACKEND_VERCEL;
 }
 export const API_BASE = resolved;
 

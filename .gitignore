@@ -8,9 +8,10 @@ node_modules/
 .env.*.local
 !.env.example
 
-# Build output
+# Build output (rebuilt by Vercel on each deploy via build:vercel)
 dist/
 build/
+public/
 .next/
 .expo/
 .expo-shared/
