@@ -1,10 +1,6 @@
 // Vercel serverless entry. Wraps the Express app with serverless-http so a
-// single function handles every /api/* request. Static assets (admin, web)
-// are served by Vercel's edge directly via root vercel.json routing.
-//
-// We import the app inside an init() called per-request and catch any
-// boot/import error, so module-load crashes return a useful JSON body
-// instead of Vercel's opaque FUNCTION_INVOCATION_FAILED.
+// single function handles every /api/* request. Heavily instrumented during
+// the cold-start debug to pinpoint which import is slow.
 
 import serverless from 'serverless-http';
 
@@ -14,12 +10,22 @@ let cachedError = null;
 async function getHandler() {
   if (cached) return cached;
   if (cachedError) throw cachedError;
+
+  const t0 = Date.now();
+  const log = (msg) => console.log(`[boot ${(Date.now() - t0).toString().padStart(5, ' ')}ms] ${msg}`);
+
   try {
-    const { createApp } = await import('../backend/src/app.js');
-    cached = serverless(createApp());
+    log('start');
+    const mod = await import('../backend/src/app.js');
+    log('imported app.js');
+    const app = mod.createApp();
+    log('createApp() done');
+    cached = serverless(app);
+    log('serverless wrapper ready');
     return cached;
   } catch (err) {
     cachedError = err;
+    console.error('[boot FAILED]', err);
     throw err;
   }
 }
