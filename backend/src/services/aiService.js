@@ -6,7 +6,6 @@
 // wasn't in place. Groq's free tier + Llama 3.3 70B handles professional
 // Arabic interview evaluation at near-Claude quality with zero cost.
 
-import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../db/prisma.js';
@@ -177,10 +176,14 @@ async function callGemini({ system, user, model, maxTokens = 1024 }) {
   };
 }
 
-// Claude kept for compatibility but not the default anymore.
+// Claude kept for compatibility but not the default anymore. Anthropic SDK
+// is loaded lazily because it's a moderate-sized dep we usually don't use.
 let claudeClient = null;
 async function callClaude({ system, user, model, maxTokens = 1024 }) {
-  if (!claudeClient) claudeClient = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  if (!claudeClient) {
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    claudeClient = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  }
   const response = await claudeClient.messages.create({
     model: model || 'claude-haiku-4-5-20251001',
     max_tokens: maxTokens,
