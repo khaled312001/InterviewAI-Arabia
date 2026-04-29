@@ -6,9 +6,10 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "install:all": "npm install --include=dev --prefix backend && npm install --include=dev --prefix admin && npm install --include=dev --prefix mobile",
+    "prisma:generate": "npm run prisma:generate --prefix backend",
     "build:admin": "npm run build --prefix admin && rm -rf backend/public/admin && mkdir -p backend/public && cp -r admin/dist backend/public/admin",
     "build:web": "npm run build:web --prefix mobile && rm -rf backend/public/web && cp -r mobile/dist backend/public/web",
-    "build:vercel": "npm run build:admin && npm run build:web",
+    "build:vercel": "npm run prisma:generate && npm run build:admin && npm run build:web",
     "dev:backend": "npm run dev --prefix backend",
     "dev:admin": "npm run dev --prefix admin",
     "dev:mobile": "npm run web --prefix mobile"
