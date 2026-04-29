@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +30,16 @@ export function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
 
   function onLogout() {
+    // react-native-web's Alert.alert routes to window.alert() which has no
+    // buttons, so the 'destructive' callback never fires on web. Use the
+    // browser-native confirm() there; keep Alert.alert on native.
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' && window.confirm
+        ? window.confirm(t('profile.logout') + '؟')
+        : true;
+      if (ok) logout();
+      return;
+    }
     Alert.alert(t('profile.logout'), '', [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('profile.logout'), style: 'destructive', onPress: () => logout() },
