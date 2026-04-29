@@ -2,14 +2,39 @@
 // single function handles every /api/* request. Static assets (admin, web)
 // are served by Vercel's edge directly via root vercel.json routing.
 //
-// Function memory + maxDuration are configured in vercel.json. Node.js
-// version comes from "engines" in package.json. We don't export `config`
-// here because Vercel only accepts {"runtime": "edge" | "nodejs"} in that
-// shape and the default ("nodejs") is what we want.
+// We import the app inside an init() called per-request and catch any
+// boot/import error, so module-load crashes return a useful JSON body
+// instead of Vercel's opaque FUNCTION_INVOCATION_FAILED.
 
 import serverless from 'serverless-http';
-import { createApp } from '../backend/src/app.js';
 
-const app = createApp();
+let cached = null;
+let cachedError = null;
 
-export default serverless(app);
+async function getHandler() {
+  if (cached) return cached;
+  if (cachedError) throw cachedError;
+  try {
+    const { createApp } = await import('../backend/src/app.js');
+    cached = serverless(createApp());
+    return cached;
+  } catch (err) {
+    cachedError = err;
+    throw err;
+  }
+}
+
+export default async function handler(req, res) {
+  try {
+    const fn = await getHandler();
+    return fn(req, res);
+  } catch (err) {
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({
+      error: 'Function failed to initialise',
+      message: err?.message || String(err),
+      stack: process.env.NODE_ENV === 'production' ? undefined : err?.stack,
+    }));
+  }
+}

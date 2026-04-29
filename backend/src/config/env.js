@@ -55,14 +55,59 @@ const schema = z.object({
   CRON_SECRET: z.string().optional().default(''),
 });
 
+// Lenient parse — log validation errors but DO NOT exit. Exiting kills the
+// serverless function at module load with FUNCTION_INVOCATION_FAILED and no
+// useful error in the logs. With this approach, /api/health and /api/diag
+// stay live; only DB-touching routes fail (with clearer 500s).
 const parsed = schema.safeParse(process.env);
-if (!parsed.success) {
-  console.error('Invalid environment configuration:', parsed.error.flatten().fieldErrors);
-  process.exit(1);
+const validationErrors = parsed.success ? null : parsed.error.flatten().fieldErrors;
+if (validationErrors) {
+  console.error('Environment validation issues:', JSON.stringify(validationErrors));
 }
 
+const safe = (k, fallback) => {
+  if (parsed.success) return parsed.data[k];
+  const v = process.env[k];
+  return v === undefined || v === '' ? fallback : v;
+};
+const safeBool = (k) => /^(true|1|yes|on)$/i.test(String(safe(k, 'false')));
+const safeNum  = (k, fallback) => {
+  const v = Number(safe(k, fallback));
+  return Number.isFinite(v) ? v : fallback;
+};
+
 export const env = {
-  ...parsed.data,
-  corsOrigins: parsed.data.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
-  isProd: parsed.data.NODE_ENV === 'production',
+  NODE_ENV:                safe('NODE_ENV', 'production'),
+  PORT:                    safeNum('PORT', 4000),
+  DATABASE_URL:            safe('DATABASE_URL', ''),
+  JWT_SECRET:              safe('JWT_SECRET', ''),
+  JWT_EXPIRES_IN:          safe('JWT_EXPIRES_IN', '7d'),
+  JWT_REFRESH_EXPIRES_IN:  safe('JWT_REFRESH_EXPIRES_IN', '30d'),
+  AI_ENABLED:              safeBool('AI_ENABLED'),
+  AI_PROVIDER:             safe('AI_PROVIDER', 'groq'),
+  AI_MODEL:                safe('AI_MODEL', ''),
+  GROQ_API_KEY:            safe('GROQ_API_KEY', ''),
+  OPENROUTER_API_KEY:      safe('OPENROUTER_API_KEY', ''),
+  GEMINI_API_KEY:          safe('GEMINI_API_KEY', ''),
+  ANTHROPIC_API_KEY:       safe('ANTHROPIC_API_KEY', ''),
+  CLAUDE_MODEL:            safe('CLAUDE_MODEL', 'claude-haiku-4-5-20251001'),
+  CLAUDE_ENABLED:          safeBool('CLAUDE_ENABLED'),
+  CORS_ORIGINS:            safe('CORS_ORIGINS', '*'),
+  FREE_DAILY_QUESTION_LIMIT: safeNum('FREE_DAILY_QUESTION_LIMIT', 5),
+  ADMIN_EMAIL:             safe('ADMIN_EMAIL', 'admin@barmagly.tech'),
+  ADMIN_PASSWORD:          safe('ADMIN_PASSWORD', 'ChangeMeImmediately!'),
+  GOOGLE_PLAY_PACKAGE_NAME: safe('GOOGLE_PLAY_PACKAGE_NAME', 'tech.barmagly.interviewai'),
+  GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: safe('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON', ''),
+  GOOGLE_PLAY_ENABLED:     safeBool('GOOGLE_PLAY_ENABLED'),
+  PAYMOB_ENABLED:          safeBool('PAYMOB_ENABLED'),
+  PAYMOB_API_KEY:          safe('PAYMOB_API_KEY', ''),
+  PAYMOB_INTEGRATION_ID:   safe('PAYMOB_INTEGRATION_ID', ''),
+  PAYMOB_IFRAME_ID:        safe('PAYMOB_IFRAME_ID', ''),
+  PAYMOB_HMAC_SECRET:      safe('PAYMOB_HMAC_SECRET', ''),
+  CRON_SECRET:             safe('CRON_SECRET', ''),
+  validationErrors,
+  get corsOrigins() {
+    return this.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
+  },
+  get isProd() { return this.NODE_ENV === 'production'; },
 };

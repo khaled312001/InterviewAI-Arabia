@@ -62,6 +62,31 @@ export function createApp() {
     });
   });
 
+  // Diagnostic — surfaces which env vars are missing/short without leaking
+  // values. Use this to debug 500s and FUNCTION_INVOCATION_FAILED on Vercel.
+  app.get('/api/diag', (_req, res) => {
+    const present = (k) => Boolean(env[k]);
+    const length  = (k) => (env[k] ? String(env[k]).length : 0);
+    res.json({
+      runtime: process.env.VERCEL ? 'vercel' : 'node',
+      nodeEnv: env.NODE_ENV,
+      env: {
+        DATABASE_URL:   { set: present('DATABASE_URL') },
+        JWT_SECRET:     { set: present('JWT_SECRET'), lengthOk: length('JWT_SECRET') >= 32, length: length('JWT_SECRET') },
+        GROQ_API_KEY:   { set: present('GROQ_API_KEY'), prefix: env.GROQ_API_KEY?.slice(0, 4) },
+        AI_ENABLED:     env.AI_ENABLED,
+        AI_PROVIDER:    env.AI_PROVIDER,
+        CORS_ORIGINS:   { set: present('CORS_ORIGINS'), count: env.corsOrigins.length },
+        ADMIN_EMAIL:    { set: present('ADMIN_EMAIL') },
+        ADMIN_PASSWORD: { set: present('ADMIN_PASSWORD'), lengthOk: length('ADMIN_PASSWORD') >= 8 },
+        PAYMOB_ENABLED: env.PAYMOB_ENABLED,
+        CRON_SECRET:    { set: present('CRON_SECRET') },
+      },
+      validationErrors: env.validationErrors,
+      time: new Date().toISOString(),
+    });
+  });
+
   app.use('/api/auth', authRoutes);
   app.use('/api/user', userRoutes);
   app.use('/api/categories', categoryRoutes);
