@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { secureStorage } from '../storage/secureStorage';
 
-const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
+const envUrl = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_API_BASE_URL;
 const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | undefined;
 
 // Two-repo architecture:
@@ -14,20 +14,26 @@ const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | u
 // via Constants.expoConfig.extra.apiBaseUrl in app.json. Hostinger fallback
 // stays available for the legacy single-domain deployment.
 const BACKEND_VERCEL  = 'https://interview-ai-arabia-backend.vercel.app/api';
-const HOSTINGER_API   = 'https://intervie-ai-arabia.barmagly.tech/api';
+const HOSTINGER_API   = 'https://interview.khaledahmed.net/api';
+
+// Single-domain hosts where the backend serves the web bundle AND the API
+// from the same origin — there we always want the relative `/api`.
+const SAME_ORIGIN_HOSTS = [
+  'interview.khaledahmed.net',
+  'intervie-ai-arabia.barmagly.tech',
+];
 
 let resolved: string;
 if (envUrl) {
   resolved = envUrl;
 } else if (Platform.OS !== 'web' && configUrl) {
   // configUrl from app.json is the native fallback (since native apps have
-  // no current origin). On web we ignore it so the BACKEND_VERCEL constant
-  // wins over any stale value in app.json.
+  // no current origin). On web we ignore it so same-origin/BACKEND_VERCEL win.
   resolved = configUrl;
 } else if (
   Platform.OS === 'web'
   && typeof window !== 'undefined'
-  && window.location?.hostname === 'intervie-ai-arabia.barmagly.tech'
+  && SAME_ORIGIN_HOSTS.includes(window.location?.hostname)
 ) {
   resolved = '/api';
 } else {

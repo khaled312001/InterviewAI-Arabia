@@ -1,0 +1,1498 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>سياسة الخصوصية — ثقتي (Thiqty) | Privacy Policy</title>
+<meta name="description" content="سياسة خصوصية تطبيق ثقتي (Thiqty): ما البيانات التي نجمعها فعلاً، ولماذا، ومع من تُشارَك (Anthropic وGoogle وGroq وEasyKash)، وكم تبقى محفوظة، وكيف تطلب حذف حسابك. مكتوبة بمراجعة الشيفرة المصدرية.">
+<meta name="keywords" content="سياسة الخصوصية, ثقتي, Thiqty, حذف الحساب, privacy policy, data deletion, Egypt PDPL">
+<meta name="author" content="ثقتي — Thiqty">
+<meta name="robots" content="index, follow, max-snippet:-1">
+<link rel="canonical" href="https://interview.khaledahmed.net/privacy">
+<link rel="alternate" hreflang="ar" href="https://interview.khaledahmed.net/privacy">
+<link rel="alternate" hreflang="en" href="https://interview.khaledahmed.net/privacy?lang=en">
+<link rel="alternate" hreflang="x-default" href="https://interview.khaledahmed.net/privacy">
+<meta name="theme-color" content="#2D73FD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#080D1A" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="format-detection" content="telephone=no">
+
+<meta property="og:type" content="article">
+<meta property="og:locale" content="ar_EG">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:site_name" content="ثقتي — Thiqty">
+<meta property="og:title" content="سياسة الخصوصية — ثقتي (Thiqty)">
+<meta property="og:description" content="ما البيانات التي نجمعها فعلاً، ومع من تُشارَك، وكم تبقى محفوظة، وكيف تطلب حذف حسابك.">
+<meta property="og:url" content="https://interview.khaledahmed.net/privacy">
+<meta property="og:image" content="https://interview.khaledahmed.net/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ثقتي — سياسة الخصوصية">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="سياسة الخصوصية — ثقتي (Thiqty)">
+<meta name="twitter:description" content="سياسة خصوصية مكتوبة بمراجعة الشيفرة المصدرية — بلا وعود لا ينفّذها التطبيق.">
+<meta name="twitter:image" content="https://interview.khaledahmed.net/og-image.png">
+
+<link rel="icon" href="/favicon.png" type="image/png" sizes="64x64">
+<link rel="icon" href="/logo-mark.png" type="image/png" sizes="256x256">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "PrivacyPolicy",
+  "name": "سياسة الخصوصية — ثقتي (Thiqty)",
+  "url": "https://interview.khaledahmed.net/privacy",
+  "inLanguage": ["ar", "en"],
+  "dateModified": "2026-08-16",
+  "publisher": {
+    "@type": "Organization",
+    "name": "ثقتي (Thiqty) — Barmagly",
+    "url": "https://interview.khaledahmed.net/",
+    "email": "info@barmagly.tech",
+    "address": { "@type": "PostalAddress", "addressLocality": "Cairo", "addressCountry": "EG" }
+  }
+}
+</script>
+
+<style>
+/* ── Design tokens: identical to landing/index.html, which mirrors
+      mobile/src/theme/tokens.ts. These pages must read as the same product.
+      NOTE: unlike the landing page, this document loads NO external resource
+      at all — no webfont, no CDN, no analytics. A privacy policy that leaks
+      the reader's IP to a third party while it is being read would be absurd,
+      so Cairo is used only if the reader already has it. ───────────────── */
+:root{
+  --brand-50:#EFF5FF; --brand-100:#DBE8FE; --brand-200:#BFD7FE; --brand-400:#609AFA;
+  --brand-500:#2D73FD; --brand-600:#1A56E8; --brand-700:#0736A8; --brand-800:#1E3CAF; --brand-950:#172554;
+  --gold-300:#FCD34D; --gold-400:#FBBF24; --gold-500:#FEAF04; --gold-700:#B45309;
+  --green-500:#22C55E; --green-600:#16A34A;
+  --red-500:#EF4444; --red-600:#DC2626; --red-700:#B91C1C;
+  --n-0:#FFFFFF; --n-50:#F7F9FC; --n-100:#EEF2F7; --n-200:#E2E8F0; --n-300:#CBD5E1;
+  --n-400:#94A3B8; --n-500:#64748B; --n-600:#475569; --n-800:#1E293B; --n-900:#0F172A; --n-950:#080D1A;
+
+  --bg:var(--n-50); --surface:var(--n-0); --surface-alt:var(--n-100);
+  --text:var(--n-900); --text-2:var(--n-600); --text-3:var(--n-500);
+  --border:var(--n-200); --primary:var(--brand-600); --primary-soft:var(--brand-50);
+  --accent:var(--gold-500); --accent-ink:var(--gold-700); --accent-soft:#FFFBEB;
+  --danger:var(--red-600); --danger-soft:#FEF2F2;
+
+  --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px; --r-2xl:32px; --r-pill:999px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+  --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px; --sp-20:80px; --sp-24:96px;
+
+  --shadow-sm:0 1px 3px rgba(15,23,42,.06);
+  --shadow-md:0 4px 12px rgba(15,23,42,.08);
+  --shadow-lg:0 8px 24px rgba(15,23,42,.12);
+  --shadow-xl:0 16px 48px rgba(15,23,42,.16);
+  --shadow-brand:0 10px 30px rgba(37,92,235,.30);
+
+  --maxw:1160px;
+  --font:'Cairo','IBM Plex Sans Arabic','Noto Naskh Arabic',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:var(--n-950); --surface:#111C31; --surface-alt:#0B1424;
+    --text:var(--n-50); --text-2:var(--n-300); --text-3:var(--n-400);
+    --border:rgba(148,163,184,.18); --primary:var(--brand-400); --primary-soft:rgba(96,154,250,.12);
+    --accent:var(--gold-400); --accent-ink:var(--gold-300); --accent-soft:rgba(251,191,36,.12);
+    --danger:#F87171; --danger-soft:rgba(248,113,113,.12);
+    --shadow-sm:0 1px 3px rgba(0,0,0,.4); --shadow-md:0 4px 12px rgba(0,0,0,.45);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.5); --shadow-xl:0 16px 48px rgba(0,0,0,.55);
+  }
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scroll-padding-top:92px}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--text);
+  line-height:1.9;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img,svg{max-width:100%;height:auto;display:block}
+a{color:var(--primary);text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3,h4{margin:0;line-height:1.35;letter-spacing:-.02em;font-weight:800}
+p{margin:0}
+ul,ol{margin:0;padding:0}
+:focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px}
+
+.skip{position:absolute;inset-inline-start:-9999px;top:0;background:var(--primary);color:#fff;
+  padding:12px 20px;z-index:200;border-radius:0 0 var(--r-md) 0}
+.skip:focus{inset-inline-start:0}
+
+.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5)}
+
+/* ── Bilingual switching. Arabic is the default and is what a reader with
+      JavaScript disabled sees; nothing is hidden behind script. ───────── */
+[data-l]{display:none}
+html[lang="ar"] [data-l="ar"]{display:revert}
+html[lang="en"] [data-l="en"]{display:revert}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.hdr{position:sticky;top:0;z-index:100;backdrop-filter:saturate(180%) blur(14px);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  background:color-mix(in srgb,var(--bg) 84%,transparent);
+  border-bottom:1px solid transparent;transition:border-color .2s}
+.hdr.scrolled{border-bottom-color:var(--border)}
+.hdr-in{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);
+  min-height:68px;flex-wrap:wrap;padding-block:8px}
+.brand{display:flex;align-items:center;gap:var(--sp-3);font-weight:900;font-size:18px;color:var(--text)}
+.brand:hover{text-decoration:none}
+.brand-logo{width:38px;height:auto;flex:0 0 auto}
+.nav{display:flex;align-items:center;gap:var(--sp-6)}
+.nav a{color:var(--text-2);font-size:15px;font-weight:600}
+.nav a:hover{color:var(--primary);text-decoration:none}
+.nav a[aria-current="page"]{color:var(--primary)}
+@media (max-width:860px){.nav{display:none}}
+
+.toggle{display:inline-flex;background:var(--surface-alt);border:1px solid var(--border);
+  border-radius:var(--r-pill);padding:4px;gap:3px}
+.toggle button{border:0;background:transparent;font-family:inherit;font-size:14px;font-weight:700;
+  color:var(--text-2);padding:7px 16px;border-radius:var(--r-pill);cursor:pointer;transition:background .18s,color .18s}
+.toggle button[aria-pressed="true"]{background:var(--primary);color:#fff;box-shadow:var(--shadow-sm)}
+
+/* ── Document hero ──────────────────────────────────────────────────── */
+.doc-hero{position:relative;padding-block:var(--sp-16) var(--sp-10);overflow:hidden;
+  border-bottom:1px solid var(--border);background:var(--surface)}
+.doc-hero::before{content:'';position:absolute;width:460px;height:460px;border-radius:50%;
+  background:var(--brand-400);filter:blur(100px);opacity:.22;top:-260px;inset-inline-end:-140px;pointer-events:none}
+.doc-hero > *{position:relative}
+.eyebrow{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--primary-soft);
+  color:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);
+  padding:6px 14px;border-radius:var(--r-pill);font-size:13px;font-weight:700;margin-bottom:var(--sp-5)}
+.eyebrow .icon{width:16px;height:16px}
+.doc-hero h1{font-size:clamp(30px,5vw,50px);font-weight:900;letter-spacing:-.03em;margin-bottom:var(--sp-4)}
+.doc-hero .lede{font-size:clamp(16px,2vw,18.5px);color:var(--text-2);max-width:64ch}
+.meta{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-5);margin-top:var(--sp-6);
+  color:var(--text-3);font-size:14px}
+.meta span{display:inline-flex;align-items:center;gap:7px}
+.meta .icon{width:15px;height:15px}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.layout{display:grid;grid-template-columns:266px minmax(0,1fr);gap:var(--sp-12);
+  padding-block:var(--sp-12) var(--sp-20);align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:1fr;gap:var(--sp-8)}}
+
+.toc{position:sticky;top:88px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:var(--sp-5);box-shadow:var(--shadow-sm)}
+.toc h2{font-size:13px;letter-spacing:.06em;color:var(--text-3);margin-bottom:var(--sp-4);font-weight:800}
+.toc ol{list-style:none;display:grid;gap:2px;counter-reset:toc}
+.toc a{display:block;color:var(--text-2);font-size:14.5px;font-weight:600;line-height:1.6;
+  padding:7px 10px;border-radius:var(--r-sm);transition:background .15s,color .15s}
+.toc a:hover{background:var(--primary-soft);color:var(--primary);text-decoration:none}
+.toc a.danger{color:var(--danger)}
+.toc a.danger:hover{background:var(--danger-soft);color:var(--danger)}
+@media (max-width:980px){
+  .toc{position:static}
+  .toc ol{grid-template-columns:1fr 1fr}
+  @media (max-width:620px){.toc ol{grid-template-columns:1fr}}
+}
+
+/* ── Prose ──────────────────────────────────────────────────────────── */
+.doc{max-width:78ch}
+.doc section{scroll-margin-top:92px;padding-block:var(--sp-8) 0}
+.doc section + section{border-top:1px solid var(--border);margin-top:var(--sp-10)}
+.doc h2{font-size:clamp(22px,3vw,29px);font-weight:900;margin-bottom:var(--sp-5);
+  display:flex;align-items:baseline;gap:var(--sp-3)}
+.doc h2 .n{color:var(--primary);font-size:.62em;font-weight:900;font-variant-numeric:tabular-nums;flex:0 0 auto}
+.doc h3{font-size:18.5px;font-weight:800;margin-top:var(--sp-8);margin-bottom:var(--sp-3)}
+.doc p{color:var(--text-2);font-size:16.5px;margin-bottom:var(--sp-4)}
+.doc p strong,.doc li strong{color:var(--text);font-weight:700}
+.doc ul{list-style:none;display:grid;gap:var(--sp-3);margin-bottom:var(--sp-5)}
+.doc ul li{position:relative;color:var(--text-2);font-size:16px;padding-inline-start:22px}
+.doc ul li::before{content:'';position:absolute;inset-inline-start:2px;top:.72em;width:7px;height:7px;
+  border-radius:50%;background:var(--primary);opacity:.55}
+.doc ol.num{list-style:decimal;padding-inline-start:22px;display:grid;gap:var(--sp-3);margin-bottom:var(--sp-5)}
+.doc ol.num li{color:var(--text-2);font-size:16px}
+.doc ol.num li::marker{color:var(--primary);font-weight:800}
+code{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;font-size:.88em;
+  background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;padding:1px 6px;
+  direction:ltr;display:inline-block;unicode-bidi:isolate}
+
+/* ── Callouts ───────────────────────────────────────────────────────── */
+.callout{border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-5) var(--sp-6);
+  background:var(--surface);margin-bottom:var(--sp-6);border-inline-start:4px solid var(--primary)}
+.callout p{margin-bottom:var(--sp-2)}
+.callout p:last-child{margin-bottom:0}
+.callout .ct{display:flex;align-items:center;gap:var(--sp-2);font-weight:800;color:var(--text);
+  font-size:15px;margin-bottom:var(--sp-2)}
+.callout .ct .icon{width:18px;height:18px;color:var(--primary)}
+.callout.warn{border-inline-start-color:var(--accent);background:var(--accent-soft)}
+.callout.warn .ct .icon{color:var(--accent-ink)}
+.callout.warn p{color:var(--text-2)}
+.callout.bad{border-inline-start-color:var(--danger);background:var(--danger-soft)}
+.callout.bad .ct .icon{color:var(--danger)}
+.callout.good{border-inline-start-color:var(--green-500);background:color-mix(in srgb,var(--green-500) 8%,transparent)}
+.callout.good .ct .icon{color:var(--green-600)}
+
+/* ── At-a-glance grid ───────────────────────────────────────────────── */
+.glance{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-4);margin-bottom:var(--sp-6)}
+@media (max-width:680px){.glance{grid-template-columns:1fr}}
+.gcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:var(--sp-5);display:flex;gap:var(--sp-4);align-items:flex-start;box-shadow:var(--shadow-sm)}
+.gcard .ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
+.gcard .ico .icon{width:21px;height:21px}
+.gcard b{display:block;font-size:15.5px;font-weight:800;margin-bottom:2px;color:var(--text)}
+.gcard span{font-size:14.5px;color:var(--text-2);line-height:1.7}
+.i-blue{background:var(--primary-soft);color:var(--primary)}
+.i-gold{background:var(--accent-soft);color:var(--accent-ink)}
+.i-green{background:rgba(34,197,94,.14);color:var(--green-600)}
+.i-red{background:var(--danger-soft);color:var(--danger)}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-lg);
+  margin-bottom:var(--sp-6);background:var(--surface);-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:14.8px}
+caption{caption-side:top;text-align:start;padding:var(--sp-4) var(--sp-5) 0;
+  color:var(--text-3);font-size:13.5px;font-weight:600}
+th,td{padding:var(--sp-3) var(--sp-4);text-align:start;vertical-align:top;
+  border-bottom:1px solid var(--border);line-height:1.7}
+thead th{background:var(--surface-alt);color:var(--text);font-weight:800;font-size:13.5px;
+  letter-spacing:.02em;white-space:nowrap;position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+tbody td{color:var(--text-2)}
+tbody td:first-child{color:var(--text);font-weight:700}
+
+/* ── Deletion block ─────────────────────────────────────────────────── */
+.del{background:linear-gradient(140deg,var(--brand-600),var(--brand-950));color:#fff;
+  border-radius:var(--r-2xl);padding:var(--sp-10) var(--sp-8);margin-bottom:var(--sp-6);
+  position:relative;overflow:hidden}
+.del::before{content:'';position:absolute;width:340px;height:340px;border-radius:50%;
+  background:rgba(251,191,36,.18);filter:blur(80px);top:-150px;inset-inline-end:-80px}
+.del > *{position:relative}
+.del h3{color:#fff;font-size:20px;margin-top:0}
+.del p{color:rgba(255,255,255,.88);font-size:16px}
+.del ol.num li,.del ul li{color:rgba(255,255,255,.88)}
+.del ul li::before{background:var(--gold-400);opacity:1}
+.del ol.num li::marker{color:var(--gold-400)}
+.del a{color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+.del code{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.2);color:#fff}
+.mailbtn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+  height:52px;padding-inline:var(--sp-8);border-radius:var(--r-md);background:#fff;color:var(--brand-700);
+  font-weight:800;font-size:16.5px;box-shadow:0 10px 30px rgba(0,0,0,.25);margin-top:var(--sp-4)}
+.mailbtn:hover{background:var(--brand-50);text-decoration:none}
+.mailbtn .icon{width:19px;height:19px}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.ftr{border-top:1px solid var(--border);padding-block:var(--sp-12) var(--sp-8);background:var(--surface)}
+.ftr-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--sp-8);margin-bottom:var(--sp-10)}
+@media (max-width:820px){.ftr-grid{grid-template-columns:1fr 1fr;gap:var(--sp-8)}}
+.ftr h4{font-size:14px;margin-bottom:var(--sp-4);color:var(--text)}
+.ftr ul{list-style:none;display:grid;gap:var(--sp-3)}
+.ftr a{color:var(--text-3);font-size:14.5px}
+.ftr a:hover{color:var(--primary)}
+.ftr-bottom{border-top:1px solid var(--border);padding-top:var(--sp-6);display:flex;flex-wrap:wrap;
+  gap:var(--sp-4);justify-content:space-between;color:var(--text-3);font-size:13.5px}
+.icon{width:1em;height:1em;display:inline-block;vertical-align:-.125em;flex:0 0 auto}
+</style>
+</head>
+<body>
+<a class="skip" href="#main"><span data-l="ar">تخطَّ إلى المحتوى</span><span data-l="en">Skip to content</span></a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <g id="i-shield" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 4.5 6v6c0 4.5 3.2 7.9 7.5 9 4.3-1.1 7.5-4.5 7.5-9V6Z"/><path d="m9 12 2.2 2.2L15.5 10"/>
+  </g>
+  <g id="i-check" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12.5 5 5L20 6.5"/></g>
+  <g id="i-x" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6 18 18M18 6 6 18"/></g>
+  <g id="i-doc" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>
+  </g>
+  <g id="i-brain" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 4.5a3 3 0 0 0-5.7 1.3A2.8 2.8 0 0 0 4 8.5a2.8 2.8 0 0 0 1 2.1A2.9 2.9 0 0 0 4.6 15 3 3 0 0 0 9 18.6a3 3 0 0 0 3 1.2Z"/>
+    <path d="M12 4.5a3 3 0 0 1 5.7 1.3A2.8 2.8 0 0 1 20 8.5a2.8 2.8 0 0 1-1 2.1 2.9 2.9 0 0 1 .4 4.4A3 3 0 0 1 15 18.6a3 3 0 0 1-3 1.2Z"/>
+    <path d="M12 4.5v15.3"/>
+  </g>
+  <g id="i-trash" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 6.5h16"/><path d="M9.5 6.5V4.8A1.3 1.3 0 0 1 10.8 3.5h2.4a1.3 1.3 0 0 1 1.3 1.3v1.7"/>
+    <path d="M6.5 6.5 7.4 19a1.7 1.7 0 0 0 1.7 1.6h5.8a1.7 1.7 0 0 0 1.7-1.6l.9-12.5"/><path d="M10.5 10.5v6M13.5 10.5v6"/>
+  </g>
+  <g id="i-mail" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.6 6.8 7.3 5.3a2 2 0 0 0 2.2 0l7.3-5.3"/>
+  </g>
+  <g id="i-clock" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.2l3.2 2"/>
+  </g>
+  <g id="i-lock" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4.5" y="10" width="15" height="10.5" rx="2.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10"/>
+  </g>
+  <g id="i-eye" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>
+  </g>
+  <g id="i-alert" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10.3 3.9 2.6 17.3A2 2 0 0 0 4.3 20.3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4.2M12 16.6h.01"/>
+  </g>
+  <g id="i-globe" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.2 2.4 3.4 5.4 3.4 8.5S14.2 18.1 12 20.5c-2.2-2.4-3.4-5.4-3.4-8.5S9.8 5.9 12 3.5Z"/>
+  </g>
+  <g id="i-heart" fill="currentColor"><path d="M12 21s-8-4.9-8-10.2A4.8 4.8 0 0 1 12 7.4 4.8 4.8 0 0 1 20 10.8C20 16.1 12 21 12 21Z"/></g>
+</defs></svg>
+
+<header class="hdr" id="hdr">
+  <div class="wrap hdr-in">
+    <a href="/" class="brand" aria-label="ثقتي — الصفحة الرئيسية">
+      <img class="brand-logo" src="/logo-mark.png" alt="" width="38" height="37" decoding="async">
+      <span>ثقتي<span style="color:var(--text-3);font-weight:600;font-size:15px"> · Thiqty</span></span>
+    </a>
+    <nav class="nav" aria-label="التنقل">
+      <a href="/"><span data-l="ar">الرئيسية</span><span data-l="en">Home</span></a>
+      <a href="/privacy" aria-current="page"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy</span></a>
+      <a href="/terms"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms</span></a>
+      <a href="#delete-account"><span data-l="ar">حذف الحساب</span><span data-l="en">Delete account</span></a>
+    </nav>
+    <div class="toggle" role="group" aria-label="Language / اللغة">
+      <button type="button" data-set-lang="ar" aria-pressed="true" lang="ar">عربي</button>
+      <button type="button" data-set-lang="en" aria-pressed="false" lang="en">English</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="doc-hero">
+  <div class="wrap">
+    <span class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>
+      <span data-l="ar">وثيقة قانونية</span><span data-l="en">Legal document</span></span>
+
+    <div data-l="ar">
+      <h1>سياسة الخصوصية</h1>
+      <p class="lede">
+        تشرح هذه الوثيقة أي بيانات يجمعها تطبيق «ثقتي» (Thiqty)، ولماذا يجمعها، ومَن تصل إليه،
+        وكم من الوقت تبقى محفوظة، وكيف تطلب حذفها. كُتبت هذه السياسة بمراجعة الشيفرة المصدرية
+        للتطبيق ملفاً ملفاً، وهي لا تصف أي ممارسة لا ينفّذها التطبيق فعلاً — وحيثما كان الواقع
+        أقل مما تتمنّاه، قلناه صراحةً بدلاً من تجميله.
+      </p>
+    </div>
+    <div data-l="en">
+      <h1>Privacy Policy</h1>
+      <p class="lede">
+        This document explains exactly what data the Thiqty app collects, why, who receives it,
+        how long it is kept and how you ask for it to be deleted. It was written by reading the
+        application's source code file by file. It describes no practice the app does not actually
+        implement — and where the reality is less comfortable than you would like, we say so plainly
+        rather than dress it up.
+      </p>
+    </div>
+
+    <div class="meta">
+      <span><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg>
+        <span data-l="ar">آخر تحديث: <time datetime="2026-08-16">١٦ أغسطس ٢٠٢٦</time></span>
+        <span data-l="en">Last updated: <time datetime="2026-08-16">16 August 2026</time></span></span>
+      <span><svg class="icon" aria-hidden="true"><use href="#i-globe"/></svg>
+        <span data-l="ar">تسري على تطبيق أندرويد، وتطبيق الويب، والموقع</span>
+        <span data-l="en">Applies to the Android app, the web app and this website</span></span>
+      <span><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg>
+        <a href="mailto:info@barmagly.tech">info@barmagly.tech</a></span>
+    </div>
+  </div>
+</section>
+
+<div class="wrap layout">
+
+  <!-- ══ Table of contents ══ -->
+  <nav class="toc" aria-label="محتويات الوثيقة">
+    <h2><span data-l="ar">محتويات الوثيقة</span><span data-l="en">On this page</span></h2>
+    <ol>
+      <li><a href="#who"><span data-l="ar">١. من نحن</span><span data-l="en">1. Who we are</span></a></li>
+      <li><a href="#glance"><span data-l="ar">٢. الخلاصة في سطور</span><span data-l="en">2. At a glance</span></a></li>
+      <li><a href="#collect"><span data-l="ar">٣. البيانات التي نجمعها</span><span data-l="en">3. What we collect</span></a></li>
+      <li><a href="#content"><span data-l="ar">٤. إجاباتك وسيرتك الذاتية</span><span data-l="en">4. Your answers &amp; your CV</span></a></li>
+      <li><a href="#media"><span data-l="ar">٥. الكاميرا والميكروفون</span><span data-l="en">5. Camera &amp; microphone</span></a></li>
+      <li><a href="#payments"><span data-l="ar">٦. بيانات الدفع</span><span data-l="en">6. Payment data</span></a></li>
+      <li><a href="#technical"><span data-l="ar">٧. بيانات تقنية وسجلات</span><span data-l="en">7. Technical data &amp; logs</span></a></li>
+      <li><a href="#never"><span data-l="ar">٨. ما لا نفعله</span><span data-l="en">8. What we never do</span></a></li>
+      <li><a href="#third-parties"><span data-l="ar">٩. مَن تصل إليه بياناتك</span><span data-l="en">9. Who receives your data</span></a></li>
+      <li><a href="#basis"><span data-l="ar">١٠. الأساس القانوني</span><span data-l="en">10. Legal basis</span></a></li>
+      <li><a href="#retention"><span data-l="ar">١١. مدة الاحتفاظ</span><span data-l="en">11. Retention</span></a></li>
+      <li><a href="#security"><span data-l="ar">١٢. أمن البيانات</span><span data-l="en">12. Security</span></a></li>
+      <li><a href="#rights"><span data-l="ar">١٣. حقوقك</span><span data-l="en">13. Your rights</span></a></li>
+      <li><a href="#delete-account" class="danger"><span data-l="ar">١٤. حذف الحساب والبيانات</span><span data-l="en">14. Account &amp; data deletion</span></a></li>
+      <li><a href="#children"><span data-l="ar">١٥. الأطفال</span><span data-l="en">15. Children</span></a></li>
+      <li><a href="#transfers"><span data-l="ar">١٦. نقل البيانات خارج مصر</span><span data-l="en">16. Transfers outside Egypt</span></a></li>
+      <li><a href="#changes"><span data-l="ar">١٧. تعديل هذه السياسة</span><span data-l="en">17. Changes</span></a></li>
+      <li><a href="#contact"><span data-l="ar">١٨. التواصل معنا</span><span data-l="en">18. Contact us</span></a></li>
+    </ol>
+  </nav>
+
+  <!-- ══ Document ══ -->
+  <article class="doc">
+
+  <!-- ─────────── 1. Who we are ─────────── -->
+  <section id="who">
+    <h2><span class="n" data-l="ar">١</span><span class="n" data-l="en">1</span>
+      <span data-l="ar">من نحن</span><span data-l="en">Who we are</span></h2>
+
+    <div data-l="ar">
+      <p>
+        «ثقتي» (بالإنجليزية: Thiqty) تطبيق للتدريب على مقابلات العمل باللغة العربية باستخدام الذكاء
+        الاصطناعي. يُقدَّم التطبيق من <strong>شركة برمجلي (Barmagly)</strong>، القاهرة، جمهورية مصر
+        العربية، وهي المتحكّم في البيانات المسؤول عن المعالجة الموصوفة في هذه الوثيقة.
+      </p>
+      <p>
+        تسري هذه السياسة على كل واجهات الخدمة: تطبيق أندرويد (<code>com.thiqty.app</code>)، وتطبيق
+        الويب على <code>interview.khaledahmed.net/app</code>، والموقع التعريفي، وواجهة برمجة التطبيقات
+        الخلفية التي تخدمهما.
+      </p>
+      <p>
+        لأي سؤال أو طلب متعلّق بخصوصيتك، راسلنا على
+        <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>. نلتزم بالرد خلال سبعة أيام عمل.
+      </p>
+    </div>
+    <div data-l="en">
+      <p>
+        Thiqty (Arabic: ثقتي) is an Arabic-language AI interview-practice application. It is operated
+        by <strong>Barmagly</strong>, Cairo, Arab Republic of Egypt, which is the data controller
+        responsible for the processing described in this document.
+      </p>
+      <p>
+        This policy covers every surface of the service: the Android app
+        (<code>com.thiqty.app</code>), the web app at <code>interview.khaledahmed.net/app</code>,
+        this marketing website, and the backend API that serves them.
+      </p>
+      <p>
+        For any privacy question or request, write to
+        <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>. We commit to replying within
+        seven working days.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 2. At a glance ─────────── -->
+  <section id="glance">
+    <h2><span class="n" data-l="ar">٢</span><span class="n" data-l="en">2</span>
+      <span data-l="ar">الخلاصة في سطور</span><span data-l="en">At a glance</span></h2>
+
+    <div data-l="ar">
+      <p>هذا ملخّص أمين لما يلي. وهو لا يغني عن قراءة التفاصيل، لكنه لا يناقضها.</p>
+      <div class="glance">
+        <div class="gcard"><span class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><b>لا تتبّع ولا إعلانات</b><span>لا يحتوي التطبيق على أي أداة تحليلات أو إعلانات أو تتبّع من طرف ثالث — ولا واحدة. لا نستخدم مُعرِّف الإعلانات، ولا نرسل إشعارات، ولا نبيع بياناتك.</span></span></div>
+        <div class="gcard"><span class="ico i-gold"><svg class="icon" aria-hidden="true"><use href="#i-brain"/></svg></span>
+          <span><b>إجاباتك تُرسَل إلى مزوّدي ذكاء اصطناعي</b><span>نص السؤال وإجابتك الكاملة ونص سيرتك الذاتية تُرسَل إلى Anthropic (Claude)، وعند تعذّرها إلى Google Gemini أو Groq، لتوليد الأسئلة والتقييم.</span></span></div>
+        <div class="gcard"><span class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg></span>
+          <span><b>ملف السيرة الذاتية لا يُحفَظ</b><span>يُقرأ الملف في ذاكرة الخادم فقط ثم يُهمَل عند انتهاء الطلب. لا يُكتب على القرص ولا في قاعدة البيانات إطلاقاً.</span></span></div>
+        <div class="gcard"><span class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></span>
+          <span><b>الفيديو لا يغادر جهازك</b><span>تسجيل المقابلة المباشرة يُجمَّع في متصفحك ويُحفَظ عندك إن أردت. لا يوجد في الخدمة أي مسار لرفع صوت أو فيديو أصلاً.</span></span></div>
+        <div class="gcard"><span class="ico i-red"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg></span>
+          <span><b>لا يوجد حذف تلقائي</b><span>لا توجد في النظام حالياً أي مدة احتفاظ ولا مهمة تنظيف دورية. ما يُحفَظ يبقى إلى أن تطلب أنت حذف حسابك.</span></span></div>
+        <div class="gcard"><span class="ico i-blue"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg></span>
+          <span><b>الحذف بطلب منك</b><span>يتم الحذف حالياً عبر طلب مكتوب إلى <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>، ونُنفّذه خلال ثلاثين يوماً. التفاصيل في <a href="#delete-account">القسم ١٤</a>.</span></span></div>
+      </div>
+    </div>
+
+    <div data-l="en">
+      <p>An honest summary of what follows. It does not replace the detail, but it does not contradict it either.</p>
+      <div class="glance">
+        <div class="gcard"><span class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><b>No tracking, no advertising</b><span>The app contains no third-party analytics, advertising or tracking SDK — not one. No advertising ID, no push notifications, and we never sell your data.</span></span></div>
+        <div class="gcard"><span class="ico i-gold"><svg class="icon" aria-hidden="true"><use href="#i-brain"/></svg></span>
+          <span><b>Your answers go to AI providers</b><span>The question text, your full answer and the text of your CV are sent to Anthropic (Claude), falling back to Google Gemini or Groq, in order to generate questions and grade you.</span></span></div>
+        <div class="gcard"><span class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg></span>
+          <span><b>Your CV file is never stored</b><span>It is read in server memory only and discarded when the request ends. It is never written to disk or to the database.</span></span></div>
+        <div class="gcard"><span class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg></span>
+          <span><b>Video never leaves your device</b><span>The live-interview recording is assembled in your browser and saved by you if you want it. The service has no audio or video upload path at all.</span></span></div>
+        <div class="gcard"><span class="ico i-red"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg></span>
+          <span><b>Nothing is deleted automatically</b><span>The system currently has no retention window and no purge job. What is stored stays until you ask us to delete your account.</span></span></div>
+        <div class="gcard"><span class="ico i-blue"><svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg></span>
+          <span><b>Deletion is on request</b><span>Deletion is currently handled by a written request to <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>, actioned within thirty days. See <a href="#delete-account">section 14</a>.</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 3. What we collect ─────────── -->
+  <section id="collect">
+    <h2><span class="n" data-l="ar">٣</span><span class="n" data-l="en">3</span>
+      <span data-l="ar">البيانات التي نجمعها</span><span data-l="en">What we collect</span></h2>
+
+    <div data-l="ar">
+      <h3>٣.١ بيانات الحساب</h3>
+      <p>لا يمكن استخدام الخدمة دون حساب. عند التسجيل نطلب منك ثلاثة حقول فقط:</p>
+      <div class="tbl-wrap">
+        <table>
+          <caption>بيانات الحساب المخزّنة في قاعدة بيانات MySQL الخاصة بنا</caption>
+          <thead><tr><th>البيان</th><th>لماذا نجمعه</th><th>ملاحظات</th></tr></thead>
+          <tbody>
+            <tr><td>البريد الإلكتروني</td><td>هوية الدخول الأساسية ومفتاح تفرّد الحساب.</td><td>مطلوب. يُخزَّن بحروف صغيرة. يظهر لمشرفي المنصة في لوحة الإدارة. يُرسَل إلى بوابة الدفع عند شراء اشتراك.</td></tr>
+            <tr><td>الاسم</td><td>مخاطبتك بالاسم في الواجهة وفي ترحيب المحاوِر الذكي.</td><td>مطلوب. يمكنك تعديله في أي وقت. يُرسَل إلى بوابة الدفع عند الشراء.</td></tr>
+            <tr><td>كلمة المرور</td><td>التحقّق من هويتك عند الدخول.</td><td><strong>لا تُخزَّن كلمة المرور نصّاً على الإطلاق.</strong> نخزّن بصمة bcrypt بمعامل كلفة ١٢ فقط. لا تُسجَّل في أي سجلّ ولا تُرسَل لأي جهة.</td></tr>
+            <tr><td>لغة الواجهة</td><td>اختيار العربية أو الإنجليزية للواجهة ولتوجيهات الذكاء الاصطناعي.</td><td>قيمة واحدة: <code>ar</code> أو <code>en</code>.</td></tr>
+            <tr><td>رقم الهاتف المحمول</td><td>تشترطه بوابة الدفع المصرية ضمن بيانات الفوترة.</td><td><strong>لا يُطلَب عند التسجيل.</strong> يُطلَب فقط إذا بدأت عملية شراء، ويُحفَظ حتى لا يُطلب منك مرة أخرى.</td></tr>
+            <tr><td>رصيدك اليومي وحالة اشتراكك</td><td>تطبيق حد الأسئلة المجانية اليومي، ومعرفة ما إذا كنت مشتركاً.</td><td>مشتقّة تلقائياً. الرصيد اليومي يُصفَّر عند منتصف الليل بتوقيت القاهرة.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> إفصاح صريح</div>
+        <p>
+          لا يوجد في التطبيق حالياً <strong>تحقّق من البريد الإلكتروني</strong>، ولا خدمة عاملة
+          <strong>لاستعادة كلمة المرور</strong>. صفحة «نسيت كلمة المرور» تستقبل بريدك وتردّ برسالة
+          نجاح، لكنها لا تُرسل أي بريد فعلياً لأن خدمة البريد غير مُفعَّلة بعد. إن فقدت كلمة مرورك،
+          راسلنا مباشرةً على <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>.
+        </p>
+      </div>
+    </div>
+
+    <div data-l="en">
+      <h3>3.1 Account data</h3>
+      <p>The service cannot be used without an account. Registration asks for three fields only:</p>
+      <div class="tbl-wrap">
+        <table>
+          <caption>Account data stored in our MySQL database</caption>
+          <thead><tr><th>Data</th><th>Why we collect it</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td>Email address</td><td>Primary login identity and account uniqueness key.</td><td>Required. Stored lowercased. Visible to our administrators in the admin panel. Sent to the payment gateway when you buy a subscription.</td></tr>
+            <tr><td>Full name</td><td>Addressing you by name in the UI and in the AI interviewer's greeting.</td><td>Required. Editable at any time. Sent to the payment gateway at checkout.</td></tr>
+            <tr><td>Password</td><td>Verifying your identity at login.</td><td><strong>Your password is never stored in plaintext.</strong> We keep only a bcrypt hash at cost factor 12. It is never logged and never sent anywhere.</td></tr>
+            <tr><td>Interface language</td><td>Choosing Arabic or English for the UI and for the AI prompts.</td><td>A single value: <code>ar</code> or <code>en</code>.</td></tr>
+            <tr><td>Mobile phone number</td><td>Required by the Egyptian payment gateway as part of the billing payload.</td><td><strong>Not asked for at registration.</strong> Requested only if you start a purchase, then kept so you are not asked again.</td></tr>
+            <tr><td>Daily quota and subscription state</td><td>Enforcing the free daily question limit and knowing whether you are a subscriber.</td><td>Derived automatically. The daily counter resets at midnight, Cairo time.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> Explicit disclosure</div>
+        <p>
+          The app currently has <strong>no email verification</strong> and <strong>no working
+          password-reset flow</strong>. The "forgot password" endpoint accepts your address and
+          returns a success message, but no email is actually sent because outbound mail is not yet
+          configured. If you lose your password, write to
+          <a href="mailto:info@barmagly.tech">info@barmagly.tech</a> directly.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 4. Answers & CV ─────────── -->
+  <section id="content">
+    <h2><span class="n" data-l="ar">٤</span><span class="n" data-l="en">4</span>
+      <span data-l="ar">إجاباتك وسيرتك الذاتية</span><span data-l="en">Your answers &amp; your CV</span></h2>
+
+    <div data-l="ar">
+      <p>
+        هذا أهم قسم في الوثيقة، لأنه يخصّ أكثر ما تكتبه حساسيةً: خبرتك المهنية وأسماء الشركات التي
+        عملت بها وتفاصيل مسارك الوظيفي.
+      </p>
+
+      <h3>٤.١ ما يُحفَظ في قاعدة بياناتنا</h3>
+      <ul>
+        <li><strong>جلسات التدريب:</strong> يُنشَأ سجلّ لكل جلسة تدريب أو مقابلة مباشرة، يتضمّن المجال ووقت البدء والانتهاء والدرجة الإجمالية وعدد الإجابات. يظهر لك في شاشة «السجل» و«الإحصائيات».</li>
+        <li><strong>الأسئلة وإجاباتك:</strong> يُحفَظ نص السؤال، و<strong>نص إجابتك كاملاً كما كتبته أو نطقته</strong>، والدرجة التي منحها الذكاء الاصطناعي، وتقييمه المفصّل (نقاط القوة والضعف والإجابة النموذجية).</li>
+        <li><strong>نصّ المقابلة المباشرة:</strong> عند انتهاء المقابلة، تُحفَظ ردودك في المحادثة على هيئة إجابات مقترنة بالسطر الذي قاله المحاوِر قبلها مباشرةً.</li>
+      </ul>
+
+      <h3>٤.٢ ما لا يُحفَظ</h3>
+      <div class="callout good">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> لا يُخزَّن على خوادمنا</div>
+        <p>
+          <strong>ملف السيرة الذاتية ونصّه المستخرَج:</strong> عند رفع سيرتك (PDF أو TXT أو MD، بحد
+          أقصى ٤ ميجابايت) يُستقبَل الملف في ذاكرة الخادم فقط، ويُستخرَج نصّه، ويُرسَل للتلخيص، ثم
+          يُهمَل الملف والنص عند انتهاء الطلب. لا يُكتب أيٌّ منهما على القرص ولا في قاعدة البيانات.
+        </p>
+        <p>
+          <strong>ملخّص السيرة وسياق الوظيفة</strong> (اسم الشركة المستهدفة، المسمّى الوظيفي، وصف
+          الوظيفة): يُعاد الملخّص إلى تطبيقك ويبقى في ذاكرة التطبيق أثناء المقابلة فقط، ويزول بإغلاق
+          الشاشة. لا يُحفَظ على الخادم إطلاقاً.
+        </p>
+      </div>
+
+      <h3>٤.٣ إلى أين يذهب هذا المحتوى</h3>
+      <div class="callout bad">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-brain"/></svg> يُرسَل إلى طرف ثالث</div>
+        <p>
+          لكي تعمل الخدمة أصلاً، يجب أن يقرأ نموذج ذكاء اصطناعي ما كتبته. لذلك تُرسَل التالية
+          <strong>حرفياً</strong> إلى مزوّد الذكاء الاصطناعي النشط — Anthropic (Claude) افتراضياً،
+          وعند تعذّره Google Gemini ثم Groq:
+        </p>
+        <ul>
+          <li>نص السؤال ونص إجابتك الكاملة، عند كل تقييم.</li>
+          <li>سجلّ المقابلة المباشرة كاملاً، مع كل دور من أدوار الحوار، ومرة أخيرة عند إصدار التقييم الختامي.</li>
+          <li><strong>النص المستخرَج من سيرتك الذاتية كاملاً</strong> (حتى ١٨٬٠٠٠ حرف)، مرة واحدة عند التلخيص.</li>
+          <li>اسم الشركة والمسمّى الوظيفي ووصف الوظيفة التي أدخلتها.</li>
+        </ul>
+        <p>
+          <strong>ما لا يُرسَل إليهم:</strong> بريدك الإلكتروني، ورقم هاتفك، ومُعرِّف حسابك، وأي بيانات
+          دفع. لا يذهب إليهم إلا ما كتبته أو نطقته أو رفعته أنت. لكن انتبه: إن كان اسمك أو رقمك مكتوباً
+          داخل سيرتك الذاتية، فسيصل إليهم ضمن نصّها.
+        </p>
+      </div>
+      <p>
+        إن كنت لا ترغب في إرسال معلومة بعينها إلى هؤلاء المزوّدين، فالحلّ الوحيد المضمون هو ألّا تكتبها
+        في إجابتك وألّا تكون موجودة في السيرة التي ترفعها.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>
+        This is the most important section in the document, because it concerns the most sensitive
+        thing you type here: your employment history, the names of your employers, and the details
+        of your career.
+      </p>
+
+      <h3>4.1 What is stored in our database</h3>
+      <ul>
+        <li><strong>Practice sessions:</strong> a record is created for every practice session or live interview, holding the category, start and end time, total score and answer count. You see it in the History and Stats screens.</li>
+        <li><strong>Questions and your answers:</strong> we store the question text, <strong>the full text of your answer exactly as you typed or spoke it</strong>, the score the AI gave, and its detailed feedback (strengths, weaknesses and a model answer).</li>
+        <li><strong>Live-interview transcript:</strong> when the interview ends, your replies are saved as answer records, each paired with the line the interviewer said immediately before it.</li>
+      </ul>
+
+      <h3>4.2 What is not stored</h3>
+      <div class="callout good">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> Never stored on our servers</div>
+        <p>
+          <strong>Your CV file and its extracted text:</strong> when you upload a CV (PDF, TXT or MD,
+          4 MB maximum) the file is received into server memory only, its text is extracted, sent for
+          summarisation, and then both the file and the text are discarded when the request ends.
+          Neither is ever written to disk or to the database.
+        </p>
+        <p>
+          <strong>The CV summary and job context</strong> (target company, job title, job description):
+          the summary is returned to your app and held in the app's memory for the duration of the
+          interview only, disappearing when the screen closes. It is never persisted server-side.
+        </p>
+      </div>
+
+      <h3>4.3 Where this content goes</h3>
+      <div class="callout bad">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-brain"/></svg> Shared with third parties</div>
+        <p>
+          For the service to work at all, an AI model must read what you wrote. The following are
+          therefore transmitted <strong>verbatim</strong> to the active AI provider — Anthropic
+          (Claude) by default, falling back to Google Gemini and then Groq:
+        </p>
+        <ul>
+          <li>The question text and the full text of your answer, on every grading.</li>
+          <li>The entire live-interview transcript, on every conversational turn, and once more when the final evaluation is produced.</li>
+          <li><strong>The complete extracted text of your CV</strong> (up to 18,000 characters), once, at summarisation time.</li>
+          <li>The company name, job title and job description you entered.</li>
+        </ul>
+        <p>
+          <strong>What is not sent to them:</strong> your email address, your phone number, your account
+          identifier and any payment data. Only what you typed, spoke or uploaded reaches them. Note
+          the obvious corollary: if your name or number is written inside your CV, it reaches them as
+          part of that text.
+        </p>
+      </div>
+      <p>
+        If you do not want a particular detail sent to these providers, the only reliable remedy is not
+        to type it into an answer and not to include it in the CV you upload.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 5. Camera & microphone ─────────── -->
+  <section id="media">
+    <h2><span class="n" data-l="ar">٥</span><span class="n" data-l="en">5</span>
+      <span data-l="ar">الكاميرا والميكروفون</span><span data-l="en">Camera &amp; microphone</span></h2>
+
+    <div data-l="ar">
+      <p>
+        المقابلة المباشرة بالصوت والفيديو تعمل حالياً <strong>في متصفح الويب فقط</strong>. في تطبيق
+        أندرويد تظهر رسالة توضّح أن الميزة غير متاحة بعد على الهاتف، ولا يستخدم التطبيق الكاميرا ولا
+        الميكروفون على الإطلاق.
+      </p>
+      <div class="callout good">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> لا يوجد رفع للصوت أو الفيديو</div>
+        <p>
+          التسجيل المرئي والصوتي للمقابلة يُجمَّع داخل متصفحك ويُعرَض عليك لتحفظه على جهازك إن أردت.
+          <strong>لا يوجد في خوادمنا أي واجهة تستقبل ملفات صوت أو فيديو أصلاً</strong> — الواجهة
+          الوحيدة التي تستقبل ملفاً في المنظومة كلها هي واجهة رفع السيرة الذاتية، وهي لا تقبل إلا
+          PDF أو TXT أو MD. تُغلَق الكاميرا والميكروفون فور إنهاء المقابلة.
+        </p>
+      </div>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> لكن المتصفح نفسه يرسل صوتك</div>
+        <p>
+          تحويل كلامك إلى نص يتم عبر خدمة التعرّف على الكلام المدمجة في متصفحك، لا عبر خوادمنا. في
+          متصفح Chrome تحديداً، <strong>يرسل المتصفح صوت الميكروفون إلى خوادم Google</strong> لتحويله
+          إلى نص. لا تصلنا هذه التسجيلات الصوتية أبداً — لا يصلنا إلا النص الناتج — لكن استخدامها
+          يخضع لسياسة خصوصية شركة المتصفح لا لسياستنا. وبالمثل، بعض الأصوات «الطبيعية» التي ينطق بها
+          المحاوِر تُجلَب من خوادم Microsoft عند أول استخدام.
+        </p>
+        <p>إن أردت تجنّب ذلك تماماً، استخدم الكتابة بدل الصوت في وضع التدريب.</p>
+      </div>
+      <p>
+        <strong>ملاحظة عن أذونات أندرويد:</strong> يطلب تطبيق أندرويد أذونات الكاميرا والميكروفون ضمن
+        بيان التطبيق، لكن النسخة الحالية <strong>لا تستخدمها فعلياً</strong> لأن المقابلة المباشرة
+        محصورة في الويب. سنُزيلها أو نُفعّل الميزة المقابلة لها في تحديث لاحق.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>
+        The live audio/video interview currently runs <strong>in a web browser only</strong>. In the
+        Android app a message explains that the feature is not yet available on mobile, and the app
+        does not use the camera or the microphone at all.
+      </p>
+      <div class="callout good">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> There is no audio or video upload</div>
+        <p>
+          The interview recording is assembled inside your browser and offered to you to save on your
+          own device. <strong>Our servers expose no endpoint that accepts audio or video files at
+          all</strong> — the only file-upload endpoint in the entire system is the CV upload, which
+          accepts nothing but PDF, TXT or MD. The camera and microphone are released the moment the
+          interview ends.
+        </p>
+      </div>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> But the browser itself sends your voice</div>
+        <p>
+          Converting your speech to text is done by the speech-recognition service built into your
+          browser, not by our servers. In Chrome specifically, <strong>the browser streams your
+          microphone audio to Google's servers</strong> for transcription. That audio never reaches
+          us — only the resulting text does — but its use is governed by your browser vendor's privacy
+          policy, not ours. Likewise, some of the "natural" voices the interviewer speaks with fetch
+          their audio from Microsoft on first use.
+        </p>
+        <p>If you want to avoid this entirely, use typed practice rather than the voice interview.</p>
+      </div>
+      <p>
+        <strong>A note on Android permissions:</strong> the Android app declares camera and microphone
+        permissions in its manifest, but the current release <strong>does not actually use them</strong>,
+        because the live interview is web-only. We will either remove them or ship the corresponding
+        feature in a future update.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 6. Payments ─────────── -->
+  <section id="payments">
+    <h2><span class="n" data-l="ar">٦</span><span class="n" data-l="en">6</span>
+      <span data-l="ar">بيانات الدفع</span><span data-l="en">Payment data</span></h2>
+
+    <div data-l="ar">
+      <p>
+        الخدمة مجانية في أساسها، ولا نطلب أي بيانات دفع إلا إذا اخترت أنت شراء اشتراك مميّز. تتم
+        المعالجة عبر <strong>بوابة EasyKash المصرية</strong>.
+      </p>
+      <div class="callout">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg> لا نرى بيانات بطاقتك</div>
+        <p>
+          <strong>لا تمرّ بيانات بطاقتك البنكية بخوادمنا ولا تُخزَّن لدينا مطلقاً.</strong> تُدخِلها
+          مباشرةً في صفحة الدفع المستضافة لدى EasyKash، وهي وحدها من يعالجها.
+        </p>
+      </div>
+      <p>ما يخرج منّا إلى EasyKash عند كل عملية شراء: <strong>اسمك، وبريدك الإلكتروني، ورقم هاتفك</strong>، والمبلغ، واسم الباقة، ورقم مرجعي داخلي.</p>
+      <p>ما نحفظه نحن عن العملية:</p>
+      <ul>
+        <li>سجلّ دفع يتضمّن الرقم المرجعي، ومُعرِّف العملية لدى البوابة، واسم الباقة، والمبلغ، والعملة، والحالة، ووسيلة الدفع، وسبب الفشل إن وُجد، وتواريخ الدفع والاسترداد.</li>
+        <li><strong>الاستجابة الخام من البوابة</strong> كما وصلت (حتى ٦٠ كيلوبايت من بيانات JSON). قد تتضمّن بيانات وصفية عن وسيلة الدفع ومُعرِّفات تعيدها البوابة؛ نحن نحفظها كما هي دون ترشيح.</li>
+        <li>سجلّ الاشتراك: الباقة، والحالة، وتاريخ البدء والانتهاء.</li>
+        <li>نسخة من كل إشعار (webhook) تصلنا من البوابة، وتُحفَظ <strong>قبل</strong> التحقّق من صحّتها لمنع تكرار احتساب العملية ولأغراض التتبّع الفني. تُحفَظ حتى الإشعارات المرفوضة أو المزوّرة.</li>
+      </ul>
+      <p>
+        سجلّات الدفع مستندات مالية، ونحتفظ بها ولو حُذف حسابك، بالقدر الذي تفرضه علينا الالتزامات
+        المحاسبية والضريبية والقانونية في مصر.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>
+        The service is free at its core, and we ask for no payment data unless you choose to buy a
+        premium subscription. Payments are processed by <strong>EasyKash</strong>, an Egyptian
+        payment gateway.
+      </p>
+      <div class="callout">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg> We never see your card details</div>
+        <p>
+          <strong>Your card details never pass through our servers and are never stored by us.</strong>
+          You enter them directly on EasyKash's hosted checkout page, and EasyKash alone processes them.
+        </p>
+      </div>
+      <p>What leaves us for EasyKash on every purchase: <strong>your name, your email address and your phone number</strong>, the amount, the plan label, and an internal reference number.</p>
+      <p>What we store about the transaction:</p>
+      <ul>
+        <li>A payment record holding the reference, the gateway's transaction id, the plan code, amount, currency, status, method, failure reason if any, and the paid/refunded timestamps.</li>
+        <li><strong>The gateway's raw response</strong> exactly as received (up to 60 KB of JSON). It may include payment-method metadata and identifiers the gateway echoes back; we store it unfiltered.</li>
+        <li>A subscription record: plan, status, start and expiry dates.</li>
+        <li>A copy of every webhook notification the gateway sends us, stored <strong>before</strong> it is validated, to prevent a replayed callback granting a second month and for technical forensics. Rejected and forged callbacks are stored too.</li>
+      </ul>
+      <p>
+        Payment records are financial documents. We retain them even if your account is deleted, to the
+        extent required by Egyptian accounting, tax and legal obligations.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 7. Technical ─────────── -->
+  <section id="technical">
+    <h2><span class="n" data-l="ar">٧</span><span class="n" data-l="en">7</span>
+      <span data-l="ar">بيانات تقنية وسجلات</span><span data-l="en">Technical data &amp; logs</span></h2>
+
+    <div data-l="ar">
+      <ul>
+        <li><strong>عنوان IP ونوع المتصفح:</strong> يُستخدمان لحظياً لتحديد معدّل الطلبات (منعاً لإساءة الاستخدام) ويظهران في سجلّات الوصول التي تُكتب على مخرَج الخادم. <strong>لا يُخزَّن عنوان IP في قاعدة بياناتنا.</strong> تُمحى ذاكرة تحديد المعدّل خلال دقيقة إلى ستين دقيقة، ومدة الاحتفاظ بسجلّات الخادم يحدّدها مزوّد الاستضافة لا نحن.</li>
+        <li><strong>سجلّات الطلبات:</strong> تتضمّن رقم الطلب والطريقة والمسار ورمز الاستجابة وزمنها. <strong>لا يُسجَّل محتوى الطلبات إطلاقاً</strong>، ولا تُسجَّل كلمات المرور ولا نصوص الإجابات.</li>
+        <li><strong>قياسات استخدام الذكاء الاصطناعي:</strong> نسجّل لكل استدعاء المزوّد واسم النموذج وعدد الوحدات (tokens) والتكلفة وزمن الاستجابة ونجاح العملية من عدمه، مقروناً برقم حسابك. <strong>لا يتضمّن هذا السجلّ نص السؤال ولا نص إجابتك</strong> — أرقام فقط.</li>
+        <li><strong>رموز الدخول (JWT):</strong> لا تُخزَّن على خوادمنا. تُحفَظ على جهازك في التخزين الآمن للنظام (Android Keystore / iOS Keychain)، وفي متصفح الويب في <code>localStorage</code>. صلاحية رمز الدخول ١٥ دقيقة ورمز التجديد ٣٠ يوماً. الخروج من الحساب يمسحها من جهازك.</li>
+        <li><strong>إعدادات على جهازك:</strong> تفضيلات المظهر ومفاتيح الإشعارات تُحفَظ محلياً على جهازك ولا تُرسَل إلينا. (مفاتيح الإشعارات حالياً بلا أثر عملي: لا توجد في التطبيق بنية إشعارات ولا نجمع أي رمز جهاز.)</li>
+      </ul>
+      <p>
+        <strong>ملفات تعريف الارتباط (Cookies):</strong> لا يستخدم الموقع ولا التطبيق أي ملفات
+        تعريف ارتباط للتتبّع أو للإعلانات. تطبيق الويب يستخدم تخزين المتصفح المحلي لحفظ رمز دخولك
+        وتفضيلاتك فقط.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <ul>
+        <li><strong>IP address and user agent:</strong> used transiently for rate limiting (to prevent abuse) and appearing in the access logs written to the server's output. <strong>Your IP address is not stored in our database.</strong> Rate-limit buckets expire after one to sixty minutes; how long the server logs are kept is determined by our hosting provider, not by us.</li>
+        <li><strong>Request logs:</strong> these hold a request id, method, path, status code and response time. <strong>Request bodies are never logged</strong> — no passwords, no answer text.</li>
+        <li><strong>AI usage telemetry:</strong> for each AI call we record the provider, model name, token counts, cost, latency and whether it succeeded, keyed to your account id. <strong>This log contains no question text and no answer text</strong> — numbers only.</li>
+        <li><strong>Authentication tokens (JWT):</strong> not stored on our servers. They are held on your device in the platform's secure storage (Android Keystore / iOS Keychain), and in the web app in <code>localStorage</code>. The access token lasts 15 minutes and the refresh token 30 days. Logging out clears them from your device.</li>
+        <li><strong>On-device settings:</strong> theme preference and notification switches are saved locally on your device and never sent to us. (The notification switches currently have no practical effect: the app has no push infrastructure and we collect no device tokens.)</li>
+      </ul>
+      <p>
+        <strong>Cookies:</strong> neither the website nor the app uses any tracking or advertising
+        cookies. The web app uses local browser storage only, to hold your session token and your
+        preferences.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 8. What we never do ─────────── -->
+  <section id="never">
+    <h2><span class="n" data-l="ar">٨</span><span class="n" data-l="en">8</span>
+      <span data-l="ar">ما لا نفعله</span><span data-l="en">What we never do</span></h2>
+
+    <div data-l="ar">
+      <ul>
+        <li><strong>لا نبيع بياناتك ولا نؤجّرها ولا نتاجر بها</strong> مع أي جهة، بأي صورة.</li>
+        <li><strong>لا نستخدم بياناتك في الإعلانات</strong>، ولا نعرض إعلانات في التطبيق أصلاً.</li>
+        <li><strong>لا يوجد في التطبيق أي أداة تتبّع أو تحليلات من طرف ثالث.</strong> لا Firebase، ولا Google Analytics، ولا Facebook SDK، ولا Sentry، ولا أي أداة إسناد إعلاني. تحقّقنا من ذلك بفحص كل حزم التطبيق والخادم ولوحة الإدارة والموقع.</li>
+        <li><strong>لا نجمع مُعرِّف الإعلانات</strong> (Advertising ID) ولا مُعرِّفات الأجهزة.</li>
+        <li><strong>لا نصل إلى جهات اتصالك ولا رسائلك ولا صورك ولا موقعك الجغرافي.</strong> التطبيق لا يطلب هذه الأذونات إطلاقاً.</li>
+        <li><strong>لا نستخدم إجاباتك لتدريب نماذج ذكاء اصطناعي خاصة بنا.</strong> نحن لا ندرّب نماذج.</li>
+      </ul>
+      <p>
+        الاستثناء الوحيد الذي يجب أن نذكره بأمانة: <strong>الصفحة التعريفية العامة لهذا الموقع</strong>
+        تحمّل خط «Cairo» من خدمة Google Fonts، وهو ما يكشف عنوان IP ونوع متصفّح كل زائر لشركة Google.
+        صفحات السياسات هذه — الصفحة التي تقرأها الآن وصفحة الشروط — <strong>لا تحمّل أي مورد خارجي
+        على الإطلاق</strong>.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <ul>
+        <li><strong>We do not sell, rent or trade your data</strong> to anyone, in any form.</li>
+        <li><strong>We do not use your data for advertising</strong>, and the app shows no advertising at all.</li>
+        <li><strong>The app contains no third-party tracking or analytics SDK.</strong> No Firebase, no Google Analytics, no Facebook SDK, no Sentry, no attribution tooling. We verified this across the mobile app, the backend, the admin panel and this website.</li>
+        <li><strong>We do not collect an Advertising ID</strong> or any device identifier.</li>
+        <li><strong>We do not access your contacts, messages, photos or location.</strong> The app never requests those permissions.</li>
+        <li><strong>We do not use your answers to train any AI model of our own.</strong> We do not train models.</li>
+      </ul>
+      <p>
+        The one exception we should name honestly: <strong>the public marketing page of this
+        site</strong> loads the Cairo webfont from Google Fonts, which discloses each visitor's IP
+        address and user agent to Google. These policy pages — the one you are reading and the terms
+        page — <strong>load no external resource whatsoever</strong>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 9. Third parties ─────────── -->
+  <section id="third-parties">
+    <h2><span class="n" data-l="ar">٩</span><span class="n" data-l="en">9</span>
+      <span data-l="ar">مَن تصل إليه بياناتك</span><span data-l="en">Who receives your data</span></h2>
+
+    <div data-l="ar">
+      <p>هذه قائمة كاملة بالجهات الخارجية التي قد تصل إليها بيانات تخصّك، وما يصل إلى كل منها بالضبط.</p>
+      <div class="tbl-wrap">
+        <table>
+          <caption>الأطراف الثالثة ومعالجو البيانات من الباطن</caption>
+          <thead><tr><th>الجهة</th><th>ما يصل إليها</th><th>الغرض</th></tr></thead>
+          <tbody>
+            <tr><td>Anthropic (Claude)<br><small>الولايات المتحدة</small></td><td>نص السؤال، وإجابتك كاملة، وسجلّ المقابلة المباشرة، ونصّ سيرتك الذاتية، وسياق الوظيفة. <strong>لا يصلها بريدك ولا هاتفك ولا مُعرِّف حسابك.</strong></td><td>المزوّد الأساسي: توليد الأسئلة وإجراء المقابلة وتقييم الإجابات.</td></tr>
+            <tr><td>Google (Gemini API)<br><small>الولايات المتحدة</small></td><td>نفس المحتوى السابق تماماً.</td><td>مزوّد بديل يُستخدم عند تعذّر المزوّد الأساسي.</td></tr>
+            <tr><td>Groq<br><small>الولايات المتحدة</small></td><td>نفس المحتوى السابق تماماً.</td><td>مزوّد بديل ثانٍ عند تعذّر الاثنين السابقين.</td></tr>
+            <tr><td>Google (خدمة النطق في المتصفح)<br><small>غير مباشر</small></td><td><strong>صوت الميكروفون</strong> — يرسله متصفح Chrome مباشرةً، لا نحن.</td><td>تحويل كلامك إلى نص أثناء المقابلة. لا نتحكّم في هذا المسار ولا تصلنا التسجيلات.</td></tr>
+            <tr><td>Google (خدمة نطق نصّية احتياطية)</td><td>نصّ ردّ المحاوِر فقط، ويُرسَل من خادمنا لا من جهازك، دون أي مُعرِّف لك.</td><td>نطق كلام المحاوِر عندما لا يوفّر متصفحك صوتاً عربياً مناسباً.</td></tr>
+            <tr><td>Microsoft<br><small>غير مباشر</small></td><td>نصّ ردّ المحاوِر عند استخدام أصوات «Online (Natural)» في متصفحك.</td><td>توليد صوت المحاوِر داخل المتصفح.</td></tr>
+            <tr><td>EasyKash<br><small>مصر</small></td><td>اسمك، وبريدك، ورقم هاتفك، والمبلغ، واسم الباقة، ورقم مرجعي.</td><td>معالجة الدفع والاسترداد. لا يصل إلينا رقم بطاقتك.</td></tr>
+            <tr><td>مزوّدو الاستضافة<br><small>Hostinger و Vercel</small></td><td>قاعدة البيانات كاملةً، وسجلّات الخوادم، وحركة الطلبات.</td><td>تشغيل الخوادم وقاعدة البيانات وتوصيل الخدمة إليك.</td></tr>
+            <tr><td>Google Fonts<br><small>الموقع التعريفي فقط</small></td><td>عنوان IP ونوع المتصفح لزائر الصفحة الرئيسية.</td><td>تحميل خط الواجهة. لا يسري على صفحات السياسات.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        قد نُفصح عن بياناتك كذلك إذا ألزمنا بذلك أمر قضائي أو التزام قانوني ساري المفعول في جمهورية
+        مصر العربية. وباستثناء ما سبق، لا نُفصح عن بياناتك لأي جهة أخرى.
+      </p>
+      <p>
+        <strong>لا يوجد في التطبيق تكامل مع خدمة الفوترة من Google Play</strong>، ولا نشارك أي بيانات
+        شراء مع Google.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>This is a complete list of the external parties that may receive data about you, and exactly what each receives.</p>
+      <div class="tbl-wrap">
+        <table>
+          <caption>Third parties and sub-processors</caption>
+          <thead><tr><th>Party</th><th>What it receives</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Anthropic (Claude)<br><small>United States</small></td><td>Question text, your full answer, the live-interview transcript, your CV text and the job context. <strong>Not your email, phone or account id.</strong></td><td>Primary provider: generating questions, conducting the interview and grading answers.</td></tr>
+            <tr><td>Google (Gemini API)<br><small>United States</small></td><td>Exactly the same content.</td><td>Fallback provider, used when the primary is unavailable.</td></tr>
+            <tr><td>Groq<br><small>United States</small></td><td>Exactly the same content.</td><td>Second fallback, used when both of the above are unavailable.</td></tr>
+            <tr><td>Google (browser speech recognition)<br><small>indirect</small></td><td><strong>Your microphone audio</strong> — sent by Chrome itself, not by us.</td><td>Transcribing your speech during the interview. We do not control this path and never receive the audio.</td></tr>
+            <tr><td>Google (fallback text-to-speech)</td><td>The interviewer's reply text only, sent from our server rather than your device, with no identifier attached to you.</td><td>Speaking the interviewer's lines when your browser offers no suitable Arabic voice.</td></tr>
+            <tr><td>Microsoft<br><small>indirect</small></td><td>The interviewer's reply text, when your browser uses an "Online (Natural)" voice.</td><td>Generating the interviewer's voice inside the browser.</td></tr>
+            <tr><td>EasyKash<br><small>Egypt</small></td><td>Your name, email, phone number, the amount, the plan label and a reference number.</td><td>Processing payments and refunds. Your card number never reaches us.</td></tr>
+            <tr><td>Hosting providers<br><small>Hostinger and Vercel</small></td><td>The entire database, server logs and all request traffic.</td><td>Running the servers and database and delivering the service to you.</td></tr>
+            <tr><td>Google Fonts<br><small>marketing site only</small></td><td>The IP address and user agent of a visitor to the home page.</td><td>Loading the interface font. Does not apply to these policy pages.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        We may also disclose your data where compelled by a court order or a binding legal obligation
+        in the Arab Republic of Egypt. Other than the above, we disclose your data to no one.
+      </p>
+      <p>
+        <strong>The app has no Google Play Billing integration</strong>, and we share no purchase data
+        with Google.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 10. Legal basis ─────────── -->
+  <section id="basis">
+    <h2><span class="n" data-l="ar">١٠</span><span class="n" data-l="en">10</span>
+      <span data-l="ar">الأساس القانوني للمعالجة</span><span data-l="en">Legal basis for processing</span></h2>
+
+    <div data-l="ar">
+      <ul>
+        <li><strong>تنفيذ العقد:</strong> بيانات الحساب ومحتوى التدريب وبيانات الاشتراك — لا يمكن تقديم الخدمة التي طلبتها بدونها.</li>
+        <li><strong>الرضا (الموافقة):</strong> رفع السيرة الذاتية وتشغيل المقابلة المباشرة بالصوت والفيديو. بدء أيٍّ منهما فعل اختياري منك، ويمكنك استخدام التطبيق بالكامل دونهما، ويمكنك سحب موافقتك بالتوقّف عن استخدامهما.</li>
+        <li><strong>الالتزام القانوني:</strong> حفظ السجلّات المالية والضريبية المتعلّقة بالمدفوعات.</li>
+        <li><strong>المصلحة المشروعة:</strong> سجلّات الخادم وتحديد معدّل الطلبات وقياسات التكلفة — لحماية الخدمة من إساءة الاستخدام وضمان استمرارها.</li>
+      </ul>
+      <p>
+        نلتزم بأحكام القانون المصري رقم ١٥١ لسنة ٢٠٢٠ بشأن حماية البيانات الشخصية ولائحته التنفيذية،
+        بقدر ما ينطبق على نشاطنا.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <ul>
+        <li><strong>Performance of a contract:</strong> account data, practice content and subscription data — the service you asked for cannot be provided without them.</li>
+        <li><strong>Consent:</strong> uploading a CV and running the live audio/video interview. Starting either is a voluntary act, you can use the app fully without them, and you can withdraw consent by ceasing to use them.</li>
+        <li><strong>Legal obligation:</strong> retaining financial and tax records relating to payments.</li>
+        <li><strong>Legitimate interest:</strong> server logs, rate limiting and cost telemetry — protecting the service from abuse and keeping it running.</li>
+      </ul>
+      <p>
+        We comply with Egyptian Law No. 151 of 2020 on the Protection of Personal Data and its
+        executive regulations, to the extent they apply to our activity.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 11. Retention ─────────── -->
+  <section id="retention">
+    <h2><span class="n" data-l="ar">١١</span><span class="n" data-l="en">11</span>
+      <span data-l="ar">مدة الاحتفاظ بالبيانات</span><span data-l="en">How long we keep data</span></h2>
+
+    <div data-l="ar">
+      <div class="callout bad">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> نقولها بوضوح، لا بعبارة مطّاطة</div>
+        <p>
+          كثير من السياسات تكتب «نحتفظ ببياناتك للمدة اللازمة فقط». هذه العبارة لا تصف نظامنا اليوم،
+          ولن نكتبها. <strong>لا يوجد في نظامنا حالياً أي حذف تلقائي للبيانات:</strong> لا مدة انتهاء،
+          ولا مهمة تنظيف دورية، ولا إخفاء للهوية. ما يُحفَظ يبقى محفوظاً إلى أن يُحذَف حسابك بناءً على
+          طلبك.
+        </p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <caption>مدة الاحتفاظ الفعلية بكل نوع من البيانات</caption>
+          <thead><tr><th>البيانات</th><th>المدة</th></tr></thead>
+          <tbody>
+            <tr><td>بيانات الحساب (البريد، الاسم، بصمة كلمة المرور، الهاتف)</td><td>إلى أجل غير مسمّى، حتى حذف الحساب بناءً على طلبك.</td></tr>
+            <tr><td>جلسات التدريب وإجاباتك وتقييمات الذكاء الاصطناعي</td><td>إلى أجل غير مسمّى، حتى حذف الحساب. لا توجد حالياً وسيلة لحذف إجابة بمفردها.</td></tr>
+            <tr><td>نصوص المقابلات المباشرة</td><td>إلى أجل غير مسمّى، حتى حذف الحساب.</td></tr>
+            <tr><td>ملف السيرة الذاتية ونصّه</td><td><strong>لا يُحفَظ إطلاقاً</strong> — يُهمَل عند انتهاء الطلب (ثوانٍ).</td></tr>
+            <tr><td>ملخّص السيرة وسياق الوظيفة</td><td>في ذاكرة تطبيقك فقط، ويزول بإغلاق شاشة المقابلة.</td></tr>
+            <tr><td>تسجيل الفيديو والصوت</td><td>على جهازك أنت فقط، وتحت سيطرتك الكاملة.</td></tr>
+            <tr><td>سجلّات الدفع والاشتراك وإشعارات البوابة</td><td>إلى أجل غير مسمّى. تُحفَظ كذلك بعد حذف الحساب بوصفها مستندات مالية.</td></tr>
+            <tr><td>قياسات استخدام الذكاء الاصطناعي (أرقام فقط)</td><td>إلى أجل غير مسمّى. <strong>تبقى حتى بعد حذف الحساب</strong> مقترنةً بالرقم الداخلي للحساب المحذوف، لأنها غير مرتبطة بجدول المستخدمين تقنياً. سنحذفها يدوياً عند تنفيذ طلب الحذف — انظر <a href="#delete-account">القسم ١٤</a>.</td></tr>
+            <tr><td>رموز الدخول</td><td>١٥ دقيقة للرمز الأساسي و٣٠ يوماً لرمز التجديد، وتُمحى من جهازك عند الخروج.</td></tr>
+            <tr><td>ذاكرة تحديد معدّل الطلبات</td><td>من دقيقة إلى ستين دقيقة، وتزول بإعادة تشغيل الخادم.</td></tr>
+            <tr><td>سجلّات الخادم</td><td>يحدّدها مزوّد الاستضافة، ولا نتحكّم فيها من داخل التطبيق.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        نعمل على إضافة مدة احتفاظ محدّدة لمحتوى التدريب. وإلى أن يحدث ذلك ويُحدَّث هذا القسم، اعتبر
+        أن كل إجابة كتبتها باقية.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <div class="callout bad">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> Said plainly, not vaguely</div>
+        <p>
+          Many policies write "we keep your data only as long as necessary". That sentence does not
+          describe our system today, so we will not write it. <strong>Our system currently performs no
+          automatic deletion of data:</strong> no expiry window, no purge job, no anonymisation. What
+          is stored stays stored until your account is deleted at your request.
+        </p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <caption>Actual retention, per data type</caption>
+          <thead><tr><th>Data</th><th>Retention</th></tr></thead>
+          <tbody>
+            <tr><td>Account data (email, name, password hash, phone)</td><td>Indefinitely, until the account is deleted at your request.</td></tr>
+            <tr><td>Practice sessions, your answers and AI feedback</td><td>Indefinitely, until account deletion. There is currently no way to delete an individual answer.</td></tr>
+            <tr><td>Live-interview transcripts</td><td>Indefinitely, until account deletion.</td></tr>
+            <tr><td>CV file and its text</td><td><strong>Never stored</strong> — discarded when the request ends (seconds).</td></tr>
+            <tr><td>CV summary and job context</td><td>In your app's memory only; gone when the interview screen closes.</td></tr>
+            <tr><td>Video and audio recording</td><td>On your device only, entirely under your control.</td></tr>
+            <tr><td>Payment records, subscriptions, gateway callbacks</td><td>Indefinitely. Retained after account deletion as financial documents.</td></tr>
+            <tr><td>AI usage telemetry (numbers only)</td><td>Indefinitely. <strong>It survives account deletion</strong>, keyed to the deleted account's internal id, because it is not technically linked to the users table. We delete it manually when actioning a deletion request — see <a href="#delete-account">section 14</a>.</td></tr>
+            <tr><td>Authentication tokens</td><td>15 minutes for the access token, 30 days for the refresh token; cleared from your device on logout.</td></tr>
+            <tr><td>Rate-limit buckets</td><td>One to sixty minutes, and lost on server restart.</td></tr>
+            <tr><td>Server logs</td><td>Determined by our hosting provider; not controlled from within the application.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        We are working on a defined retention window for practice content. Until that ships and this
+        section is updated, assume every answer you have written is still there.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 12. Security ─────────── -->
+  <section id="security">
+    <h2><span class="n" data-l="ar">١٢</span><span class="n" data-l="en">12</span>
+      <span data-l="ar">أمن البيانات</span><span data-l="en">Data security</span></h2>
+
+    <div data-l="ar">
+      <ul>
+        <li><strong>كلمات المرور:</strong> تُخزَّن كبصمة bcrypt بمعامل كلفة ١٢، ولا تُخزَّن نصّاً أبداً، ولا تُسجَّل في أي سجلّ، ولا تُرسَل لأي طرف. الحد الأدنى ٨ أحرف.</li>
+        <li><strong>التشفير أثناء النقل:</strong> كل الاتصال بين تطبيقك وخوادمنا يتم عبر HTTPS، مع تفعيل سياسة HSTS لمدة سنة في بيئة الإنتاج.</li>
+        <li><strong>عزل بيانات الدفع:</strong> بيانات بطاقتك لا تمرّ بخوادمنا إطلاقاً.</li>
+        <li><strong>صلاحيات محدودة:</strong> لوحة الإدارة محمية بصلاحيات متدرّجة، وحذف حساب مستخدم لا يستطيعه إلا مشرف أعلى.</li>
+        <li><strong>حدود الاستهلاك:</strong> تحديد معدّل الطلبات لكل مستخدم وكل عنوان IP لمنع الإساءة.</li>
+      </ul>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> ما لا ندّعيه</div>
+        <p>
+          <strong>لا ندّعي تشفير البيانات المخزّنة على مستوى التطبيق.</strong> لا يوجد في التطبيق
+          تشفير لأي حقل مخزّن، وأمن التخزين يعتمد على ما يوفّره مزوّد الاستضافة على مستوى الخادم
+          وقاعدة البيانات. ونذكر كذلك أنه لا يوجد حتى الآن سجلّ تدقيق فعّال لإجراءات المشرفين، فلا
+          يوجد أثر مكتوب يبيّن أي مشرف عطّل حساباً أو حذفه.
+        </p>
+        <p>
+          لا يوجد نظام آمن بالمطلق. إن علمنا بحادث أمني يمسّ بياناتك الشخصية، سنُخطرك وسنُخطر الجهات
+          المختصة وفقاً لما يوجبه القانون المصري.
+        </p>
+      </div>
+    </div>
+
+    <div data-l="en">
+      <ul>
+        <li><strong>Passwords:</strong> stored as a bcrypt hash at cost factor 12, never in plaintext, never logged, never transmitted to any party. Minimum length 8 characters.</li>
+        <li><strong>Encryption in transit:</strong> all communication between your app and our servers uses HTTPS, with a one-year HSTS policy enabled in production.</li>
+        <li><strong>Payment isolation:</strong> your card details never pass through our servers.</li>
+        <li><strong>Least privilege:</strong> the admin panel is role-gated, and deleting a user account requires a super-administrator.</li>
+        <li><strong>Abuse limits:</strong> per-user and per-IP rate limiting.</li>
+      </ul>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> What we do not claim</div>
+        <p>
+          <strong>We do not claim application-level encryption at rest.</strong> No stored field is
+          encrypted by the application; storage security depends on what our hosting provider offers
+          at the server and database level. We also note that there is not yet a working audit log of
+          administrator actions, so there is no written trace showing which administrator disabled or
+          deleted an account.
+        </p>
+        <p>
+          No system is perfectly secure. If we become aware of a security incident affecting your
+          personal data, we will notify you and the competent authorities as required by Egyptian law.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── 13. Rights ─────────── -->
+  <section id="rights">
+    <h2><span class="n" data-l="ar">١٣</span><span class="n" data-l="en">13</span>
+      <span data-l="ar">حقوقك</span><span data-l="en">Your rights</span></h2>
+
+    <div data-l="ar">
+      <ul>
+        <li><strong>الاطّلاع:</strong> يمكنك رؤية اسمك وبريدك ولغتك وحالة اشتراكك داخل التطبيق مباشرةً، ورؤية جلساتك وإجاباتك وتقييماتها في شاشة «السجل».</li>
+        <li><strong>التصحيح:</strong> يمكنك تعديل اسمك ولغتك وكلمة مرورك من داخل التطبيق في أي وقت.</li>
+        <li><strong>نسخة من بياناتك:</strong> لا توجد حالياً وظيفة تصدير آلية داخل التطبيق. راسلنا وسنُرسل إليك نسخة من بياناتك المخزّنة خلال ثلاثين يوماً.</li>
+        <li><strong>الحذف:</strong> انظر <a href="#delete-account">القسم ١٤</a> أدناه.</li>
+        <li><strong>الاعتراض وسحب الموافقة:</strong> يمكنك التوقّف عن رفع السيرة الذاتية أو عن استخدام المقابلة الصوتية في أي وقت دون أن يؤثّر ذلك على بقية الخدمة.</li>
+        <li><strong>الشكوى:</strong> إن لم يُرضِك ردّنا، يحقّ لك التقدّم بشكوى إلى الجهة المصرية المختصة بحماية البيانات الشخصية.</li>
+      </ul>
+      <p>
+        نردّ على أي طلب من هذه الطلبات خلال <strong>سبعة أيام عمل</strong>، ونُنفّذه خلال
+        <strong>ثلاثين يوماً</strong> كحدّ أقصى.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <ul>
+        <li><strong>Access:</strong> your name, email, language and subscription status are visible in the app itself, and your sessions, answers and their grades appear in the History screen.</li>
+        <li><strong>Rectification:</strong> you can change your name, language and password inside the app at any time.</li>
+        <li><strong>A copy of your data:</strong> there is currently no automated export function in the app. Write to us and we will send you a copy of your stored data within thirty days.</li>
+        <li><strong>Erasure:</strong> see <a href="#delete-account">section 14</a> below.</li>
+        <li><strong>Objection and withdrawal of consent:</strong> you can stop uploading CVs or using the voice interview at any time, without affecting the rest of the service.</li>
+        <li><strong>Complaint:</strong> if our response does not satisfy you, you have the right to complain to the competent Egyptian personal-data protection authority.</li>
+      </ul>
+      <p>
+        We respond to any such request within <strong>seven working days</strong> and action it within
+        <strong>thirty days</strong> at the latest.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 14. DELETION ─────────── -->
+  <section id="delete-account">
+    <h2><span class="n" data-l="ar">١٤</span><span class="n" data-l="en">14</span>
+      <span data-l="ar">حذف الحساب والبيانات</span><span data-l="en">Account &amp; data deletion</span></h2>
+
+    <div data-l="ar">
+      <div class="del">
+        <h3>كيف تطلب حذف حسابك</h3>
+        <p>
+          <strong>الحذف يتم حالياً عبر طلب مكتوب يُنفّذه فريقنا يدوياً.</strong> لا توجد في النسخة
+          الحالية من التطبيق زرّ حذف ذاتي يعمل فوراً، ونذكر ذلك صراحةً بدل الإيحاء بغير الحقيقة. زرّ
+          «حذف الحساب» داخل التطبيق يفتح رسالة بريد جاهزة إلى العنوان نفسه المذكور هنا.
+        </p>
+        <p><strong>الخطوات:</strong></p>
+        <ol class="num">
+          <li>أرسل بريداً إلى <a href="mailto:info@barmagly.tech?subject=%D8%B7%D9%84%D8%A8%20%D8%AD%D8%B0%D9%81%20%D8%A7%D9%84%D8%AD%D8%B3%D8%A7%D8%A8%20-%20Thiqty">info@barmagly.tech</a> <strong>من البريد المسجَّل في حسابك</strong> (هذا هو ما نتحقّق به من هويتك).</li>
+          <li>اجعل عنوان الرسالة: <code>طلب حذف الحساب</code>.</li>
+          <li>لا تحتاج إلى ذكر سبب. إن رغبت في تصدير بياناتك قبل حذفها، اذكر ذلك في نفس الرسالة.</li>
+        </ol>
+        <p><strong>ما يحدث بعد ذلك:</strong> نؤكّد استلام طلبك خلال <strong>سبعة أيام عمل</strong>، وننفّذ الحذف خلال <strong>ثلاثين يوماً</strong> كحدّ أقصى من تاريخ التحقّق من هويتك، ثم نُرسل إليك تأكيداً بالتنفيذ.</p>
+        <p style="margin-top:var(--sp-4)">
+          <a class="mailbtn" href="mailto:info@barmagly.tech?subject=%D8%B7%D9%84%D8%A8%20%D8%AD%D8%B0%D9%81%20%D8%A7%D9%84%D8%AD%D8%B3%D8%A7%D8%A8%20-%20Thiqty&amp;body=%D8%A3%D8%B1%D8%AC%D9%88%20%D8%AD%D8%B0%D9%81%20%D8%AD%D8%B3%D8%A7%D8%A8%D9%8A%20%D9%88%D8%AC%D9%85%D9%8A%D8%B9%20%D8%A8%D9%8A%D8%A7%D9%86%D8%A7%D8%AA%D9%8A%20%D9%81%D9%8A%20%D8%AA%D8%B7%D8%A8%D9%8A%D9%82%20%D8%AB%D9%82%D8%AA%D9%8A.%0A%0A%D8%A7%D9%84%D8%A8%D8%B1%D9%8A%D8%AF%20%D8%A7%D9%84%D9%85%D8%B3%D8%AC%D9%84%3A%20">
+            <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg> أرسل طلب حذف الحساب
+          </a>
+        </p>
+      </div>
+
+      <h3>ما الذي يُحذف</h3>
+      <ul>
+        <li>سجلّ حسابك: بريدك الإلكتروني، واسمك، وبصمة كلمة مرورك، ورقم هاتفك، ولغتك، وحالة اشتراكك.</li>
+        <li>كل جلسات التدريب والمقابلات المرتبطة بحسابك.</li>
+        <li><strong>كل إجاباتك المخزّنة ونصوص المقابلات وتقييمات الذكاء الاصطناعي</strong> — تُحذف بالتبعية مع الحساب.</li>
+        <li>سجلّات الاشتراك المرتبطة بك.</li>
+        <li>قياسات استخدام الذكاء الاصطناعي المقترنة برقم حسابك — <strong>نحذفها يدوياً</strong>، لأنها لا تُحذف تلقائياً مع الحساب.</li>
+      </ul>
+
+      <h3>ما الذي يبقى، ولماذا</h3>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> استثناءات لا نُخفيها</div>
+        <ul>
+          <li><strong>سجلّات الدفع والفواتير:</strong> نحتفظ بها بوصفها مستندات مالية، بالقدر الذي تفرضه الالتزامات المحاسبية والضريبية في مصر. تشمل الرقم المرجعي والمبلغ والتاريخ والحالة والاستجابة الخام من بوابة الدفع.</li>
+          <li><strong>إشعارات بوابة الدفع المخزّنة:</strong> تبقى ضمن السجلّات المالية نفسها.</li>
+          <li><strong>سجلّات الخادم:</strong> قد تحتوي على عنوان IP ومسار الطلب، وتخضع لمدة الاحتفاظ التي يحدّدها مزوّد الاستضافة، ولا نستطيع حذفها انتقائياً.</li>
+          <li><strong>النسخ الاحتياطية:</strong> إن وُجدت نسخة احتياطية دورية لدى مزوّد الاستضافة، فقد تبقى بياناتك فيها حتى تنتهي دورتها.</li>
+        </ul>
+      </div>
+      <p>
+        <strong>حذف الحساب نهائي ولا رجعة فيه.</strong> لا يمكن استرجاع سجلّ تدريبك أو درجاتك بعد
+        تنفيذه. وإذا كان لديك اشتراك مميّز سارٍ وقت الحذف، فلن يُستردّ ما تبقّى منه إلا وفق سياسة
+        الاسترداد الموضّحة في <a href="/terms">الشروط والأحكام</a>.
+      </p>
+      <p>
+        <strong>حذف التطبيق من هاتفك لا يحذف حسابك</strong>؛ بياناتك تبقى على خوادمنا حتى ترسل طلب
+        الحذف.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <div class="del">
+        <h3>How to request deletion of your account</h3>
+        <p>
+          <strong>Deletion is currently handled by a written request that our team actions
+          manually.</strong> The current release of the app has no self-service delete button that
+          works instantly, and we say so plainly rather than imply otherwise. The "Delete account"
+          control inside the app opens a pre-filled email to the very address given here.
+        </p>
+        <p><strong>Steps:</strong></p>
+        <ol class="num">
+          <li>Email <a href="mailto:info@barmagly.tech?subject=Account%20deletion%20request%20-%20Thiqty">info@barmagly.tech</a> <strong>from the address registered on your account</strong> (this is how we verify your identity).</li>
+          <li>Use the subject line: <code>Account deletion request</code>.</li>
+          <li>You do not need to give a reason. If you want an export of your data before it is erased, say so in the same message.</li>
+        </ol>
+        <p><strong>What happens next:</strong> we acknowledge your request within <strong>seven working days</strong> and complete the deletion within <strong>thirty days</strong> at most of verifying your identity, then send you a confirmation.</p>
+        <p style="margin-top:var(--sp-4)">
+          <a class="mailbtn" href="mailto:info@barmagly.tech?subject=Account%20deletion%20request%20-%20Thiqty&amp;body=Please%20delete%20my%20Thiqty%20account%20and%20all%20of%20my%20data.%0A%0ARegistered%20email%3A%20">
+            <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg> Send a deletion request
+          </a>
+        </p>
+      </div>
+
+      <h3>What gets deleted</h3>
+      <ul>
+        <li>Your account record: email address, name, password hash, phone number, language and subscription state.</li>
+        <li>Every practice session and interview linked to your account.</li>
+        <li><strong>All of your stored answers, interview transcripts and AI feedback</strong> — deleted by cascade with the account.</li>
+        <li>Subscription records associated with you.</li>
+        <li>AI usage telemetry keyed to your account id — <strong>we delete this manually</strong>, because it is not removed automatically with the account.</li>
+      </ul>
+
+      <h3>What remains, and why</h3>
+      <div class="callout warn">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> Exceptions we are not hiding</div>
+        <ul>
+          <li><strong>Payment and invoice records:</strong> retained as financial documents, to the extent required by Egyptian accounting and tax obligations. These include the reference, amount, date, status and the payment gateway's raw response.</li>
+          <li><strong>Stored gateway callbacks:</strong> retained as part of those same financial records.</li>
+          <li><strong>Server logs:</strong> may contain an IP address and request path; they are subject to the retention period set by our hosting provider and cannot be selectively erased by us.</li>
+          <li><strong>Backups:</strong> if our hosting provider holds a periodic backup, your data may persist in it until that backup rotates out.</li>
+        </ul>
+      </div>
+      <p>
+        <strong>Account deletion is permanent and irreversible.</strong> Your practice history and
+        scores cannot be recovered afterwards. If you hold an active premium subscription at the time
+        of deletion, the remaining period is refunded only in accordance with the refund policy set
+        out in the <a href="/terms">Terms &amp; Conditions</a>.
+      </p>
+      <p>
+        <strong>Uninstalling the app does not delete your account</strong>; your data remains on our
+        servers until you send a deletion request.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 15. Children ─────────── -->
+  <section id="children">
+    <h2><span class="n" data-l="ar">١٥</span><span class="n" data-l="en">15</span>
+      <span data-l="ar">الأطفال</span><span data-l="en">Children</span></h2>
+
+    <div data-l="ar">
+      <p>
+        «ثقتي» خدمة موجّهة إلى الباحثين عن عمل، ومصمّمة لمن بلغ <strong>السادسة عشرة</strong> فأكثر.
+        نحن لا نستهدف الأطفال ولا نوجّه إليهم أي محتوى، ولا نجمع عن قصد أي بيانات ممّن هم دون هذا
+        السنّ.
+      </p>
+      <p>
+        <strong>ونوضّح بأمانة:</strong> لا يوجد في التطبيق حالياً تحقّق من العمر عند التسجيل. إن علمنا
+        أن حساباً يخصّ طفلاً دون السادسة عشرة، سنحذف الحساب وبياناته دون إبطاء. إن كنت وليّ أمر وترى
+        أن طفلك أنشأ حساباً، راسلنا على <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>
+        وسنتصرّف فوراً.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>
+        Thiqty is a service for job seekers, designed for people aged <strong>16 and over</strong>. We
+        do not target children, we direct no content at them, and we do not knowingly collect data
+        from anyone below that age.
+      </p>
+      <p>
+        <strong>Stated honestly:</strong> the app currently performs no age verification at
+        registration. If we learn that an account belongs to a child under 16, we will delete the
+        account and its data without delay. If you are a parent or guardian and believe your child has
+        created an account, write to <a href="mailto:info@barmagly.tech">info@barmagly.tech</a> and we
+        will act immediately.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 16. Transfers ─────────── -->
+  <section id="transfers">
+    <h2><span class="n" data-l="ar">١٦</span><span class="n" data-l="en">16</span>
+      <span data-l="ar">نقل البيانات خارج مصر</span><span data-l="en">Transfers outside Egypt</span></h2>
+
+    <div data-l="ar">
+      <p>
+        بحكم طبيعة الخدمة، تُعالَج بعض بياناتك خارج جمهورية مصر العربية. تحديداً: إجاباتك ونصّ سيرتك
+        الذاتية وسياق الوظيفة تُرسَل إلى مزوّدي ذكاء اصطناعي مقارّهم في <strong>الولايات المتحدة
+        الأمريكية</strong> (Anthropic، وGoogle، وGroq)، وتُستضاف خوادمنا وقاعدة بياناتنا لدى مزوّدي
+        استضافة قد تكون مراكز بياناتهم خارج مصر.
+      </p>
+      <p>
+        نتعامل مع هؤلاء المزوّدين بموجب شروط خدمة تجارية تُلزمهم بمعالجة البيانات لغرض تقديم الخدمة
+        فقط. باستخدامك للخدمة فإنك تقرّ بهذا النقل وتوافق عليه.
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>
+        By the nature of the service, some of your data is processed outside the Arab Republic of
+        Egypt. Specifically: your answers, CV text and job context are sent to AI providers based in
+        the <strong>United States</strong> (Anthropic, Google and Groq), and our servers and database
+        are hosted with providers whose data centres may sit outside Egypt.
+      </p>
+      <p>
+        We engage these providers under commercial terms of service that bind them to process the data
+        only for the purpose of delivering the service. By using the service you acknowledge and
+        consent to this transfer.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 17. Changes ─────────── -->
+  <section id="changes">
+    <h2><span class="n" data-l="ar">١٧</span><span class="n" data-l="en">17</span>
+      <span data-l="ar">تعديل هذه السياسة</span><span data-l="en">Changes to this policy</span></h2>
+
+    <div data-l="ar">
+      <p>
+        قد نُعدّل هذه السياسة كلّما تغيّر التطبيق. يظهر تاريخ آخر تحديث أعلى الصفحة، وسنُعلن عن أي
+        تغيير جوهري — كإضافة معالج بيانات جديد أو تغيير مدة الاحتفاظ — داخل التطبيق قبل سريانه. نُحدِّث
+        هذه الوثيقة كذلك عند تنفيذ الميزات المذكورة أعلاه بوصفها غير متاحة بعد (كالحذف الذاتي داخل
+        التطبيق ومدة الاحتفاظ المحدّدة).
+      </p>
+    </div>
+
+    <div data-l="en">
+      <p>
+        We may amend this policy whenever the app changes. The last-updated date appears at the top of
+        this page, and we will announce any material change — such as adding a new processor or
+        changing a retention period — inside the app before it takes effect. We will also update this
+        document when the features described above as not yet available (in-app self-service deletion,
+        a defined retention window) actually ship.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────── 18. Contact ─────────── -->
+  <section id="contact">
+    <h2><span class="n" data-l="ar">١٨</span><span class="n" data-l="en">18</span>
+      <span data-l="ar">التواصل معنا</span><span data-l="en">Contact us</span></h2>
+
+    <div data-l="ar">
+      <div class="callout">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg> جهة الاتصال بشأن الخصوصية</div>
+        <p>
+          <strong>شركة برمجلي (Barmagly)</strong> — القاهرة، جمهورية مصر العربية<br>
+          البريد الإلكتروني: <a href="mailto:info@barmagly.tech">info@barmagly.tech</a><br>
+          الموقع: <a href="https://interview.khaledahmed.net/">interview.khaledahmed.net</a>
+        </p>
+        <p>
+          لطلبات حذف الحساب استخدم عنوان الرسالة «طلب حذف الحساب» وأرسلها من بريدك المسجَّل — التفاصيل
+          في <a href="#delete-account">القسم ١٤</a>.
+        </p>
+      </div>
+    </div>
+
+    <div data-l="en">
+      <div class="callout">
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-mail"/></svg> Privacy contact</div>
+        <p>
+          <strong>Barmagly</strong> — Cairo, Arab Republic of Egypt<br>
+          Email: <a href="mailto:info@barmagly.tech">info@barmagly.tech</a><br>
+          Website: <a href="https://interview.khaledahmed.net/">interview.khaledahmed.net</a>
+        </p>
+        <p>
+          For account deletion requests use the subject line "Account deletion request" and send from
+          your registered address — details in <a href="#delete-account">section 14</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  </article>
+</div>
+
+</main>
+
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr-grid">
+      <div>
+        <div class="brand" style="margin-bottom:var(--sp-4)">
+          <img class="brand-logo" src="/logo-mark.png" alt="" width="36" height="35" decoding="async">
+          <span>ثقتي · Thiqty</span>
+        </div>
+        <p style="color:var(--text-3);font-size:14.5px;max-width:34ch">
+          <span data-l="ar">ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي. تدرّب، اتقيّم، واتوظّف.</span>
+          <span data-l="en">Thiqty — the first Arabic AI interview coach. Practise, get graded, get hired.</span>
+        </p>
+      </div>
+      <div>
+        <h4><span data-l="ar">المنتج</span><span data-l="en">Product</span></h4>
+        <ul>
+          <li><a href="/#features"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a></li>
+          <li><a href="/#pricing"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a></li>
+          <li><a href="/app"><span data-l="ar">تطبيق الويب</span><span data-l="en">Web app</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <h4><span data-l="ar">الشركة</span><span data-l="en">Company</span></h4>
+        <ul>
+          <li><a href="https://barmagly.tech" rel="noopener"><span data-l="ar">شركة برمجلي</span><span data-l="en">Barmagly</span></a></li>
+          <li><a href="mailto:info@barmagly.tech"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <h4><span data-l="ar">قانوني</span><span data-l="en">Legal</span></h4>
+        <ul>
+          <li><a href="/privacy"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy Policy</span></a></li>
+          <li><a href="/terms"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms &amp; Conditions</span></a></li>
+          <li><a href="/privacy#delete-account"><span data-l="ar">حذف الحساب</span><span data-l="en">Delete account</span></a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ftr-bottom">
+      <span>© <span id="yr">2026</span> ثقتي (Thiqty) —
+        <span data-l="ar">جميع الحقوق محفوظة</span><span data-l="en">All rights reserved</span></span>
+      <span><span data-l="ar">صُنع بـ</span><span data-l="en">Made with</span>
+        <span style="color:#EF4444;display:inline-flex;vertical-align:-.15em"><svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg></span>
+        <span data-l="ar">في مصر</span><span data-l="en">in Egypt</span></span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var hdr = document.getElementById('hdr');
+  var onScroll = function(){ hdr.classList.toggle('scrolled', window.scrollY > 8); };
+  addEventListener('scroll', onScroll, { passive:true });
+  onScroll();
+
+  var y = document.getElementById('yr');
+  if (y) y.textContent = new Date().getFullYear();
+
+  // Language switch. Arabic is the document default and renders with JS off,
+  // so nothing here is load-bearing for readability — it only swaps which of
+  // the two already-present translations is shown, plus dir/lang on <html>.
+  var root = document.documentElement;
+  var btns = document.querySelectorAll('[data-set-lang]');
+
+  function apply(lang, persist){
+    lang = (lang === 'en') ? 'en' : 'ar';
+    root.setAttribute('lang', lang);
+    root.setAttribute('dir', lang === 'en' ? 'ltr' : 'rtl');
+    for (var i = 0; i < btns.length; i++){
+      btns[i].setAttribute('aria-pressed', String(btns[i].getAttribute('data-set-lang') === lang));
+    }
+    if (persist){ try { localStorage.setItem('thiqty-legal-lang', lang); } catch(e){} }
+  }
+
+  for (var i = 0; i < btns.length; i++){
+    btns[i].addEventListener('click', function(){
+      apply(this.getAttribute('data-set-lang'), true);
+      // Re-anchor after the swap so a deep link like #delete-account stays put
+      // when the visible block changes height.
+      if (location.hash){
+        var t = document.querySelector(location.hash);
+        if (t) t.scrollIntoView({ block:'start' });
+      }
+    });
+  }
+
+  // Precedence: explicit ?lang= in the URL, then a stored choice, then the
+  // browser's own preference. Never guess over an explicit instruction.
+  var q = null;
+  try { q = new URLSearchParams(location.search).get('lang'); } catch(e){}
+  var stored = null;
+  try { stored = localStorage.getItem('thiqty-legal-lang'); } catch(e){}
+  if (q === 'en' || q === 'ar') apply(q, false);
+  else if (stored) apply(stored, false);
+  else if (navigator.language && navigator.language.slice(0,2).toLowerCase() !== 'ar') apply('en', false);
+})();
+</script>
+</body>
+</html>

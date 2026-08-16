@@ -1,51 +1,67 @@
-// Pre-interview setup. Candidate provides the context Sarah/Ahmed needs to
-// run a tailored mock interview: company, job title, job description (from
-// the posting), optional CV upload, and a choice of HR gender.
+/**
+ * Pre-interview setup.
+ *
+ * Everything the interviewer needs before the call starts, in the order the
+ * candidate can actually answer it: what language the interview runs in, who
+ * is interviewing them, the field, the job, and optionally their CV.
+ *
+ * Language first, deliberately. It is the only choice on this screen that the
+ * candidate cannot change once the call begins — it drives the questions, the
+ * interviewer's synthesised voice, the speech recogniser's locale
+ * (`ar-EG` vs `en-US`) and the final written evaluation — so it is asked
+ * before anything else rather than buried under the job description.
+ *
+ * The CV upload is web-only: it needs a real `File` to put on the multipart
+ * body, and Expo's native build has no file picker wired up here yet.
+ */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, TextInput, Platform,
-  ActivityIndicator, Alert,
+  View, StyleSheet, Pressable, Platform, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
+import { useTranslation } from 'react-i18next';
+
 import { api, API_BASE } from '../api/client';
 import { secureStorage } from '../storage/secureStorage';
-import { Button } from '../components/Button';
+import { Screen, Text, Button, Card, Input } from '../components';
 import { useAppTheme } from '../theme/useTheme';
+import { categoryName } from './mainShared';
+import { PERSONA, personaAvatarUrl } from './interviewerPersona';
+import type { InterviewerGender } from './interviewerPersona';
+import type { SpeechLang } from '../speech/webSpeech';
 
 interface Category {
   id: number; nameAr: string; nameEn: string; isPremium: boolean;
 }
 
-interface CvKey {
-  full_name?: string;
-  years_of_experience?: number;
-  latest_role?: string;
-  top_skills?: string[];
-  highlights?: string[];
-  education?: string;
-  summary_ar?: string;
-}
+/** Server-side limit on the CV upload, mirrored here so the user is told
+ *  before a 5MB file crosses the wire only to be rejected. */
+const MAX_CV_MB = 5;
+const MAX_CV_BYTES = MAX_CV_MB * 1024 * 1024;
+
+const CV_ACCEPT = '.pdf,application/pdf,text/plain,.txt';
 
 export function MeetingSetupScreen({ route, navigation }: any) {
   const theme = useAppTheme();
-  const textBold = { fontFamily: theme.typography.fontFamilyBold };
-  const textRegular = { fontFamily: theme.typography.fontFamily };
+  const { t, i18n } = useTranslation();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number | null>(route.params?.categoryId ?? null);
   const [company, setCompany] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [jobDescription, setJobDescription] = useState('');
-  const [gender, setGender] = useState<'female' | 'male'>('female');
+  const [gender, setGender] = useState<InterviewerGender>('female');
+  /** Defaults to the app's current UI language — the language the candidate
+   *  has already told us they read in is the best guess at the one they want
+   *  to be interviewed in. */
+  const [language, setLanguage] = useState<SpeechLang>(i18n.language === 'en' ? 'en' : 'ar');
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvName, setCvName] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [cvKey, setCvKey] = useState<CvKey | null>(null);
-  const [cvSummary, setCvSummary] = useState<string | null>(null);
   const [cvError, setCvError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -57,35 +73,48 @@ export function MeetingSetupScreen({ route, navigation }: any) {
     [categories, categoryId],
   );
 
-  const pickFile = () => {
+  const pickFile = useCallback(() => {
     if (Platform.OS !== 'web') {
-      Alert.alert('تنبيه', 'رفع السيرة الذاتية متاح في نسخة الويب حاليًا.');
+      setCvError(t('meetingSetup.cvWebOnly'));
       return;
     }
     fileInputRef.current?.click();
-  };
+  }, [t]);
 
-  const onFilePicked = (e: any) => {
-    const f: File | undefined = e.target?.files?.[0];
-    if (!f) return;
-    if (f.size > 5 * 1024 * 1024) {
-      Alert.alert('الملف كبير', 'الحد الأقصى 5 ميجابايت.');
+  const onFilePicked = useCallback((e: any) => {
+    const file: File | undefined = e.target?.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_CV_BYTES) {
+      setCvError(t('meetingSetup.cvTooLarge', { mb: MAX_CV_MB }));
       return;
     }
-    setCvFile(f);
-    setCvName(f.name);
-    setCvKey(null);
-    setCvSummary(null);
+    setCvFile(file);
+    setCvName(file.name);
     setCvError(null);
-  };
+  }, [t]);
+
+  const clearFile = useCallback(() => {
+    setCvFile(null);
+    setCvName('');
+    setCvError(null);
+    // Without this the same file cannot be re-picked: the input keeps its
+    // value, so choosing it again fires no `change` event.
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
 
   const analyzeAndStart = useCallback(async () => {
     if (!categoryId) {
-      Alert.alert('اختيار القسم', 'اختر مجال المقابلة أولاً.');
+      setFormError(t('meetingSetup.pickCategory'));
       return;
     }
     setAnalyzing(true);
+    setFormError(null);
     setCvError(null);
+
+    // Held outside the try so the catch can prefer the server's own wording
+    // (quota, premium, unsupported CV) over the generic localised fallback,
+    // without leaking a raw "Failed to fetch" at the user.
+    let serverMessage: string | null = null;
 
     try {
       const token = await secureStorage.getItem('access_token');
@@ -94,7 +123,7 @@ export function MeetingSetupScreen({ route, navigation }: any) {
       form.append('company', company.trim());
       form.append('jobTitle', jobTitle.trim());
       form.append('jobDescription', jobDescription.trim());
-      form.append('language', 'ar');
+      form.append('language', language);
       if (cvFile) form.append('cv', cvFile);
 
       const res = await fetch(`${API_BASE}/meeting/prepare`, {
@@ -104,7 +133,8 @@ export function MeetingSetupScreen({ route, navigation }: any) {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        serverMessage = typeof body?.error === 'string' ? body.error : null;
+        throw new Error('prepare-failed');
       }
       const data = await res.json();
 
@@ -112,306 +142,551 @@ export function MeetingSetupScreen({ route, navigation }: any) {
 
       navigation.replace('Meeting', {
         categoryId,
-        categoryName: selectedCategory?.nameAr ?? 'مقابلة',
+        categoryName: categoryName(
+          selectedCategory,
+          i18n.language,
+          t('meetingSetup.defaultCategoryName'),
+        ),
+        // The call screen needs the choice for every API call, for the voice,
+        // and for the recogniser — it is not a display preference.
+        language,
         context: {
           ...data.context,
           gender,
         },
       });
-    } catch (err: any) {
-      Alert.alert('خطأ', err?.message || 'تعذّر بدء المقابلة');
+    } catch {
+      setFormError(serverMessage ?? t('meetingSetup.startFailed'));
     } finally {
       setAnalyzing(false);
     }
-  }, [categoryId, company, jobTitle, jobDescription, cvFile, gender, selectedCategory, navigation]);
+  }, [
+    categoryId, company, jobTitle, jobDescription, cvFile, gender, language,
+    selectedCategory, navigation, i18n.language, t,
+  ]);
+
+  const overlay = analyzing ? (
+    <View style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}>
+      <Card padding="lg" style={{ alignItems: 'center', gap: theme.spacing.md, minWidth: theme.layout.maxContentWidth / 3 }}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text role="h4" weight="bold" align="center">
+          {cvFile ? t('meetingSetup.preparingCv') : t('meetingSetup.preparing')}
+        </Text>
+        <Text role="caption" tone="muted" align="center">
+          {t('meetingSetup.preparingHint')}
+        </Text>
+      </Card>
+    </View>
+  ) : null;
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 18 }}>
-        {/* Header */}
-        <MotiView from={{ opacity: 0, translateY: 8 }} animate={{ opacity: 1, translateY: 0 }}>
-          <Text style={[styles.title, textBold, { color: theme.colors.text }]}>
-            جهّز مقابلتك
-          </Text>
-          <Text style={[styles.subtitle, textRegular, { color: theme.colors.textMuted }]}>
-            املأ تفاصيل الوظيفة لنحاكي مقابلة حقيقية، مخصصة لك ولمتطلبات الدور.
-          </Text>
-        </MotiView>
+    <Screen
+      scroll
+      keyboardAvoiding
+      edges={['bottom']}
+      contentStyle={{ gap: theme.spacing.lg, paddingTop: theme.spacing.lg }}
+      footer={overlay}
+    >
+      {/* Header */}
+      <MotiView
+        from={{ opacity: 0, translateY: theme.spacing.sm }}
+        animate={{ opacity: 1, translateY: 0 }}
+        transition={{ type: 'timing', duration: theme.motion.duration.normal }}
+        style={{ gap: theme.spacing.xs }}
+      >
+        <Text role="h1" weight="bold">{t('meetingSetup.title')}</Text>
+        <Text role="bodySm" tone="muted">{t('meetingSetup.subtitle')}</Text>
+      </MotiView>
 
-        {/* HR gender */}
-        <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.cardLabel, textBold, { color: theme.colors.text }]}>اختر مُجري المقابلة</Text>
-          <View style={styles.hrRow}>
-            <HRChoice
-              selected={gender === 'female'} onPress={() => setGender('female')}
-              name="سارة" role="مسؤولة موارد بشرية"
-              seed="sara-hr" color="#E85D75"
-            />
-            <HRChoice
-              selected={gender === 'male'} onPress={() => setGender('male')}
-              name="أحمد" role="مسؤول موارد بشرية"
-              seed="ahmed-hr" color="#2D6CE0"
-            />
-          </View>
+      {/* Interview language — first, because it is the one choice that cannot
+          be revisited once the call starts. */}
+      <Card padding="md" style={{ gap: theme.spacing.md }}>
+        <FieldHeader
+          icon="language-outline"
+          title={t('meetingSetup.language')}
+          hint={t('meetingSetup.languageHint')}
+        />
+        <View
+          style={[styles.tileRow, { gap: theme.spacing.md }]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('meetingSetup.language')}
+        >
+          <ChoiceTile
+            selected={language === 'ar'}
+            onPress={() => setLanguage('ar')}
+            title={t('meetingSetup.languageAr')}
+            subtitle={t('meetingSetup.languageArHint')}
+            a11yHint={t('meetingSetup.languageHint')}
+            accent={theme.colors.primary}
+            accentSurface={theme.colors.primaryMuted}
+            media={
+              <LanguageGlyph label={t('meetingSetup.languageArGlyph')} selected={language === 'ar'} />
+            }
+          />
+          <ChoiceTile
+            selected={language === 'en'}
+            onPress={() => setLanguage('en')}
+            title={t('meetingSetup.languageEn')}
+            subtitle={t('meetingSetup.languageEnHint')}
+            a11yHint={t('meetingSetup.languageHint')}
+            accent={theme.colors.primary}
+            accentSurface={theme.colors.primaryMuted}
+            media={
+              <LanguageGlyph label={t('meetingSetup.languageEnGlyph')} selected={language === 'en'} />
+            }
+          />
         </View>
+      </Card>
 
-        {/* Category */}
-        <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.cardLabel, textBold, { color: theme.colors.text }]}>مجال الوظيفة</Text>
-          <View style={styles.chipsWrap}>
-            {categories.map((c) => (
+      {/* Interviewer */}
+      <Card padding="md" style={{ gap: theme.spacing.md }}>
+        <FieldHeader
+          icon="person-circle-outline"
+          title={t('meetingSetup.interviewer')}
+          hint={t('meetingSetup.interviewerHint')}
+        />
+        <View
+          style={[styles.tileRow, { gap: theme.spacing.md }]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('meetingSetup.interviewer')}
+        >
+          <ChoiceTile
+            selected={gender === 'female'}
+            onPress={() => setGender('female')}
+            title={t('meeting.hrFemaleName')}
+            subtitle={t('meeting.hrFemaleRole')}
+            accent={PERSONA.female.color}
+            accentSurface={theme.colors.surfaceSunken}
+            media={<PersonaAvatar gender="female" />}
+          />
+          <ChoiceTile
+            selected={gender === 'male'}
+            onPress={() => setGender('male')}
+            title={t('meeting.hrMaleName')}
+            subtitle={t('meeting.hrMaleRole')}
+            accent={PERSONA.male.color}
+            accentSurface={theme.colors.surfaceSunken}
+            media={<PersonaAvatar gender="male" />}
+          />
+        </View>
+      </Card>
+
+      {/* Field */}
+      <Card padding="md" style={{ gap: theme.spacing.md }}>
+        <FieldHeader
+          icon="briefcase-outline"
+          title={t('meetingSetup.field')}
+          hint={t('meetingSetup.fieldHint')}
+        />
+        <View
+          style={[styles.chipsWrap, { gap: theme.spacing.sm }]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={t('meetingSetup.field')}
+        >
+          {categories.map((c) => {
+            const selected = categoryId === c.id;
+            const label = categoryName(c, i18n.language);
+            return (
               <Pressable
                 key={c.id}
-                onPress={() => setCategoryId(c.id)}
-                style={[
+                onPress={() => { setCategoryId(c.id); setFormError(null); }}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                accessibilityLabel={label}
+                style={({ pressed }) => [
                   styles.chip,
                   {
-                    backgroundColor: categoryId === c.id ? theme.colors.primary : theme.colors.bgMuted,
-                    borderColor: categoryId === c.id ? theme.colors.primary : theme.colors.border,
+                    gap: theme.spacing.xs,
+                    minHeight: theme.layout.control.sm,
+                    paddingVertical: theme.spacing.sm,
+                    paddingHorizontal: theme.spacing.lg,
+                    borderRadius: theme.radii.pill,
+                    borderWidth: 1.5,
+                    backgroundColor: selected ? theme.colors.primary : theme.colors.surfaceSunken,
+                    borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    opacity: pressed ? 0.85 : 1,
                   },
                 ]}
               >
-                <Text style={[
-                  textBold,
-                  { color: categoryId === c.id ? '#fff' : theme.colors.text, fontSize: 13 },
-                ]}>
-                  {c.nameAr}
+                <Text
+                  role="bodySm"
+                  weight="bold"
+                  tone="inherit"
+                  numberOfLines={1}
+                  style={{ color: selected ? theme.colors.onPrimary : theme.colors.text }}
+                >
+                  {label}
                 </Text>
-                {c.isPremium && <Ionicons name="star" size={11} color={categoryId === c.id ? '#fff' : theme.colors.accent} />}
+                {c.isPremium ? (
+                  <Ionicons
+                    name="star"
+                    size={theme.layout.icon.xs}
+                    color={selected ? theme.colors.onPrimary : theme.colors.accent}
+                  />
+                ) : null}
               </Pressable>
-            ))}
-          </View>
+            );
+          })}
         </View>
+      </Card>
 
-        {/* Company + job title */}
-        <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.cardLabel, textBold, { color: theme.colors.text }]}>تفاصيل الوظيفة</Text>
-
-          <Text style={[styles.fieldLabel, textRegular, { color: theme.colors.textMuted }]}>اسم الشركة</Text>
-          <TextInput
-            value={company}
-            onChangeText={setCompany}
-            placeholder="مثلاً: فودافون مصر"
-            placeholderTextColor={theme.colors.textMuted}
-            style={[styles.input, { backgroundColor: theme.colors.bgMuted, color: theme.colors.text, borderColor: theme.colors.border, fontFamily: theme.typography.fontFamily }]}
-          />
-
-          <Text style={[styles.fieldLabel, textRegular, { color: theme.colors.textMuted }]}>المسمى الوظيفي</Text>
-          <TextInput
-            value={jobTitle}
-            onChangeText={setJobTitle}
-            placeholder="مثلاً: Senior Backend Engineer"
-            placeholderTextColor={theme.colors.textMuted}
-            style={[styles.input, { backgroundColor: theme.colors.bgMuted, color: theme.colors.text, borderColor: theme.colors.border, fontFamily: theme.typography.fontFamily }]}
-          />
-
-          <Text style={[styles.fieldLabel, textRegular, { color: theme.colors.textMuted }]}>
-            وصف الوظيفة من الإعلان (اختياري، يحسّن الأسئلة بشدة)
-          </Text>
-          <TextInput
-            value={jobDescription}
-            onChangeText={setJobDescription}
-            placeholder="الصق هنا وصف الوظيفة من إعلان التوظيف..."
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            numberOfLines={6}
-            style={[
-              styles.input,
-              styles.textarea,
-              { backgroundColor: theme.colors.bgMuted, color: theme.colors.text, borderColor: theme.colors.border, fontFamily: theme.typography.fontFamily },
-            ]}
-          />
-        </View>
-
-        {/* CV upload */}
-        <View style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.cardLabel, textBold, { color: theme.colors.text }]}>السيرة الذاتية (اختياري)</Text>
-          <Text style={[styles.cardHint, textRegular, { color: theme.colors.textMuted }]}>
-            رفع CV يسمح للمحاور بربط أسئلته بخبراتك الفعلية. PDF أو TXT حتى 5MB.
-          </Text>
-
-          {Platform.OS === 'web' && (
-            // @ts-ignore web-only hidden input
-            <input
-              type="file"
-              accept=".pdf,application/pdf,text/plain,.txt"
-              ref={fileInputRef as any}
-              onChange={onFilePicked}
-              style={{ display: 'none' }}
-            />
-          )}
-
-          <Pressable
-            onPress={pickFile}
-            style={[styles.uploadBtn, { borderColor: theme.colors.border }]}
-          >
-            <Ionicons name={cvFile ? 'document-text' : 'cloud-upload-outline'} size={22} color={theme.colors.primary} />
-            <View style={{ flex: 1 }}>
-              <Text style={[textBold, { color: theme.colors.text }]}>
-                {cvFile ? cvName : 'اختر ملف CV للرفع'}
-              </Text>
-              {!cvFile && (
-                <Text style={[textRegular, { color: theme.colors.textMuted, fontSize: 12 }]}>
-                  سيُحلَّل تلقائيًا بعد الرفع
-                </Text>
-              )}
-            </View>
-            {cvFile && (
-              <Pressable
-                onPress={(e: any) => { e.stopPropagation?.(); setCvFile(null); setCvName(''); setCvKey(null); }}
-                hitSlop={10}
-              >
-                <Ionicons name="close-circle" size={22} color={theme.colors.textMuted} />
-              </Pressable>
-            )}
-          </Pressable>
-
-          {cvError && (
-            <View style={[styles.cvErrBox, { backgroundColor: theme.colors.danger + '15', borderColor: theme.colors.danger + '40' }]}>
-              <Ionicons name="alert-circle" size={16} color={theme.colors.danger} />
-              <Text style={[textRegular, { color: theme.colors.danger, fontSize: 13, flex: 1 }]}>
-                {cvError}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* CTA */}
-        <Button
-          title={analyzing ? 'جاري التحضير...' : 'ابدأ المقابلة المحاكاة'}
-          onPress={analyzeAndStart}
-          loading={analyzing}
-          disabled={!categoryId}
-          iconLeft={<Ionicons name="videocam" size={20} color="#fff" />}
-          size="lg"
+      {/* Job details */}
+      <Card padding="md" style={{ gap: theme.spacing.md }}>
+        <FieldHeader
+          icon="document-text-outline"
+          title={t('meetingSetup.details')}
+          hint={t('meetingSetup.detailsHint')}
         />
 
-        <Text style={[textRegular, { color: theme.colors.textMuted, textAlign: 'center', fontSize: 11 }]}>
-          كلما كانت التفاصيل أدق، كانت المقابلة أقرب للواقع.
-        </Text>
-      </ScrollView>
+        <Input
+          label={t('meetingSetup.company')}
+          value={company}
+          onChangeText={setCompany}
+          placeholder={t('meetingSetup.companyPlaceholder')}
+          iconLeft="business-outline"
+        />
 
-      {analyzing && (
-        <View style={styles.overlay}>
-          <View style={[styles.overlayCard, { backgroundColor: theme.colors.surface }]}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={[textBold, { color: theme.colors.text, fontSize: 15 }]}>
-              {cvFile ? 'جاري تحليل سيرتك الذاتية...' : 'جاري التحضير...'}
+        <Input
+          label={t('meetingSetup.jobTitle')}
+          value={jobTitle}
+          onChangeText={setJobTitle}
+          placeholder={t('meetingSetup.jobTitlePlaceholder')}
+          iconLeft="pricetag-outline"
+        />
+
+        <Input
+          label={t('meetingSetup.jobDescription')}
+          helperText={t('meetingSetup.jobDescriptionHint')}
+          value={jobDescription}
+          onChangeText={setJobDescription}
+          placeholder={t('meetingSetup.jobDescriptionPlaceholder')}
+          multiline
+          numberOfLines={6}
+          style={{
+            minHeight: theme.layout.control.lg * 2,
+            paddingTop: theme.spacing.md,
+            paddingBottom: theme.spacing.md,
+            textAlignVertical: 'top',
+          }}
+        />
+      </Card>
+
+      {/* CV */}
+      <Card padding="md" style={{ gap: theme.spacing.md }}>
+        <FieldHeader
+          icon="cloud-upload-outline"
+          title={t('meetingSetup.cv')}
+          hint={t('meetingSetup.cvHint', { mb: MAX_CV_MB })}
+        />
+
+        {Platform.OS === 'web' ? (
+          // @ts-ignore — web-only hidden input; RN has no equivalent element
+          <input
+            type="file"
+            accept={CV_ACCEPT}
+            ref={fileInputRef as any}
+            onChange={onFilePicked}
+            style={{ display: 'none' }}
+          />
+        ) : null}
+
+        <Pressable
+          onPress={pickFile}
+          accessibilityRole="button"
+          accessibilityLabel={cvFile ? cvName : t('meetingSetup.cvPick')}
+          accessibilityHint={t('meetingSetup.cvPickHint')}
+          style={({ pressed }) => [
+            styles.upload,
+            {
+              gap: theme.spacing.md,
+              minHeight: theme.layout.control.lg,
+              paddingVertical: theme.spacing.md,
+              paddingHorizontal: theme.spacing.md,
+              borderRadius: theme.radii.md,
+              borderWidth: 1.5,
+              borderColor: cvFile ? theme.colors.primaryBorder : theme.colors.border,
+              backgroundColor: cvFile ? theme.colors.primaryMuted : theme.colors.surfaceSunken,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          <Ionicons
+            name={cvFile ? 'document-text' : 'cloud-upload-outline'}
+            size={theme.layout.icon.lg}
+            color={theme.colors.primary}
+          />
+          <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+            <Text role="bodySm" weight="bold" numberOfLines={1}>
+              {cvFile ? cvName : t('meetingSetup.cvPick')}
             </Text>
-            <Text style={[textRegular, { color: theme.colors.textMuted, fontSize: 12, textAlign: 'center' }]}>
-              المحاور يقرأ التفاصيل ويُحضّر الأسئلة
+            <Text role="micro" tone="muted" numberOfLines={1}>
+              {cvFile ? t('meetingSetup.cvReady') : t('meetingSetup.cvPickHint')}
             </Text>
           </View>
-        </View>
-      )}
-    </SafeAreaView>
+          {cvFile ? (
+            <Pressable
+              onPress={clearFile}
+              hitSlop={theme.spacing.sm}
+              accessibilityRole="button"
+              accessibilityLabel={t('meetingSetup.cvRemove')}
+            >
+              <Ionicons name="close-circle" size={theme.layout.icon.lg} color={theme.colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </Pressable>
+
+        {cvError ? <Notice tone="warning" text={cvError} /> : null}
+      </Card>
+
+      {formError ? <Notice tone="danger" text={formError} /> : null}
+
+      <Button
+        title={analyzing ? t('meetingSetup.ctaLoading') : t('meetingSetup.cta')}
+        onPress={analyzeAndStart}
+        loading={analyzing}
+        disabled={!categoryId}
+        iconLeft={<Ionicons name="videocam" size={theme.layout.icon.md} color={theme.colors.onPrimary} />}
+        size="lg"
+      />
+
+      <Text role="micro" tone="muted" align="center">
+        {t('meetingSetup.footnote')}
+      </Text>
+    </Screen>
   );
 }
 
-// ---- HR avatar choice card ----
+/* ------------------------------------------------------------------ *
+ * Pieces
+ * ------------------------------------------------------------------ */
 
-function HRChoice({
-  selected, onPress, name, role, seed, color,
-}: { selected: boolean; onPress: () => void; name: string; role: string; seed: string; color: string }) {
+/** Card heading: icon, label, and the one line explaining why it matters. */
+function FieldHeader({
+  icon, title, hint,
+}: { icon: keyof typeof Ionicons.glyphMap; title: string; hint?: string }) {
   const theme = useAppTheme();
-  // DiceBear "personas" gives friendly pro avatars, free, no CORS issues.
-  const avatarUrl = `https://api.dicebear.com/7.x/personas/svg?seed=${seed}&backgroundColor=${color.replace('#', '')}&radius=50`;
+
+  return (
+    <View style={[styles.row, { gap: theme.spacing.md, alignItems: 'flex-start' }]}>
+      <View
+        style={[
+          styles.center,
+          {
+            width: theme.layout.avatar.sm,
+            height: theme.layout.avatar.sm,
+            borderRadius: theme.radii.sm,
+            backgroundColor: theme.colors.primaryMuted,
+          },
+        ]}
+      >
+        <Ionicons name={icon} size={theme.layout.icon.md} color={theme.colors.primary} />
+      </View>
+      <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+        <Text role="h4" weight="bold">{title}</Text>
+        {hint ? <Text role="caption" tone="muted">{hint}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * One option in a two-up selector — used for both the interview language and
+ * the interviewer. `accent` is the ring/check colour: the theme primary for
+ * language, the persona's own identity colour for the HR picker, so the tile
+ * previews exactly the avatar the candidate will meet on the call.
+ */
+function ChoiceTile({
+  selected, onPress, title, subtitle, media, accent, accentSurface, a11yHint,
+}: {
+  selected: boolean;
+  onPress: () => void;
+  title: string;
+  subtitle?: string;
+  media: ReactNode;
+  accent: string;
+  accentSurface: string;
+  a11yHint?: string;
+}) {
+  const theme = useAppTheme();
 
   return (
     <Pressable
       onPress={onPress}
-      style={[
-        styles.hrCard,
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={title}
+      accessibilityHint={a11yHint ?? subtitle}
+      style={({ pressed }) => [
+        styles.tile,
         {
-          backgroundColor: theme.colors.bgMuted,
-          borderColor: selected ? color : theme.colors.border,
-          borderWidth: selected ? 2 : 1,
+          gap: theme.spacing.xs,
+          paddingVertical: theme.spacing.lg,
+          paddingHorizontal: theme.spacing.md,
+          borderRadius: theme.radii.md,
+          borderWidth: 1.5,
+          borderColor: selected ? accent : theme.colors.border,
+          backgroundColor: selected ? accentSurface : theme.colors.surface,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
         },
       ]}
     >
-      {Platform.OS === 'web'
-        // @ts-ignore — native img renders SVG avatar directly
-        ? <img src={avatarUrl} alt={name} width={72} height={72} style={{ borderRadius: 36 }} />
-        : <View style={[styles.hrFallback, { backgroundColor: color }]}><Text style={{ color: '#fff', fontSize: 24 }}>{name[0]}</Text></View>
-      }
-      <Text style={[{ fontFamily: theme.typography.fontFamilyBold, color: theme.colors.text, fontSize: 15, marginTop: 8 }]}>
-        {name}
+      {media}
+      <Text role="bodySm" weight={selected ? 'bold' : 'regular'} align="center" numberOfLines={1}>
+        {title}
       </Text>
-      <Text style={[{ fontFamily: theme.typography.fontFamily, color: theme.colors.textMuted, fontSize: 11 }]}>
-        {role}
-      </Text>
-      {selected && (
-        <View style={[styles.hrCheck, { backgroundColor: color }]}>
-          <Ionicons name="checkmark" size={14} color="#fff" />
+      {subtitle ? (
+        <Text role="micro" tone="muted" align="center" numberOfLines={2}>
+          {subtitle}
+        </Text>
+      ) : null}
+
+      {selected ? (
+        <View
+          style={[
+            styles.check,
+            styles.center,
+            {
+              top: theme.spacing.sm,
+              start: theme.spacing.sm,
+              width: theme.layout.icon.lg,
+              height: theme.layout.icon.lg,
+              borderRadius: theme.radii.pill,
+              backgroundColor: accent,
+            },
+          ]}
+        >
+          <Ionicons name="checkmark" size={theme.layout.icon.xs} color={theme.colors.onBrandText} />
         </View>
-      )}
+      ) : null}
     </Pressable>
   );
 }
 
+/**
+ * The language tile's "media" slot: the language's own name in its own script.
+ * A flag would be wrong here — Arabic is not one country's language, and
+ * English is not the UK's.
+ */
+function LanguageGlyph({ label, selected }: { label: string; selected: boolean }) {
+  const theme = useAppTheme();
+
+  return (
+    <View
+      style={[
+        styles.center,
+        {
+          width: theme.layout.avatar.lg,
+          height: theme.layout.avatar.lg,
+          borderRadius: theme.radii.pill,
+          backgroundColor: selected ? theme.colors.primary : theme.colors.surfaceSunken,
+        },
+      ]}
+    >
+      <Text
+        role="h3"
+        weight="bold"
+        tone="inherit"
+        style={{ color: selected ? theme.colors.onPrimary : theme.colors.textSecondary }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/** The DiceBear avatar, with an initial-circle fallback where `img` has no home. */
+function PersonaAvatar({ gender }: { gender: InterviewerGender }) {
+  const theme = useAppTheme();
+  const { t } = useTranslation();
+  const name = t(gender === 'male' ? 'meeting.hrMaleName' : 'meeting.hrFemaleName');
+  // Same token as the language tile's glyph circle, so the two selectors read
+  // as one control rather than two differently-sized ones.
+  const size = theme.layout.avatar.lg;
+
+  if (Platform.OS === 'web') {
+    return (
+      // @ts-ignore — the avatar is an SVG over HTTP; a plain <img> renders it
+      // without pulling in an SVG loader.
+      <img
+        src={personaAvatarUrl(gender)}
+        alt={name}
+        width={size}
+        height={size}
+        style={{ width: size, height: size, borderRadius: '50%', display: 'block' }}
+      />
+    );
+  }
+
+  return (
+    <View
+      style={[
+        styles.center,
+        {
+          width: size,
+          height: size,
+          borderRadius: theme.radii.pill,
+          backgroundColor: PERSONA[gender].color,
+        },
+      ]}
+    >
+      <Text role="h2" weight="bold" tone="inherit" style={{ color: theme.colors.onBrandText }}>
+        {name.slice(0, 1)}
+      </Text>
+    </View>
+  );
+}
+
+/** Inline message. Used instead of `Alert.alert`, which react-native-web maps
+ *  onto `window.alert` — a modal the candidate has to dismiss to keep typing. */
+function Notice({ tone, text }: { tone: 'danger' | 'warning'; text: string }) {
+  const theme = useAppTheme();
+  const ink = tone === 'danger' ? theme.colors.danger : theme.colors.warning;
+  const fill = tone === 'danger' ? theme.colors.dangerMuted : theme.colors.warningMuted;
+
+  return (
+    <View
+      accessibilityRole="alert"
+      style={[
+        styles.row,
+        {
+          gap: theme.spacing.sm,
+          alignItems: 'flex-start',
+          padding: theme.spacing.md,
+          borderRadius: theme.radii.md,
+          backgroundColor: fill,
+          borderWidth: theme.layout.hairline,
+          borderColor: ink,
+        },
+      ]}
+    >
+      <Ionicons
+        name={tone === 'danger' ? 'alert-circle' : 'information-circle'}
+        size={theme.layout.icon.md}
+        color={ink}
+      />
+      <Text role="bodySm" flex tone="inherit" style={{ color: ink }}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Layout-only styles — every colour, size and gap is applied inline from
+ * the theme so this screen stays token-driven.
+ * ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
-  safe: { flex: 1 },
-
-  title: { fontSize: 26, letterSpacing: -0.3 },
-  subtitle: { fontSize: 14, marginTop: 6, lineHeight: 22 },
-
-  card: {
-    borderRadius: 16, padding: 16, gap: 10,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  cardLabel: { fontSize: 15, marginBottom: 4 },
-  cardHint: { fontSize: 12, marginBottom: 4 },
-
-  hrRow: { flexDirection: 'row', gap: 12 },
-  hrCard: {
-    flex: 1, alignItems: 'center',
-    paddingVertical: 16, paddingHorizontal: 12,
-    borderRadius: 14, position: 'relative',
-  },
-  hrFallback: {
-    width: 72, height: 72, borderRadius: 36,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  hrCheck: {
-    position: 'absolute', top: 10, left: 10,
-    width: 24, height: 24, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingVertical: 8, paddingHorizontal: 14,
-    borderRadius: 999, borderWidth: 1,
-  },
-
-  fieldLabel: { fontSize: 12, marginTop: 8 },
-  input: {
-    borderWidth: 1, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 15, minHeight: 48,
-    textAlign: 'right',
-  },
-  textarea: { minHeight: 120, textAlignVertical: 'top', paddingTop: 12 },
-
-  uploadBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 14, paddingHorizontal: 14,
-    borderWidth: 2, borderStyle: 'dashed', borderRadius: 12,
-  },
-
-  cvErrBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    padding: 10, borderRadius: 10,
-    borderWidth: 1, marginTop: 6,
-  },
-
+  row: { flexDirection: 'row', alignItems: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  tileRow: { flexDirection: 'row' },
+  tile: { flex: 1, alignItems: 'center', position: 'relative', overflow: 'hidden' },
+  check: { position: 'absolute' },
+  chipsWrap: { flexDirection: 'row', flexWrap: 'wrap' },
+  chip: { flexDirection: 'row', alignItems: 'center' },
+  upload: { flexDirection: 'row', alignItems: 'center' },
   overlay: {
     position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',
-  },
-  overlayCard: {
-    minWidth: 280, padding: 28, borderRadius: 20, alignItems: 'center', gap: 12,
   },
 });

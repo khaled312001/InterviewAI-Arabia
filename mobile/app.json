@@ -1,49 +1,116 @@
 {
   "expo": {
-    "name": "InterviewAI Arabia",
-    "slug": "interviewai-arabia",
-    "version": "0.1.0",
+    "name": "ثقتي",
+    "slug": "thiqty",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "interviewai",
+    "scheme": "thiqty",
     "userInterfaceStyle": "automatic",
+    "primaryColor": "#2D73FD",
     "splash": {
       "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0F5AA8"
+      "resizeMode": "cover",
+      "backgroundColor": "#2D73FD"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "tech.barmagly.interviewai"
+      "bundleIdentifier": "com.thiqty.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "نحتاج الميكروفون لتسجيل إجاباتك أثناء المقابلة التدريبية.",
+        "NSCameraUsageDescription": "نحتاج الكاميرا لعرض صورتك أثناء المقابلة المباشرة بالفيديو.",
+        "CFBundleAllowMixedLocalizations": true
+      }
     },
     "android": {
-      "package": "tech.barmagly.interviewai",
+      "package": "com.thiqty.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F5AA8"
+        "backgroundColor": "#2D73FD",
+        "monochromeImage": "./assets/monochrome-icon.png"
       },
-      "permissions": ["INTERNET", "ACCESS_NETWORK_STATE", "com.android.vending.BILLING"]
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "CAMERA",
+        "VIBRATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "softwareKeyboardLayoutMode": "pan",
+      "allowBackup": false
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "name": "InterviewAI Arabia",
-      "shortName": "InterviewAI",
+      "name": "ثقتي — Thiqty",
+      "shortName": "ثقتي",
       "lang": "ar",
-      "themeColor": "#0F5AA8",
-      "backgroundColor": "#0F5AA8",
-      "description": "مدرّب المقابلات الوظيفية بالذكاء الاصطناعي — شركة برمجلي"
+      "themeColor": "#2D73FD",
+      "backgroundColor": "#F7F9FC",
+      "favicon": "./assets/favicon.png",
+      "description": "ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي. تدرّب، اتقيّم، واتوظّف."
     },
     "plugins": [
       "expo-localization",
       "expo-secure-store",
-      "expo-font"
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Cairo-Regular.ttf",
+            "./assets/fonts/Cairo-Bold.ttf"
+          ]
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "يستخدم \"ثقتي\" الكاميرا لعرض صورتك أثناء المقابلة التدريبية ولتسجيلها لمراجعتك أنت فقط.",
+          "microphonePermission": "يستخدم \"ثقتي\" الميكروفون لسماع إجاباتك أثناء المقابلة وتحويلها إلى نص لتقييمها.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "يستخدم \"ثقتي\" الميكروفون للتعرّف على إجاباتك أثناء المقابلة.",
+          "speechRecognitionPermission": "يستخدم \"ثقتي\" التعرّف على الكلام لتحويل إجاباتك إلى نص وتقييمها.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "يحفظ \"ثقتي\" تسجيل مقابلتك في معرض الوسائط لتتمكّن من مراجعته.",
+          "savePhotosPermission": "يحفظ \"ثقتي\" تسجيل مقابلتك في معرض الوسائط.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "يستخدم \"ثقتي\" الميكروفون لقياس مستوى صوتك أثناء المقابلة."
+        }
+      ]
     ],
     "extra": {
-      "apiBaseUrl": "https://intervie-ai-arabia.barmagly.tech/api",
-      "eas": { "projectId": "REPLACE_WITH_EAS_PROJECT_ID" }
+      "apiBaseUrl": "https://interview.khaledahmed.net/api",
+      "webAppUrl": "https://interview.khaledahmed.net",
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
     }
   }
 }

@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+logs/
+stderr.log
+tmp/
+ecosystem.config.cjs
+public/

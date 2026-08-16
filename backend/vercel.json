@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm install --include=dev",
+  "functions": {
+    "api/index.js": {
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": "node_modules/.prisma/**"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/(.*)",     "destination": "/api/index.js" }
+  ],
+  "crons": [
+    { "path": "/api/cron/daily", "schedule": "0 22 * * *" }
+  ]
+}

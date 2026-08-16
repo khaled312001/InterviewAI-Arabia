@@ -1,0 +1,391 @@
+// Prisma schema — InterviewAI Arabia
+//
+// Target: MySQL 8 on Hostinger, served by a single long-running Node process
+// behind LiteSpeed/Passenger. The query engine runs in "library" mode with
+// TOKIO_WORKER_THREADS=1 (see server.cjs) — spawning a child process for the
+// engine is restricted on this box and panics at runtime otherwise.
+
+generator client {
+  provider      = "prisma-client-js"
+  engineType    = "library"
+  // Hostinger's CloudLinux ships OpenSSL 1.1.x with Node 20; list the 1.1.x
+  // targets first so Prisma picks a matching engine instead of panicking.
+  binaryTargets = ["native", "rhel-openssl-1.1.x", "rhel-openssl-3.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------- enums -------------------------------
+
+enum Language {
+  ar
+  en
+}
+
+enum Plan {
+  free
+  premium
+}
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+enum SubscriptionStatus {
+  pending
+  active
+  expired
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+  expired
+}
+
+enum PaymentProvider {
+  easykash
+  paymob
+  google_play
+  manual
+}
+
+enum AdminRole {
+  super_admin
+  moderator
+  content_editor
+}
+
+enum SessionKind {
+  practice
+  meeting
+}
+
+// ------------------------------- models ------------------------------
+
+model User {
+  id                 BigInt    @id @default(autoincrement())
+  email              String    @unique @db.VarChar(191)
+  passwordHash       String    @map("password_hash") @db.VarChar(255)
+  name               String    @db.VarChar(120)
+  // EasyKash requires a mobile number on the billing payload. Optional here
+  // because existing accounts predate it; collected at checkout time.
+  phone              String?   @db.VarChar(32)
+  language           Language  @default(ar)
+  plan               Plan      @default(free)
+  dailyQuestionsUsed Int       @default(0) @map("daily_questions_used")
+  // Stored as a plain DATE in Africa/Cairo terms, not UTC — the "day" a user
+  // experiences is their local day. See services/quota.js.
+  lastResetDate      DateTime? @map("last_reset_date") @db.Date
+  // Denormalised mirror of the newest active subscription's expiry so the
+  // hot path (every answer submission) never joins subscriptions.
+  premiumUntil       DateTime? @map("premium_until")
+  isDisabled         Boolean   @default(false) @map("is_disabled")
+  emailVerifiedAt    DateTime? @map("email_verified_at")
+  lastLoginAt        DateTime? @map("last_login_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  sessions        Session[]
+  subscriptions   Subscription[]
+  payments        Payment[]
+  reports         AnswerReport[]
+  passwordResets  PasswordReset[]
+  refreshTokens   RefreshToken[]
+
+  @@index([plan, premiumUntil])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  nameAr      String   @map("name_ar") @db.VarChar(120)
+  nameEn      String   @map("name_en") @db.VarChar(120)
+  descriptionAr String? @map("description_ar") @db.VarChar(500)
+  descriptionEn String? @map("description_en") @db.VarChar(500)
+  icon        String?  @db.VarChar(64)
+  isPremium   Boolean  @default(false) @map("is_premium")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  questions Question[]
+  sessions  Session[]
+
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+model Question {
+  id         BigInt     @id @default(autoincrement())
+  categoryId Int        @map("category_id")
+  questionAr String     @map("question_ar") @db.Text
+  questionEn String     @map("question_en") @db.Text
+  difficulty Difficulty @default(medium)
+  usageCount Int        @default(0) @map("usage_count")
+  isActive   Boolean    @default(true) @map("is_active")
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+
+  @@index([categoryId, isActive, difficulty])
+  @@index([categoryId, isActive, usageCount])
+  @@map("questions")
+}
+
+model Session {
+  id         BigInt      @id @default(autoincrement())
+  userId     BigInt      @map("user_id")
+  categoryId Int         @map("category_id")
+  kind       SessionKind @default(practice)
+  totalScore Int         @default(0) @map("total_score")
+  // Denormalised so History/Stats never need a COUNT subquery per row.
+  answerCount Int        @default(0) @map("answer_count")
+  startedAt  DateTime    @default(now()) @map("started_at")
+  endedAt    DateTime?   @map("ended_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+  answers  Answer[]
+
+  @@index([userId, startedAt])
+  @@index([userId, kind, startedAt])
+  @@map("sessions")
+}
+
+model Answer {
+  id         BigInt   @id @default(autoincrement())
+  sessionId  BigInt   @map("session_id")
+  // Nullable: live "meeting" answers are free-form and have no row in
+  // `questions`. The old code pointed these at a hardcoded question id 1,
+  // which is a foreign key lie that corrupts per-question usage stats.
+  questionId BigInt?  @map("question_id")
+  questionText String? @map("question_text") @db.Text
+  userAnswer String   @map("user_answer") @db.Text
+  aiScore    Int?     @map("ai_score")
+  aiFeedback String?  @map("ai_feedback") @db.LongText
+  tokensUsed Int?     @map("tokens_used")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  session  Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question?      @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  reports  AnswerReport[]
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("answers")
+}
+
+// ---------------------------- monetisation ----------------------------
+
+model Subscription {
+  id          BigInt             @id @default(autoincrement())
+  userId      BigInt             @map("user_id")
+  provider    PaymentProvider    @default(easykash)
+  // The gateway's own reference for this subscription/order. Replaces the
+  // old `google_purchase_token`, which forced every provider through a
+  // Google-Play-shaped column.
+  providerRef String             @unique @map("provider_ref") @db.VarChar(191)
+  planCode    String             @map("plan_code") @db.VarChar(64)
+  status      SubscriptionStatus @default(pending)
+  autoRenew   Boolean            @default(false) @map("auto_renew")
+  startedAt   DateTime           @default(now()) @map("started_at")
+  expiresAt   DateTime           @map("expires_at")
+  cancelledAt DateTime?          @map("cancelled_at")
+  rawPayload  String?            @map("raw_payload") @db.LongText
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+  @@map("subscriptions")
+}
+
+/// One row per payment attempt. This is the audit trail the old schema had
+/// no room for — reconciliation, refunds, and failed attempts all need it.
+model Payment {
+  id             BigInt          @id @default(autoincrement())
+  userId         BigInt          @map("user_id")
+  subscriptionId BigInt?         @map("subscription_id")
+  provider       PaymentProvider @default(easykash)
+  /// Our own reference, sent to the gateway and echoed back on the webhook.
+  /// This is what makes a webhook matchable to a user without trusting
+  /// anything user-controlled in the callback body.
+  reference      String          @unique @map("reference") @db.VarChar(191)
+  /// The gateway's transaction id, known only after payment.
+  providerTxnId  String?         @map("provider_txn_id") @db.VarChar(191)
+  planCode       String          @map("plan_code") @db.VarChar(64)
+  /// Integer minor units (piastres for EGP). Never store money as a float.
+  amountCents    Int             @map("amount_cents")
+  currency       String          @default("EGP") @db.VarChar(8)
+  status         PaymentStatus   @default(pending)
+  method         String?         @db.VarChar(64)
+  failureReason  String?         @map("failure_reason") @db.VarChar(500)
+  paidAt         DateTime?       @map("paid_at")
+  refundedAt     DateTime?       @map("refunded_at")
+  rawPayload     String?         @map("raw_payload") @db.LongText
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([providerTxnId])
+  @@map("payments")
+}
+
+/// Webhook de-duplication. Gateways retry aggressively and will happily
+/// deliver the same success event several times; without this a user could
+/// be granted (or charged for) the same month repeatedly.
+model WebhookEvent {
+  id          BigInt          @id @default(autoincrement())
+  provider    PaymentProvider
+  /// Provider event id, or a hash of the payload when none is supplied.
+  externalId  String          @map("external_id") @db.VarChar(191)
+  payload     String          @db.LongText
+  processedAt DateTime?       @map("processed_at")
+  error       String?         @db.VarChar(500)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@unique([provider, externalId])
+  @@index([createdAt])
+  @@map("webhook_events")
+}
+
+// ------------------------------- auth --------------------------------
+
+/// Refresh tokens are stored hashed so a database leak can't be replayed,
+/// and so logout / "sign out everywhere" can actually revoke a session.
+/// The old build issued stateless refresh JWTs with no revocation path.
+model RefreshToken {
+  id        BigInt    @id @default(autoincrement())
+  userId    BigInt    @map("user_id")
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  userAgent String?   @map("user_agent") @db.VarChar(255)
+  ip        String?   @db.VarChar(64)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        BigInt    @id @default(autoincrement())
+  userId    BigInt    @map("user_id")
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("password_resets")
+}
+
+model AdminUser {
+  id           BigInt    @id @default(autoincrement())
+  email        String    @unique @db.VarChar(191)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  name         String    @db.VarChar(120)
+  role         AdminRole @default(moderator)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  auditLogs AdminAuditLog[]
+
+  @@map("admin_users")
+}
+
+/// Every state-changing admin action. Without this there is no way to tell
+/// which admin disabled an account, deleted a question, or issued a refund.
+model AdminAuditLog {
+  id         BigInt   @id @default(autoincrement())
+  adminId    BigInt   @map("admin_id")
+  action     String   @db.VarChar(64)
+  entityType String   @map("entity_type") @db.VarChar(64)
+  entityId   String?  @map("entity_id") @db.VarChar(64)
+  metadata   String?  @db.Text
+  ip         String?  @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt])
+  @@index([entityType, entityId])
+  @@map("admin_audit_logs")
+}
+
+model AnswerReport {
+  id         BigInt   @id @default(autoincrement())
+  answerId   BigInt   @map("answer_id")
+  reporterId BigInt   @map("reporter_id")
+  reason     String   @db.VarChar(255)
+  resolved   Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  answer   Answer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  reporter User   @relation(fields: [reporterId], references: [id])
+
+  @@index([resolved, createdAt])
+  @@map("answer_reports")
+}
+
+// ------------------------------ telemetry -----------------------------
+
+/// Kept at the original table name (`claude_api_logs`) so the live database
+/// needs no data migration, but widened: we now track which product feature
+/// spent the tokens and what it cost, which is what makes per-user cost caps
+/// and margin reporting possible.
+model AiUsageLog {
+  id            BigInt   @id @default(autoincrement())
+  userId        BigInt?  @map("user_id")
+  provider      String   @default("claude") @db.VarChar(32)
+  model         String   @db.VarChar(64)
+  feature       String   @default("evaluate") @db.VarChar(32)
+  inputTokens   Int      @map("input_tokens")
+  outputTokens  Int      @map("output_tokens")
+  cacheReadTokens  Int   @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int   @default(0) @map("cache_write_tokens")
+  /// Cost in micro-USD (1e-6 USD) — integer maths, no float drift.
+  costMicroUsd  Int      @default(0) @map("cost_micro_usd")
+  latencyMs     Int      @map("latency_ms")
+  success       Boolean  @default(true)
+  errorMessage  String?  @map("error_message") @db.VarChar(500)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([feature, createdAt])
+  @@map("claude_api_logs")
+}
+
+model AppSetting {
+  key       String   @id @db.VarChar(100)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}

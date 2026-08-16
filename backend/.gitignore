@@ -1,0 +1,28 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
+
+logs/
+stderr.log
+*.log
+tmp/
+.pm2/
+
+# Vercel local
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Prisma generated client lives in node_modules/.prisma — already ignored.
+backend/public/
+public/

@@ -1,0 +1,20 @@
+{
+  "name": "ثقتي — Thiqty",
+  "short_name": "ثقتي",
+  "description": "أول مدرّب مقابلات عربي بالذكاء الاصطناعي — تدرّب، اتقيّم، واتوظّف.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080D1A",
+  "theme_color": "#2D73FD",
+  "categories": ["education", "productivity", "business"],
+  "icons": [
+    { "src": "/favicon.png", "sizes": "64x64", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/logo-mark.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/logo-mark.png", "sizes": "256x256", "type": "image/png", "purpose": "maskable" }
+  ]
+}

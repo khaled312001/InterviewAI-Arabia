@@ -6,9 +6,14 @@ import axios from 'axios';
 // admin SPA is served from the legacy single-domain Hostinger box.
 // Override via VITE_API_BASE_URL at build time.
 const BACKEND_VERCEL = 'https://interview-ai-arabia-backend.vercel.app/api';
+// Hosts where the backend serves the admin SPA AND the API same-origin.
+const SAME_ORIGIN_HOSTS = [
+  'interview.khaledahmed.net',
+  'intervie-ai-arabia.barmagly.tech',
+];
 const fallback =
   typeof window !== 'undefined' &&
-  window.location?.hostname === 'intervie-ai-arabia.barmagly.tech'
+  SAME_ORIGIN_HOSTS.includes(window.location?.hostname)
     ? '/api'
     : BACKEND_VERCEL;
 
