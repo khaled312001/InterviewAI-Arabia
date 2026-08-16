@@ -17,6 +17,18 @@ const BY_STATUS: Record<number, string> = {
 };
 
 /**
+ * Stable `code`s from backend HttpError. A code is more specific than its
+ * status, so it wins: a 400 for "premium needs an expiry date" must not read
+ * as the generic "بيانات غير صالحة".
+ */
+const BY_CODE: Record<string, string> = {
+  PREMIUM_UNTIL_REQUIRED: 'منح الاشتراك المميز يتطلب تاريخ انتهاء في المستقبل',
+  USER_HAS_REPORTS: 'لا يمكن حذف هذا المستخدم لأنه قدّم بلاغات — عطّل الحساب بدلًا من ذلك',
+  ADMIN_SELF_ACTION: 'لا يمكنك تعديل دورك أو حالتك أو حذف حسابك بنفسك',
+  LAST_SUPER_ADMIN: 'لا يمكن خفض أو تعطيل أو حذف آخر مدير عام نشط',
+};
+
+/**
  * Reads `data.error` first — that is the shape backend/src/middleware/errorHandler.js
  * actually returns; `data.message` is only a fallback for upstream proxies.
  */
@@ -33,9 +45,10 @@ export function parseApiError(err: unknown): ParsedApiError {
     if (!err.response) {
       return { messageAr: 'تعذّر الاتصال بالخادم', code };
     }
-    // A `code` means the backend chose this message deliberately (HttpError's
-    // 4th argument) and it is already Arabic — e.g. CATEGORY_IN_USE says why
-    // the delete was refused, which the generic 409 copy would erase.
+    // A known code has a translation here; codes whose backend message is
+    // already Arabic fall through to it verbatim — e.g. CATEGORY_IN_USE says
+    // why the delete was refused, which the generic 409 copy would erase.
+    if (code && BY_CODE[code]) return { status, messageAr: BY_CODE[code], code };
     if (code && serverMessage) return { status, messageAr: serverMessage, code };
     if (status && BY_STATUS[status]) return { status, messageAr: BY_STATUS[status], code };
     if (status && status >= 500) return { status, messageAr: 'خطأ في الخادم', code };

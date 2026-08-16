@@ -19,6 +19,7 @@
 
 import { prisma } from '../db/prisma.js';
 import { env } from '../config/env.js';
+import { freeDailyLimit } from './appSettings.js';
 import { HttpError } from '../utils/asyncHandler.js';
 
 const APP_TZ = 'Africa/Cairo';
@@ -56,7 +57,7 @@ export function hasPremium(user, now = new Date()) {
  */
 export async function consumeQuota(userId, cost = 1) {
   const today = cairoToday();
-  const limit = env.FREE_DAILY_QUESTION_LIMIT;
+  const limit = freeDailyLimit();
   const now = new Date();
 
   // One UPDATE that simultaneously: rolls the counter over if the stored reset
@@ -145,8 +146,8 @@ export async function quotaSnapshot(user) {
     plan: premium ? 'premium' : 'free',
     premiumUntil: user.premiumUntil ?? null,
     used,
-    limit: premium ? null : env.FREE_DAILY_QUESTION_LIMIT,
-    remaining: premium ? null : Math.max(0, env.FREE_DAILY_QUESTION_LIMIT - used),
+    limit: premium ? null : freeDailyLimit(),
+    remaining: premium ? null : Math.max(0, freeDailyLimit() - used),
   };
 }
 

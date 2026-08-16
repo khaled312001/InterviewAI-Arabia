@@ -15,6 +15,7 @@
  */
 
 import { env } from '../../config/env.js';
+import { cfg } from '../secrets/store.js';
 import { logger } from '../../utils/logger.js';
 import { prisma } from '../../db/prisma.js';
 import { costMicroUsd } from './pricing.js';
@@ -42,8 +43,8 @@ export class AiUnavailableError extends Error {
  * ------------------------------------------------------------------ */
 
 function pickProvider() {
-  if (!env.AI_ENABLED) return null;
-  const preferred = (env.AI_PROVIDER || 'claude').toLowerCase();
+  if (!cfg('AI_ENABLED')) return null;
+  const preferred = String(cfg('AI_PROVIDER') || 'claude').toLowerCase();
   const available = {
     claude: claudeConfigured(),
     gemini: geminiConfigured(),
@@ -62,8 +63,8 @@ export function aiStatus() {
     enabled: Boolean(provider),
     provider,
     model: provider === 'claude'
-      ? env.CLAUDE_MODEL
-      : env.AI_MODEL || (provider === 'gemini' ? 'gemini-flash-latest' : 'llama-3.3-70b-versatile'),
+      ? cfg('CLAUDE_MODEL')
+      : cfg('AI_MODEL') || (provider === 'gemini' ? 'gemini-flash-latest' : 'llama-3.3-70b-versatile'),
   };
 }
 
@@ -125,7 +126,7 @@ async function run({ feature, userId, system, systemExtra, messages, schema, max
     });
     await record({
       userId, provider, feature,
-      usage: { model: provider === 'claude' ? env.CLAUDE_MODEL : env.AI_MODEL || provider },
+      usage: { model: provider === 'claude' ? cfg('CLAUDE_MODEL') : cfg('AI_MODEL') || provider },
       success: false,
       errorMessage: err.message,
     });

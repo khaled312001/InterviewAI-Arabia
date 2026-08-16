@@ -17,17 +17,18 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../../config/env.js';
+import { cfg } from '../secrets/store.js';
 import { logger } from '../../utils/logger.js';
 
 let client = null;
 
 function getClient() {
   if (client) return client;
-  if (!env.ANTHROPIC_API_KEY) {
+  if (!cfg('ANTHROPIC_API_KEY')) {
     throw new Error('ANTHROPIC_API_KEY is not set');
   }
   client = new Anthropic({
-    apiKey: env.ANTHROPIC_API_KEY,
+    apiKey: cfg('ANTHROPIC_API_KEY'),
     // The SDK retries 408/409/429/5xx and connection errors with exponential
     // backoff. The old fetch() calls had no retry at all, so a single 529
     // (Anthropic overloaded) surfaced to the user as a failed interview.
@@ -40,7 +41,7 @@ function getClient() {
 }
 
 export function isConfigured() {
-  return Boolean(env.ANTHROPIC_API_KEY);
+  return Boolean(cfg('ANTHROPIC_API_KEY'));
 }
 
 /**
@@ -63,7 +64,7 @@ export async function callClaude({
   schema,
   maxTokens = 4096,
   effort = 'low',
-  model = env.CLAUDE_MODEL,
+  model = cfg('CLAUDE_MODEL'),
 }) {
   const anthropic = getClient();
 

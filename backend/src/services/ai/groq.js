@@ -14,13 +14,14 @@
  */
 
 import { env } from '../../config/env.js';
+import { cfg } from '../secrets/store.js';
 
 const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const TIMEOUT_MS = 30_000;
 const MAX_ATTEMPTS = 3;
 
 export function isConfigured() {
-  return Boolean(env.GROQ_API_KEY);
+  return Boolean(cfg('GROQ_API_KEY'));
 }
 
 /** Retry only on transient failures; a 400 will never succeed on retry. */
@@ -36,7 +37,7 @@ export async function callGroq({
   messages,
   schema,
   maxTokens = 2048,
-  model = env.AI_MODEL || 'llama-3.3-70b-versatile',
+  model = cfg('AI_MODEL') || 'llama-3.3-70b-versatile',
 }) {
   if (!isConfigured()) throw new Error('GROQ_API_KEY is not set');
 
@@ -70,7 +71,7 @@ export async function callGroq({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${env.GROQ_API_KEY}`,
+          Authorization: `Bearer ${cfg('GROQ_API_KEY')}`,
         },
         body: JSON.stringify(body),
         signal: controller.signal,

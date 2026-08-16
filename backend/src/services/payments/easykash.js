@@ -30,17 +30,18 @@
 
 import crypto from 'node:crypto';
 import { env } from '../../config/env.js';
+import { cfg } from '../secrets/store.js';
 import { logger } from '../../utils/logger.js';
 
 const TIMEOUT_MS = 20_000;
 
 export function isConfigured() {
-  return Boolean(env.EASYKASH_ENABLED && env.EASYKASH_API_KEY);
+  return Boolean(cfg('EASYKASH_ENABLED') && cfg('EASYKASH_API_KEY'));
 }
 
 /** True when we can cryptographically verify callbacks. */
 export function canVerifyWebhooks() {
-  return Boolean(env.EASYKASH_WEBHOOK_SECRET);
+  return Boolean(cfg('EASYKASH_WEBHOOK_SECRET'));
 }
 
 /* ------------------------------------------------------------------ *
@@ -79,7 +80,7 @@ export async function createPayment({
     throw err;
   }
 
-  const url = `${env.EASYKASH_BASE_URL.replace(/\/$/, '')}${env.EASYKASH_PAY_PATH}`;
+  const url = `${String(cfg('EASYKASH_BASE_URL')).replace(/\/$/, '')}${cfg('EASYKASH_PAY_PATH')}`;
 
   const body = {
     // EasyKash expects a decimal amount in EGP (not minor units) on Direct Pay.
@@ -87,7 +88,7 @@ export async function createPayment({
     currency: 'EGP',
     // Which methods to offer on the hosted page. Configurable because the set
     // enabled on a merchant account varies (card / Fawry / wallets / kiosk).
-    paymentOptions: env.EASYKASH_PAYMENT_OPTIONS,
+    paymentOptions: cfg('EASYKASH_PAYMENT_OPTIONS'),
     name: customer.name?.slice(0, 100) || 'Customer',
     email: customer.email,
     mobile: normaliseEgyptianMobile(customer.phone),
@@ -105,7 +106,7 @@ export async function createPayment({
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: env.EASYKASH_API_KEY,
+        Authorization: cfg('EASYKASH_API_KEY'),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -164,10 +165,10 @@ export async function createPayment({
  * differ in length — a classic way to turn a failed check into a 500).
  */
 export function verifySignature(payload, providedSignature) {
-  if (!env.EASYKASH_WEBHOOK_SECRET) return { valid: false, reason: 'no_secret_configured' };
+  if (!cfg('EASYKASH_WEBHOOK_SECRET')) return { valid: false, reason: 'no_secret_configured' };
   if (!providedSignature) return { valid: false, reason: 'missing_signature' };
 
-  const fields = env.EASYKASH_SIGNATURE_FIELDS;
+  const fields = cfg('EASYKASH_SIGNATURE_FIELDS');
   const concat = fields
     .map((f) => {
       const v = f.split('.').reduce((o, k) => (o == null ? undefined : o[k]), payload);
@@ -176,7 +177,7 @@ export function verifySignature(payload, providedSignature) {
     .join('');
 
   const expected = crypto
-    .createHmac(env.EASYKASH_SIGNATURE_ALGO, env.EASYKASH_WEBHOOK_SECRET)
+    .createHmac(cfg('EASYKASH_SIGNATURE_ALGO'), cfg('EASYKASH_WEBHOOK_SECRET'))
     .update(concat)
     .digest('hex');
 

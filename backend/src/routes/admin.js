@@ -6,7 +6,7 @@ import { prisma } from '../db/prisma.js';
 import { query, queryOne } from '../db/mysql.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { requireAdmin, signAdminToken } from '../middleware/auth.js';
-import { auditAdminMutations } from '../services/audit.js';
+import { auditAdminMutations } from '../middleware/auditLog.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -198,7 +198,22 @@ router.patch('/users/:id', requireAdmin('super_admin', 'moderator'), asyncHandle
 }));
 
 router.delete('/users/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
-  await prisma.user.delete({ where: { id: bigId(req.params.id, 'user id') } });
+  try {
+    await prisma.user.delete({ where: { id: bigId(req.params.id, 'user id') } });
+  } catch (err) {
+    // answer_reports.reporter_id is a Restrict relation (schema.prisma:353), so
+    // a user who ever filed a report cannot be deleted. Unhandled this surfaced
+    // as a generic 500 with no way to tell what went wrong.
+    if (err?.code === 'P2003') {
+      throw new HttpError(
+        409,
+        'This user has filed moderation reports and cannot be deleted; disable the account instead',
+        undefined,
+        'USER_HAS_REPORTS'
+      );
+    }
+    throw err;
+  }
   res.json({ ok: true });
 }));
 
@@ -1163,37 +1178,114 @@ router.get('/ai-usage', requireAdmin(), asyncHandler(async (req, res) => {
 
 /* -----------------------  content moderation  ---------------------- */
 
-router.get('/reports', requireAdmin(), asyncHandler(async (_req, res) => {
-  const reports = await query(
-    `SELECT r.id, r.answer_id AS answerId, r.reporter_id AS reporterId,
-            r.reason, r.resolved, r.created_at AS createdAt,
-            a.user_answer AS answerText, a.ai_score AS aiScore,
-            q.id AS questionId, q.question_ar AS questionAr,
-            u.email AS reporterEmail
-     FROM answer_reports r
-     JOIN answers a ON a.id = r.answer_id
-     JOIN questions q ON q.id = a.question_id
-     JOIN users u ON u.id = r.reporter_id
-     ORDER BY r.created_at DESC LIMIT 100`
-  );
+/**
+ * The moderation queue.
+ *
+ * `answers.question_id` is nullable — live "meeting" answers are free-form and
+ * have no row in `questions` — so the old INNER JOIN on `questions` silently
+ * dropped every report filed against a meeting answer. A moderator could not
+ * see them, could not resolve them, and had no way to know they existed. The
+ * join is now LEFT, and the prompt falls back to `answers.question_text`.
+ *
+ * Read is restricted to the two roles that can act on it: rows carry a user's
+ * verbatim answer text, which a content_editor has no reason to read.
+ */
+router.get('/reports', requireAdmin('super_admin', 'moderator'), asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+
+  const clauses = [];
+  const params = [];
+
+  // Backed by @@index([resolved, createdAt]).
+  const status = (req.query.status || '').toString();
+  if (status === 'open') clauses.push('r.resolved = 0');
+  else if (status === 'resolved') clauses.push('r.resolved = 1');
+
+  const q = (req.query.q || '').toString().trim();
+  if (q) {
+    clauses.push('(r.reason LIKE ? OR u.email LIKE ? OR a.user_answer LIKE ?)');
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const [reports, countRow, openRow] = await Promise.all([
+    query(
+      `SELECT r.id, r.answer_id AS answerId, r.reporter_id AS reporterId,
+              r.reason, r.resolved, r.created_at AS createdAt,
+              a.user_answer AS answerText, a.ai_score AS aiScore,
+              a.created_at AS answeredAt,
+              s.id AS sessionId, s.kind AS sessionKind,
+              q.id AS questionId,
+              COALESCE(q.question_ar, a.question_text) AS questionText,
+              u.email AS reporterEmail, u.name AS reporterName
+       FROM answer_reports r
+       LEFT JOIN answers a ON a.id = r.answer_id
+       LEFT JOIN sessions s ON s.id = a.session_id
+       LEFT JOIN questions q ON q.id = a.question_id
+       LEFT JOIN users u ON u.id = r.reporter_id
+       ${where}
+       ORDER BY r.resolved ASC, r.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    ),
+    queryOne(
+      `SELECT COUNT(*) AS n FROM answer_reports r
+       LEFT JOIN answers a ON a.id = r.answer_id
+       LEFT JOIN users u ON u.id = r.reporter_id ${where}`,
+      params
+    ),
+    queryOne('SELECT COUNT(*) AS n FROM answer_reports WHERE resolved = 0'),
+  ]);
+
   for (const r of reports) {
     r.resolved = !!r.resolved;
     r.answer = {
-      id: r.answerId, userAnswer: r.answerText, aiScore: r.aiScore,
-      question: { id: r.questionId, questionAr: r.questionAr },
+      id: r.answerId,
+      userAnswer: r.answerText,
+      aiScore: r.aiScore === null || r.aiScore === undefined ? null : Number(r.aiScore),
+      answeredAt: r.answeredAt ?? null,
+      sessionId: r.sessionId ?? null,
+      sessionKind: r.sessionKind ?? null,
+      question: {
+        id: r.questionId ?? null,
+        text: r.questionText ?? null,
+        // Says where the prompt came from, so the COALESCE above cannot be
+        // mistaken for a catalogue question that no longer exists.
+        source: r.questionId ? 'catalogue' : 'meeting',
+      },
     };
-    r.reporter = { id: r.reporterId, email: r.reporterEmail };
-    delete r.answerText; delete r.questionId; delete r.questionAr; delete r.reporterEmail; delete r.aiScore;
+    r.reporter = { id: r.reporterId, email: r.reporterEmail, name: r.reporterName };
+    delete r.answerText; delete r.answeredAt; delete r.aiScore;
+    delete r.sessionId; delete r.sessionKind;
+    delete r.questionId; delete r.questionText;
+    delete r.reporterEmail; delete r.reporterName;
   }
-  res.json({ reports });
+
+  res.json({
+    reports,
+    page,
+    limit,
+    total: Number(countRow?.n || 0),
+    openCount: Number(openRow?.n || 0),
+  });
 }));
 
+/**
+ * Resolve, or reopen. A queue whose only action is irreversible turns a misclick
+ * into permanent data loss, so `resolved` is an explicit boolean.
+ */
 router.post('/reports/:id/resolve', requireAdmin('super_admin', 'moderator'), asyncHandler(async (req, res) => {
-  await prisma.answerReport.update({
-    where: { id: BigInt(req.params.id) },
-    data: { resolved: true },
-  });
-  res.json({ ok: true });
+  const { resolved } = z.object({ resolved: z.boolean().default(true) }).parse(req.body ?? {});
+  const id = bigId(req.params.id, 'report id');
+
+  const existing = await prisma.answerReport.findUnique({ where: { id } });
+  if (!existing) throw new HttpError(404, 'Report not found');
+
+  const report = await prisma.answerReport.update({ where: { id }, data: { resolved } });
+  res.json({ ok: true, report: { id: report.id.toString(), resolved: report.resolved } });
 }));
 
 /* ---------------------------  settings  ----------------------------- */
@@ -1324,6 +1416,109 @@ router.delete('/admins/:id', requireAdmin('super_admin'), asyncHandler(async (re
 
   await prisma.adminUser.delete({ where: { id } });
   res.json({ ok: true });
+}));
+
+/* ---------------------------  audit log  ---------------------------- */
+
+/**
+ * The accountability surface for everything above. `admin_audit_logs` is
+ * written by middleware/auditLog.js on every successful admin mutation, and by
+ * services/audit.js transactionally where losing the trail is unacceptable.
+ *
+ * Facets are derived from the rows actually present rather than hardcoded, so
+ * the filters cannot drift out of step with the actions being recorded.
+ */
+router.get('/audit', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+
+  const clauses = [];
+  const params = [];
+
+  const action = (req.query.action || '').toString().trim();
+  if (action) { clauses.push('l.action = ?'); params.push(action); }
+
+  const entityType = (req.query.entityType || '').toString().trim();
+  if (entityType) { clauses.push('l.entity_type = ?'); params.push(entityType); }
+
+  const adminId = (req.query.adminId || '').toString().trim();
+  if (adminId) {
+    clauses.push('l.admin_id = ?');
+    params.push(bigId(adminId, 'admin id').toString());
+  }
+
+  if (req.query.from) {
+    const from = new Date(String(req.query.from));
+    if (Number.isNaN(from.getTime())) throw new HttpError(400, 'Invalid from date');
+    clauses.push('l.created_at >= ?');
+    params.push(from);
+  }
+  if (req.query.to) {
+    const to = new Date(String(req.query.to));
+    if (Number.isNaN(to.getTime())) throw new HttpError(400, 'Invalid to date');
+    clauses.push('l.created_at <= ?');
+    params.push(to);
+  }
+
+  const q = (req.query.q || '').toString().trim();
+  if (q) {
+    clauses.push('(l.entity_id LIKE ? OR l.ip LIKE ? OR a.email LIKE ? OR a.name LIKE ?)');
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const [logs, countRow, actions, entityTypes, admins] = await Promise.all([
+    query(
+      `SELECT l.id, l.admin_id AS adminId, l.action, l.entity_type AS entityType,
+              l.entity_id AS entityId, l.metadata, l.ip, l.created_at AS createdAt,
+              a.name AS adminName, a.email AS adminEmail, a.role AS adminRole
+       FROM admin_audit_logs l
+       LEFT JOIN admin_users a ON a.id = l.admin_id
+       ${where}
+       ORDER BY l.created_at DESC, l.id DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    ),
+    queryOne(
+      `SELECT COUNT(*) AS n FROM admin_audit_logs l
+       LEFT JOIN admin_users a ON a.id = l.admin_id ${where}`,
+      params
+    ),
+    query('SELECT DISTINCT action FROM admin_audit_logs ORDER BY action ASC'),
+    query('SELECT DISTINCT entity_type AS entityType FROM admin_audit_logs ORDER BY entity_type ASC'),
+    query(
+      `SELECT DISTINCT l.admin_id AS id, a.name, a.email
+       FROM admin_audit_logs l
+       LEFT JOIN admin_users a ON a.id = l.admin_id
+       ORDER BY a.name ASC`
+    ),
+  ]);
+
+  for (const l of logs) {
+    // The admin row is gone once the account is deleted (ON DELETE CASCADE
+    // removes their rows, but a re-pointed id would still read null): say so
+    // rather than rendering a blank author.
+    l.admin = l.adminName || l.adminEmail
+      ? { id: l.adminId, name: l.adminName, email: l.adminEmail, role: l.adminRole }
+      : null;
+    delete l.adminName; delete l.adminEmail; delete l.adminRole;
+  }
+
+  res.json({
+    logs,
+    page,
+    limit,
+    total: Number(countRow?.n || 0),
+    facets: {
+      actions: actions.map((r) => r.action),
+      entityTypes: entityTypes.map((r) => r.entityType),
+      admins: admins
+        .filter((r) => r.id !== null && r.id !== undefined)
+        .map((r) => ({ id: String(r.id), name: r.name, email: r.email })),
+    },
+  });
 }));
 
 export default router;

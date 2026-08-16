@@ -141,7 +141,10 @@ export function auditAdminMutations() {
       res.json = originalJson; // never re-enter
       const ok = res.statusCode >= 200 && res.statusCode < 300;
       const adminId = req.admin?.id;
-      if (!ok || !adminId) return originalJson(payload);
+      // A handler that writes its own audit row inside its transaction sets
+      // this: the derived-from-the-URL row would be a strictly worse duplicate
+      // (`integrations.EASYKASH_API_KEY` with a null entity id).
+      if (!ok || !adminId || req.skipAutoAudit) return originalJson(payload);
 
       const { action, entityType, entityId } = describeRequest(req.method, req.path);
       withTimeout(

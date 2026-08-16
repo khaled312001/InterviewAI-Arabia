@@ -8,12 +8,19 @@ export const qk = {
     me: () => ['admin', 'auth', 'me'] as const,
   },
   analytics: {
-    overview: () => ['admin', 'analytics', 'overview'] as const,
-    popularCategories: () => ['admin', 'analytics', 'popular-categories'] as const,
+    overview: (range: Record<string, unknown>) => ['admin', 'analytics', 'overview', range] as const,
+    popularCategories: (range: Record<string, unknown>) =>
+      ['admin', 'analytics', 'popular-categories', range] as const,
+    timeseries: (range: Record<string, unknown>) => ['admin', 'analytics', 'timeseries', range] as const,
+    attention: () => ['admin', 'analytics', 'attention'] as const,
   },
   users: {
+    /** Prefix every user query shares, so one mutation invalidates all of them. */
+    all: () => ['admin', 'users'] as const,
     list: (params: Record<string, unknown>) => ['admin', 'users', 'list', params] as const,
-    sessions: (id: string) => ['admin', 'users', id, 'sessions'] as const,
+    detail: (id: string) => ['admin', 'users', id, 'detail'] as const,
+    sessions: (id: string, params: Record<string, unknown>) =>
+      ['admin', 'users', id, 'sessions', params] as const,
   },
   questions: {
     list: (params: Record<string, unknown>) => ['admin', 'questions', 'list', params] as const,
@@ -40,7 +47,8 @@ export const qk = {
     all: () => ['admin', 'integrations'] as const,
   },
   admins: {
-    list: () => ['admin', 'admins', 'list'] as const,
+    all: () => ['admin', 'admins'] as const,
+    list: (params: Record<string, unknown>) => ['admin', 'admins', 'list', params] as const,
   },
   audit: {
     list: (params: Record<string, unknown>) => ['admin', 'audit', 'list', params] as const,

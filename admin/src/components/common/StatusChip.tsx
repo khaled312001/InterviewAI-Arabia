@@ -8,7 +8,7 @@ export type Tone = 'neutral' | 'brand' | 'gold' | 'success' | 'warning' | 'error
 
 export type StatusKind =
   | 'plan' | 'subscription' | 'role' | 'active' | 'reportStatus' | 'aiResult' | 'source' | 'env'
-  | 'difficulty' | 'payment' | 'paymentProvider' | 'planCode' | 'custom';
+  | 'difficulty' | 'payment' | 'paymentProvider' | 'planCode' | 'sessionKind' | 'custom';
 
 export interface StatusChipProps {
   kind: StatusKind;
@@ -46,6 +46,10 @@ const MAPS: Record<Exclude<StatusKind, 'custom'>, Record<string, Entry>> = {
   active: {
     true: { label: 'مفعّل', tone: 'success' },
     false: { label: 'موقوف', tone: 'neutral' },
+  },
+  sessionKind: {
+    practice: { label: 'تدريب', tone: 'neutral' },
+    meeting: { label: 'مقابلة', tone: 'brand' },
   },
   reportStatus: {
     true: { label: 'تمت المعالجة', tone: 'success' },

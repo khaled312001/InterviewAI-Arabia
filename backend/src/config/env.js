@@ -80,6 +80,14 @@ const schema = z.object({
 
   CRON_SECRET: z.string().optional().default(''),
 
+  /**
+   * Master key for the AES-256-GCM envelope over `provider_credentials`.
+   * Optional: it falls back to JWT_SECRET so the integrations pages work on a
+   * deployment that has not set it. Set it in production — otherwise rotating
+   * JWT_SECRET silently makes every stored provider key undecryptable.
+   */
+  CREDENTIALS_SECRET: z.string().optional().default(''),
+
   /** Expose /api/diag. Off by default — it reveals which secrets are set. */
   DIAG_ENABLED: bool(false),
   DIAG_TOKEN: z.string().optional().default(''),

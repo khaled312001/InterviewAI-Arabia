@@ -10,6 +10,7 @@ import { paymentLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import { PLANS, getPlan, planList, computeExpiry } from '../services/payments/plans.js';
 import * as easykash from '../services/payments/easykash.js';
+import { cfg } from '../services/secrets/store.js';
 
 const router = Router();
 
@@ -160,7 +161,7 @@ router.post('/webhook', asyncHandler(async (req, res) => {
   // Signature. Mandatory whenever a secret is configured; refusing to verify
   // is not an option in production.
   if (easykash.canVerifyWebhooks()) {
-    const sigHeader = env.EASYKASH_SIGNATURE_HEADER;
+    const sigHeader = cfg('EASYKASH_SIGNATURE_HEADER');
     const provided =
       (sigHeader && req.get(sigHeader)) ||
       body.signatureHash || body.signature || body.hmac;

@@ -389,3 +389,26 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+/**
+ * Integration credentials — deliberately NOT app_settings.
+ *
+ * GET /admin/settings returns every app_settings row in the clear to every
+ * admin role, content_editor included. Putting the EasyKash API key there
+ * would hand it to the lowest-privileged account in the system. This table is
+ * super_admin-only, secrets are AES-256-GCM encrypted with the key name bound
+ * in as AAD, and no endpoint ever returns `valueEnc`.
+ */
+model ProviderCredential {
+  key        String   @id @db.VarChar(100)
+  /** Secrets are encrypted into valueEnc; clear config lives in valuePlain. */
+  isSecret   Boolean  @default(true) @map("is_secret")
+  valueEnc   String?  @map("value_enc") @db.Text
+  valuePlain String?  @map("value_plain") @db.Text
+  /** The only fragment of a secret any response may contain. */
+  last4      String?  @db.VarChar(8)
+  updatedBy  BigInt?  @map("updated_by")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("provider_credentials")
+}

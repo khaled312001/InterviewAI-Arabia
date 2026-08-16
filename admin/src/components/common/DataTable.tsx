@@ -26,10 +26,20 @@ export interface DataTableProps<R extends GridValidRowModel> {
   /** The whole react-query result — every state is derived from it. */
   query: Pick<UseQueryResult, 'isLoading' | 'isFetching' | 'isError' | 'error' | 'refetch'>;
 
-  paginationModel: GridPaginationModel;
-  onPaginationModelChange: (model: GridPaginationModel) => void;
-  /** The backend's `total`. Client paging over a truncated page is banned. */
-  rowCount: number | undefined;
+  /**
+   * `'server'` (the default) requires the three props below — client paging
+   * over a truncated page is banned.
+   *
+   * `'none'` is for endpoints that return one complete, bounded result set
+   * (a top-N leaderboard). The footer is hidden rather than rendered as an
+   * inert control, and sorting still works client-side because every row is
+   * present.
+   */
+  paginationMode?: 'server' | 'none';
+  paginationModel?: GridPaginationModel;
+  onPaginationModelChange?: (model: GridPaginationModel) => void;
+  /** The backend's `total`. Required for `paginationMode="server"`. */
+  rowCount?: number | undefined;
   pageSizeOptions?: number[];
 
   /**

@@ -7,7 +7,8 @@
 // from the method and path, so the trail cannot rot when a handler is
 // rewritten and no destructive action goes unrecorded by omission.
 
-import { logAudit } from '../services/audit.js';
+import { prisma } from '../db/prisma.js';
+import { logger } from '../utils/logger.js';
 
 /** Anything whose key looks like a credential never reaches the log. */
 const SECRET_KEY = /(password|passwd|secret|token|api[-_]?key|authorization|credential|signature)/i;
@@ -96,6 +97,29 @@ function withTimeout(promise, ms) {
 }
 
 /**
+ * Deliberately self-contained rather than delegating to services/audit.js:
+ * that module is the transactional writer used by handlers that must roll back
+ * when their audit row fails. This one is best-effort and must never throw —
+ * losing a trail entry is bad, failing the operation it describes is worse.
+ */
+async function writeRow({ adminId, action, entityType, entityId, metadata, ip }) {
+  try {
+    await prisma.adminAuditLog.create({
+      data: {
+        adminId: typeof adminId === 'bigint' ? adminId : BigInt(adminId),
+        action: String(action).slice(0, 64),
+        entityType: String(entityType).slice(0, 64),
+        entityId: entityId === null || entityId === undefined ? null : String(entityId).slice(0, 64),
+        metadata: metadata ? JSON.stringify(metadata).slice(0, 4000) : null,
+        ip: ip ? String(ip).slice(0, 64) : null,
+      },
+    });
+  } catch (err) {
+    logger.warn('audit write failed', { action, message: err?.message });
+  }
+}
+
+/**
  * The audit write is awaited *before* the response is flushed rather than on
  * `res.on('finish')`: on Vercel the function can be frozen the instant the
  * response is sent, which would silently drop the row we just decided to write.
@@ -117,7 +141,7 @@ export function auditAdminMutations() {
 
       const { action, entityType, entityId } = describeRequest(req.method, req.path);
       withTimeout(
-        logAudit({ adminId, action, entityType, entityId, metadata, ip: clientIp(req) }),
+        writeRow({ adminId, action, entityType, entityId, metadata, ip: clientIp(req) }),
         AUDIT_WRITE_TIMEOUT_MS,
       ).then(() => originalJson(payload));
       return res;

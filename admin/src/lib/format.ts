@@ -90,6 +90,57 @@ export function formatRelative(date: Date, now: Date = new Date()): string {
   return formatAbsolute(date);
 }
 
+/* ----------------------------- calendar days -----------------------------
+ * Analytics windows are Cairo calendar days, matching the backend's day
+ * boundary. A plain 'YYYY-MM-DD' is the only form passed over the wire — it
+ * carries no time and therefore cannot be shifted by the browser's zone.
+ */
+
+const YMD = new Intl.DateTimeFormat('en-CA', {
+  timeZone: TIMEZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** Today's date in the product's timezone, as 'YYYY-MM-DD'. */
+export function todayYmd(at: Date = new Date()): string {
+  return YMD.format(at);
+}
+
+export function addDaysYmd(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** First day of the Cairo month that `ymd` falls in. */
+export function startOfMonthYmd(ymd: string): string {
+  return `${ymd.slice(0, 7)}-01`;
+}
+
+export function daysBetweenYmd(from: string, to: string): number {
+  const a = Date.parse(`${from}T00:00:00.000Z`);
+  const b = Date.parse(`${to}T00:00:00.000Z`);
+  return Math.round((b - a) / 86_400_000);
+}
+
+/** A bare 'YYYY-MM-DD' rendered in Arabic. Parsed as UTC and formatted as UTC
+ *  so the calendar day never shifts by a timezone it does not carry. */
+export function formatYmd(
+  ymd: string,
+  options: Intl.DateTimeFormatOptions = { dateStyle: 'medium' },
+): string {
+  const d = new Date(`${ymd}T00:00:00.000Z`);
+  if (Number.isNaN(d.getTime())) return ymd;
+  return new Intl.DateTimeFormat(LOCALE, { timeZone: 'UTC', ...options }).format(d);
+}
+
+/** Compact axis tick for a daily series — day + short month. */
+export function formatYmdShort(ymd: string): string {
+  return formatYmd(ymd, { day: 'numeric', month: 'short' });
+}
+
 /** Truncates a Latin identifier in the middle so both ends stay readable. */
 export function truncateMiddle(value: string, max = 18): string {
   if (value.length <= max) return value;

@@ -23,7 +23,9 @@ interface BaseOptions {
   sortable?: boolean;
 }
 
-export function textCol<R extends GridValidRowModel>(o: BaseOptions & { mono?: boolean }): GridColDef<R> {
+export function textCol<R extends GridValidRowModel>(
+  o: BaseOptions & { mono?: boolean; copyable?: boolean; maxChars?: number },
+): GridColDef<R> {
   return {
     field: o.field,
     headerName: o.headerName,
@@ -34,7 +36,9 @@ export function textCol<R extends GridValidRowModel>(o: BaseOptions & { mono?: b
     align: 'left',
     headerAlign: 'left',
     renderCell: o.mono
-      ? ({ value }) => <Mono value={value as string} />
+      ? ({ value }) => (
+          <Mono value={value as string} copyable={o.copyable} maxChars={o.maxChars} />
+        )
       : ({ value }) => (
           <Typography variant="body2" noWrap>
             {(value as string) || '—'}
@@ -61,7 +65,15 @@ export function numCol<R extends GridValidRowModel>(
 }
 
 export function moneyCol<R extends GridValidRowModel>(
-  o: BaseOptions & Pick<MoneyProps, 'currency' | 'unit' | 'precision' | 'approximate'>,
+  o: BaseOptions &
+    Pick<MoneyProps, 'currency' | 'unit' | 'precision' | 'approximate'> & {
+      /**
+       * Row field holding this row's ISO currency. Rows can differ (payments
+       * store their own `currency`), and labelling a USD row "ج.م" would be a
+       * lie — so the row wins over the column default when present.
+       */
+      currencyField?: string;
+    },
 ): GridColDef<R> {
   return {
     field: o.field,
@@ -73,16 +85,23 @@ export function moneyCol<R extends GridValidRowModel>(
     type: 'number',
     align: 'left',
     headerAlign: 'left',
-    renderCell: ({ value }) => (
-      <Money
-        amount={value as number}
-        currency={o.currency}
-        unit={o.unit}
-        precision={o.precision}
-        approximate={o.approximate}
-        variant="body2"
-      />
-    ),
+    renderCell: ({ value, row }) => {
+      const rowCurrency = o.currencyField
+        ? (row as Record<string, unknown>)[o.currencyField]
+        : undefined;
+      return (
+        <Money
+          amount={value as number}
+          currency={
+            (typeof rowCurrency === 'string' ? rowCurrency : o.currency) as MoneyProps['currency']
+          }
+          unit={o.unit}
+          precision={o.precision}
+          approximate={o.approximate}
+          variant="body2"
+        />
+      );
+    },
   };
 }
 
@@ -105,7 +124,18 @@ export function dateCol<R extends GridValidRowModel>(
 }
 
 export function chipCol<R extends GridValidRowModel>(
-  o: BaseOptions & { kind: StatusKind; tone?: Tone; tooltip?: (row: R) => string | undefined },
+  o: BaseOptions & {
+    kind: StatusKind;
+    tone?: Tone;
+    tooltip?: (row: R) => string | undefined;
+    /**
+     * Derives the chip's value from the whole row — for statuses the raw column
+     * does not state, e.g. the *effective* plan (a `premium` row whose
+     * premiumUntil has lapsed) or an inverted `isDisabled` flag.
+     */
+    getValue?: (row: R) => string | boolean | null | undefined;
+    label?: (row: R) => string | undefined;
+  },
 ): GridColDef<R> {
   return {
     field: o.field,
@@ -117,7 +147,13 @@ export function chipCol<R extends GridValidRowModel>(
     align: 'left',
     headerAlign: 'left',
     renderCell: ({ value, row }) => (
-      <StatusChip kind={o.kind} value={value as string} tone={o.tone} tooltip={o.tooltip?.(row as R)} />
+      <StatusChip
+        kind={o.kind}
+        value={o.getValue ? o.getValue(row as R) : (value as string)}
+        label={o.label?.(row as R)}
+        tone={o.tone}
+        tooltip={o.tooltip?.(row as R)}
+      />
     ),
   };
 }

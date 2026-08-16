@@ -13,13 +13,14 @@
  */
 
 import { env } from '../../config/env.js';
+import { cfg } from '../secrets/store.js';
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const TIMEOUT_MS = 30_000;
 const MAX_ATTEMPTS = 3;
 
 export function isConfigured() {
-  return Boolean(env.GEMINI_API_KEY);
+  return Boolean(cfg('GEMINI_API_KEY'));
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -77,7 +78,7 @@ export async function callGemini({
   messages,
   schema,
   maxTokens = 2048,
-  model = env.AI_MODEL || 'gemini-flash-latest',
+  model = cfg('AI_MODEL') || 'gemini-flash-latest',
 }) {
   if (!isConfigured()) throw new Error('GEMINI_API_KEY is not set');
 
@@ -113,7 +114,7 @@ export async function callGemini({
         headers: {
           'Content-Type': 'application/json',
           // Header rather than ?key= so the secret never lands in access logs.
-          'x-goog-api-key': env.GEMINI_API_KEY,
+          'x-goog-api-key': cfg('GEMINI_API_KEY'),
         },
         body: JSON.stringify(body),
         signal: controller.signal,
