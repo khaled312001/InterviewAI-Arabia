@@ -25,6 +25,13 @@ export interface FormDrawerProps {
   error?: unknown;
   width?: number;
   dirty?: boolean;
+  /**
+   * Turns off the browser's own constraint validation. Set it only when the
+   * form supplies complete inline validation of its own: native bubbles are
+   * browser-locale chrome that cannot be translated, so on an Arabic form they
+   * arrive in whatever language the browser was installed in.
+   */
+  noValidate?: boolean;
   /** e.g. a Delete button, pinned to the footer's inline-start. */
   footerStart?: React.ReactNode;
   children: React.ReactNode;
@@ -48,6 +55,7 @@ export function FormDrawer({
   error,
   width,
   dirty = false,
+  noValidate = false,
   footerStart,
   children,
 }: FormDrawerProps) {
@@ -87,7 +95,7 @@ export function FormDrawer({
         },
       }}
     >
-      <Box component="form" onSubmit={onSubmit} noValidate={false} sx={{ display: 'contents' }}>
+      <Box component="form" onSubmit={onSubmit} noValidate={noValidate} sx={{ display: 'contents' }}>
         <Stack
           direction="row"
           alignItems="center"

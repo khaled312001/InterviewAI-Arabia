@@ -8,7 +8,7 @@ export type Tone = 'neutral' | 'brand' | 'gold' | 'success' | 'warning' | 'error
 
 export type StatusKind =
   | 'plan' | 'subscription' | 'role' | 'active' | 'reportStatus' | 'aiResult' | 'source' | 'env'
-  | 'difficulty' | 'custom';
+  | 'difficulty' | 'payment' | 'paymentProvider' | 'planCode' | 'custom';
 
 export interface StatusChipProps {
   kind: StatusKind;
@@ -76,9 +76,41 @@ const MAPS: Record<Exclude<StatusKind, 'custom'>, Record<string, Entry>> = {
     medium: { label: 'متوسط', tone: 'info' },
     hard: { label: 'صعب', tone: 'warning' },
   },
+  // Payment.status (schema.prisma enum PaymentStatus). Distinct from
+  // `subscription`: a payment expires when the checkout link lapses unpaid,
+  // which is not the same event as a subscription running out of time.
+  payment: {
+    pending: { label: 'قيد الانتظار', tone: 'warning' },
+    paid: { label: 'مدفوع', tone: 'success' },
+    failed: { label: 'فشل', tone: 'error' },
+    refunded: { label: 'مسترد', tone: 'info' },
+    expired: { label: 'منتهي', tone: 'neutral' },
+  },
+  // enum PaymentProvider.
+  paymentProvider: {
+    easykash: { label: 'EasyKash', tone: 'brand' },
+    paymob: { label: 'Paymob', tone: 'info' },
+    google_play: { label: 'Google Play', tone: 'neutral' },
+    manual: { label: 'يدوي', tone: 'warning' },
+  },
+  // Keys of backend/src/services/payments/plans.js — labels copied from its
+  // labelAr so the admin and the mobile paywall cannot drift.
+  planCode: {
+    monthly: { label: 'شهري', tone: 'neutral' },
+    quarterly: { label: 'ربع سنوي', tone: 'info' },
+    yearly: { label: 'سنوي', tone: 'gold' },
+  },
 };
 
 const UNKNOWN: Entry = { label: '—', tone: 'neutral' };
+
+/**
+ * Kinds whose values are open identifiers rather than a closed enum. Showing
+ * the raw code beats showing '—': legacy Google-Play plan codes
+ * (`interviewai_monthly`, see migration 001 line 157) are real rows, and a dash
+ * would hide which plan the customer actually bought.
+ */
+const RAW_FALLBACK_KINDS = new Set<StatusKind>(['planCode', 'paymentProvider']);
 
 /** Tones borrow the semantic palette so both schemes are correct for free. */
 const TONE_PATH: Record<Tone, 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'info' | null> = {
@@ -134,7 +166,8 @@ export function StatusChip({
   const entry: Entry =
     kind === 'custom'
       ? { label: label ?? key ?? '—', tone: tone ?? 'neutral' }
-      : (MAPS[kind][key] ?? UNKNOWN);
+      : (MAPS[kind][key] ??
+        (key && RAW_FALLBACK_KINDS.has(kind) ? { label: key, tone: 'neutral' } : UNKNOWN));
 
   const finalTone = tone ?? entry.tone;
   const chip = (

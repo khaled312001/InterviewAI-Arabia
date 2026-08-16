@@ -6,9 +6,14 @@ import { prisma } from '../db/prisma.js';
 import { query, queryOne } from '../db/mysql.js';
 import { authLimiter } from '../middleware/rateLimit.js';
 import { requireAdmin, signAdminToken } from '../middleware/auth.js';
+import { auditAdminMutations } from '../services/audit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 
 const router = Router();
+
+// Every successful admin mutation below is recorded in `admin_audit_logs`.
+// One insertion point, so the trail cannot rot when a handler is rewritten.
+router.use(auditAdminMutations());
 
 /* -----------------------------  auth  ----------------------------- */
 
@@ -32,6 +37,9 @@ router.post('/auth/login', authLimiter, asyncHandler(async (req, res) => {
   // Without this the admin_users.last_login_at column is always null, and
   // "is anyone still using this account?" has no answer on the Admins page.
   await prisma.adminUser.update({ where: { id: admin.id }, data: { lastLoginAt: new Date() } });
+  // Lets the audit middleware attribute the sign-in. Failed attempts throw
+  // above, so only successful logins are recorded.
+  req.admin = admin;
   res.json({
     admin: { id: admin.id.toString(), email: admin.email, name: admin.name, role: admin.role },
     token: signAdminToken(admin),
@@ -572,13 +580,13 @@ async function cancelSubscription(id) {
 }
 
 router.post('/subscriptions/:id/cancel', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
-  res.json({ ok: true, ...(await cancelSubscription(BigInt(req.params.id))) });
+  res.json({ ok: true, ...(await cancelSubscription(bigId(req.params.id, 'subscription id'))) });
 }));
 
 // Deprecated alias kept so an older admin build does not 404. Same behaviour —
 // the old path name claimed a gateway refund that never happened.
 router.post('/subscriptions/:id/refund', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
-  res.json({ ok: true, ...(await cancelSubscription(BigInt(req.params.id))) });
+  res.json({ ok: true, ...(await cancelSubscription(bigId(req.params.id, 'subscription id'))) });
 }));
 
 /* -----------------------------  payments  ------------------------------ */
@@ -690,79 +698,466 @@ router.get('/payments', requireAdmin('super_admin'), asyncHandler(async (req, re
   });
 }));
 
-/* ---------------------------  analytics  ---------------------------- */
+/* ---------------------------  analytics  ----------------------------
+ *
+ * The product's day boundary is Africa/Cairo (services/quota.js), so every
+ * window below is a range of Cairo calendar days, not UTC ones. The previous
+ * code used server-local midnight, which is 2am Cairo in production: "today"
+ * on the dashboard disagreed with "today" in the quota the users experience.
+ *
+ * Ranges are half-open [start, end) so a day never belongs to two buckets.
+ */
 
-router.get('/analytics/overview', requireAdmin(), asyncHandler(async (_req, res) => {
-  const since = new Date(Date.now() - 30 * 24 * 3600 * 1000);
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+const APP_TZ = 'Africa/Cairo';
+const DAY_MS = 24 * 3600 * 1000;
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-  const [
-    { n: totalUsers },
-    { n: premiumUsers },
-    { n: newUsers30d },
-    { n: sessionsToday },
-    { n: answers30d },
-    { n: activeToday },
-  ] = await Promise.all([
-    queryOne('SELECT COUNT(*) AS n FROM users'),
-    queryOne('SELECT COUNT(*) AS n FROM users WHERE plan = "premium"'),
-    queryOne('SELECT COUNT(*) AS n FROM users WHERE created_at >= ?', [since]),
-    queryOne('SELECT COUNT(*) AS n FROM sessions WHERE started_at >= ?', [today]),
-    queryOne('SELECT COUNT(*) AS n FROM answers WHERE created_at >= ?', [since]),
-    queryOne('SELECT COUNT(DISTINCT user_id) AS n FROM sessions WHERE started_at >= ?', [today]),
+/** Offset of Africa/Cairo at a given instant, in minutes. DST-aware — Egypt
+ *  reintroduced summer time in 2023, so a fixed +02:00 is wrong half the year. */
+function cairoOffsetMinutes(at) {
+  const formatted = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_TZ, timeZoneName: 'longOffset',
+  }).format(at);
+  const m = formatted.match(/GMT([+-])(\d{2}):(\d{2})/);
+  if (!m) return 120;
+  return (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+}
+
+function offsetString(minutes) {
+  const sign = minutes < 0 ? '-' : '+';
+  const abs = Math.abs(minutes);
+  return `${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+}
+
+/** 'YYYY-MM-DD' for an instant, in Cairo terms. en-CA renders ISO order. */
+function cairoYmd(at = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(at);
+}
+
+/** The UTC instant at which a given Cairo calendar day begins. */
+function cairoDayStart(ymd) {
+  const utcMidnight = new Date(`${ymd}T00:00:00.000Z`);
+  // Second pass settles the case where the offset differs either side of the
+  // boundary; no real transition moves a day by more than an hour.
+  const first = new Date(utcMidnight.getTime() - cairoOffsetMinutes(utcMidnight) * 60000);
+  return new Date(utcMidnight.getTime() - cairoOffsetMinutes(first) * 60000);
+}
+
+function addDaysYmd(ymd, n) {
+  const d = new Date(`${ymd}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Named time zones in CONVERT_TZ need mysql.time_zone_name to be populated,
+ * which shared hosting frequently does not do — and CONVERT_TZ answers NULL
+ * rather than erroring, which would silently produce empty buckets. So probe
+ * once, and fall back to the offset in force today. The response reports which
+ * mode was used so the UI can qualify the numbers instead of overstating them.
+ */
+let _tzSpec = null;
+async function cairoTzSpec() {
+  if (_tzSpec) return _tzSpec;
+  let named = false;
+  try {
+    const row = await queryOne("SELECT CONVERT_TZ('2024-06-01 12:00:00','+00:00',?) AS t", [APP_TZ]);
+    named = row?.t != null;
+  } catch {
+    named = false;
+  }
+  _tzSpec = named
+    ? { spec: APP_TZ, exact: true }
+    : { spec: offsetString(cairoOffsetMinutes(new Date())), exact: false };
+  return _tzSpec;
+}
+
+/**
+ * `?from=YYYY-MM-DD&to=YYYY-MM-DD`, both inclusive Cairo dates. Also derives
+ * the immediately-preceding window of equal length, which is what lets the UI
+ * show a real change-vs-previous figure instead of inventing one.
+ */
+function parseRange(q, { maxDays = 366, defaultDays = 30 } = {}) {
+  const to = YMD_RE.test(q.to || '') ? q.to : cairoYmd();
+  const from = YMD_RE.test(q.from || '') ? q.from : addDaysYmd(to, -(defaultDays - 1));
+  if (from > to) throw new HttpError(400, 'Invalid range: from is after to');
+
+  const start = cairoDayStart(from);
+  const end = cairoDayStart(addDaysYmd(to, 1));
+  const days = Math.round((end.getTime() - start.getTime()) / DAY_MS);
+  if (days > maxDays) throw new HttpError(400, `Range too large (max ${maxDays} days)`);
+
+  return {
+    from, to, start, end, days,
+    prevStart: cairoDayStart(addDaysYmd(from, -days)),
+    prevEnd: start,
+  };
+}
+
+const num = (v) => Number(v ?? 0);
+
+async function rangeMeta(r) {
+  const tz = await cairoTzSpec();
+  return {
+    from: r.from, to: r.to, days: r.days,
+    timezone: APP_TZ,
+    /** false ⇒ buckets used a fixed offset; a DST change inside the window
+     *  shifts at most one boundary by an hour. */
+    exactTimezone: tz.exact,
+  };
+}
+
+router.get('/analytics/overview', requireAdmin(), asyncHandler(async (req, res) => {
+  const r = parseRange(req.query);
+  const now = new Date();
+  const todayFrom = cairoDayStart(cairoYmd(now));
+  const todayTo = new Date(todayFrom.getTime() + DAY_MS);
+
+  // One pass per table, using conditional aggregation for all three windows,
+  // rather than fourteen separate COUNT round-trips.
+  const [users, sessions, answers] = await Promise.all([
+    queryOne(
+      `SELECT COUNT(*) AS total,
+              SUM(plan = 'premium') AS premiumPlan,
+              SUM(plan = 'premium' AND premium_until IS NOT NULL AND premium_until > ?) AS premiumActive,
+              SUM(created_at >= ? AND created_at < ?) AS cur,
+              SUM(created_at >= ? AND created_at < ?) AS prev,
+              SUM(created_at >= ? AND created_at < ?) AS today
+       FROM users`,
+      [now, r.start, r.end, r.prevStart, r.prevEnd, todayFrom, todayTo]
+    ),
+    queryOne(
+      `SELECT SUM(started_at >= ? AND started_at < ?) AS cur,
+              SUM(started_at >= ? AND started_at < ?) AS prev,
+              SUM(started_at >= ? AND started_at < ?) AS today,
+              COUNT(DISTINCT CASE WHEN started_at >= ? AND started_at < ? THEN user_id END) AS curUsers,
+              COUNT(DISTINCT CASE WHEN started_at >= ? AND started_at < ? THEN user_id END) AS prevUsers,
+              COUNT(DISTINCT CASE WHEN started_at >= ? AND started_at < ? THEN user_id END) AS todayUsers
+       FROM sessions`,
+      [r.start, r.end, r.prevStart, r.prevEnd, todayFrom, todayTo,
+       r.start, r.end, r.prevStart, r.prevEnd, todayFrom, todayTo]
+    ),
+    queryOne(
+      `SELECT SUM(created_at >= ? AND created_at < ?) AS cur,
+              SUM(created_at >= ? AND created_at < ?) AS prev,
+              AVG(CASE WHEN created_at >= ? AND created_at < ? THEN ai_score END) AS avgScore,
+              COUNT(CASE WHEN created_at >= ? AND created_at < ? THEN ai_score END) AS scored
+       FROM answers`,
+      [r.start, r.end, r.prevStart, r.prevEnd, r.start, r.end, r.start, r.end]
+    ),
   ]);
 
+  // Entitlement, not the `plan` column: services/quota.js gates on
+  // premium_until, so a stale 'premium' row is not a paying customer and must
+  // not be counted as one.
+  const totalUsers = num(users?.total);
+  const premiumActive = num(users?.premiumActive);
+  const scored = num(answers?.scored);
+
   res.json({
-    totalUsers: Number(totalUsers), activeToday: Number(activeToday),
-    premiumUsers: Number(premiumUsers), newUsers30d: Number(newUsers30d),
-    sessionsToday: Number(sessionsToday), answers30d: Number(answers30d),
-    conversionRate: Number(totalUsers) ? (Number(premiumUsers) / Number(totalUsers)) : 0,
+    range: await rangeMeta(r),
+    totals: {
+      users: totalUsers,
+      premiumUsers: premiumActive,
+      /** Rows still flagged 'premium' whose entitlement has lapsed. */
+      premiumExpired: Math.max(0, num(users?.premiumPlan) - premiumActive),
+      conversionRate: totalUsers ? premiumActive / totalUsers : 0,
+    },
+    current: {
+      newUsers: num(users?.cur),
+      sessions: num(sessions?.cur),
+      answers: num(answers?.cur),
+      activeUsers: num(sessions?.curUsers),
+      // No scored answers means no average. Zero would be a fabricated score.
+      avgScore: scored ? Number(answers.avgScore) : null,
+      scoredAnswers: scored,
+    },
+    previous: {
+      newUsers: num(users?.prev),
+      sessions: num(sessions?.prev),
+      answers: num(answers?.prev),
+      activeUsers: num(sessions?.prevUsers),
+    },
+    today: {
+      date: cairoYmd(now),
+      newUsers: num(users?.today),
+      sessions: num(sessions?.today),
+      activeUsers: num(sessions?.todayUsers),
+    },
   });
 }));
 
-router.get('/analytics/popular-categories', requireAdmin(), asyncHandler(async (_req, res) => {
+router.get('/analytics/popular-categories', requireAdmin(), asyncHandler(async (req, res) => {
+  const r = parseRange(req.query);
+  const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+
+  // The LEFT JOIN fans rows out, so sessions/users are counted DISTINCT while
+  // AVG runs over the fanned answer rows — which is exactly the per-answer mean.
   const rows = await query(
     `SELECT s.category_id AS categoryId, c.name_ar AS nameAr, c.name_en AS nameEn, c.icon,
-            c.is_premium AS isPremium, COUNT(*) AS sessionCount
+            c.is_premium AS isPremium,
+            COUNT(DISTINCT s.id) AS sessionCount,
+            COUNT(DISTINCT s.user_id) AS userCount,
+            COUNT(a.id) AS scoredAnswers,
+            AVG(a.ai_score) AS avgScore
      FROM sessions s
      JOIN categories c ON c.id = s.category_id
+     LEFT JOIN answers a ON a.session_id = s.id AND a.ai_score IS NOT NULL
+     WHERE s.started_at >= ? AND s.started_at < ?
      GROUP BY s.category_id, c.name_ar, c.name_en, c.icon, c.is_premium
-     ORDER BY sessionCount DESC LIMIT 20`
+     ORDER BY sessionCount DESC
+     LIMIT ?`,
+    [r.start, r.end, limit]
   );
+
   res.json({
-    rows: rows.map((r) => ({
-      category: { id: r.categoryId, nameAr: r.nameAr, nameEn: r.nameEn, icon: r.icon, isPremium: !!r.isPremium },
-      sessions: Number(r.sessionCount),
+    range: await rangeMeta(r),
+    limit,
+    rows: rows.map((row) => ({
+      category: {
+        id: row.categoryId, nameAr: row.nameAr, nameEn: row.nameEn,
+        icon: row.icon, isPremium: !!row.isPremium,
+      },
+      sessions: num(row.sessionCount),
+      users: num(row.userCount),
+      scoredAnswers: num(row.scoredAnswers),
+      avgScore: num(row.scoredAnswers) ? Number(row.avgScore) : null,
     })),
   });
 }));
 
-router.get('/ai-usage', requireAdmin(), asyncHandler(async (_req, res) => {
-  const since = new Date(Date.now() - 7 * 24 * 3600 * 1000);
-  const [logs, summary] = await Promise.all([
+/**
+ * Daily buckets over the range, in Cairo days, zero-filled — a day with no
+ * activity genuinely is 0 and must plot as 0, not vanish and imply a smooth
+ * line through it.
+ */
+router.get('/analytics/timeseries', requireAdmin(), asyncHandler(async (req, res) => {
+  const r = parseRange(req.query, { maxDays: 180 });
+  const tz = await cairoTzSpec();
+  // DATE_FORMAT, not DATE(): a DATE column comes back as a driver-parsed Date
+  // whose own timezone handling would undo the conversion we just did.
+  const bucket = (col) => `DATE_FORMAT(CONVERT_TZ(${col}, '+00:00', ?), '%Y-%m-%d')`;
+
+  const [signups, sessions, answers] = await Promise.all([
     query(
-      `SELECT id, user_id AS userId, model, input_tokens AS inputTokens,
-              output_tokens AS outputTokens, latency_ms AS latencyMs,
-              success, error_message AS errorMessage, created_at AS createdAt
-       FROM claude_api_logs WHERE created_at >= ? ORDER BY created_at DESC LIMIT 500`,
-      [since]
+      `SELECT ${bucket('created_at')} AS d, COUNT(*) AS n
+       FROM users WHERE created_at >= ? AND created_at < ? GROUP BY d`,
+      [tz.spec, r.start, r.end]
     ),
-    queryOne(
-      `SELECT COUNT(*) AS n, SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens
-       FROM claude_api_logs WHERE created_at >= ?`,
-      [since]
+    query(
+      `SELECT ${bucket('started_at')} AS d, COUNT(*) AS n, COUNT(DISTINCT user_id) AS u
+       FROM sessions WHERE started_at >= ? AND started_at < ? GROUP BY d`,
+      [tz.spec, r.start, r.end]
+    ),
+    query(
+      `SELECT ${bucket('created_at')} AS d, COUNT(*) AS n,
+              AVG(ai_score) AS avgScore, COUNT(ai_score) AS scored
+       FROM answers WHERE created_at >= ? AND created_at < ? GROUP BY d`,
+      [tz.spec, r.start, r.end]
     ),
   ]);
-  for (const l of logs) l.success = !!l.success;
+
+  const points = new Map();
+  for (let i = 0; i < r.days; i += 1) {
+    const date = addDaysYmd(r.from, i);
+    points.set(date, { date, signups: 0, sessions: 0, activeUsers: 0, answers: 0, avgScore: null });
+  }
+  for (const row of signups) {
+    const p = points.get(row.d); if (p) p.signups = num(row.n);
+  }
+  for (const row of sessions) {
+    const p = points.get(row.d); if (p) { p.sessions = num(row.n); p.activeUsers = num(row.u); }
+  }
+  for (const row of answers) {
+    const p = points.get(row.d);
+    if (p) { p.answers = num(row.n); p.avgScore = num(row.scored) ? Number(row.avgScore) : null; }
+  }
+
+  res.json({ range: await rangeMeta(r), points: [...points.values()] });
+}));
+
+/**
+ * The dashboard's "needs your attention" counts. Each field is gated on the
+ * same role that owns the page it links to, so the panel can never surface a
+ * number the admin is not allowed to act on; absent keys are simply not
+ * rendered.
+ */
+router.get('/analytics/attention', requireAdmin(), asyncHandler(async (req, res) => {
+  const { role } = req.admin;
+  const now = new Date();
+  const attention = {};
+  const jobs = [];
+
+  if (role === 'super_admin' || role === 'moderator') {
+    jobs.push(
+      queryOne('SELECT COUNT(*) AS n FROM answer_reports WHERE resolved = 0')
+        .then((row) => { attention.unresolvedReports = num(row?.n); })
+    );
+  }
+
+  // AI usage is readable by every admin role (see the /ai-usage route).
+  jobs.push(
+    queryOne(
+      'SELECT COUNT(*) AS n FROM claude_api_logs WHERE success = 0 AND created_at >= ?',
+      [new Date(now.getTime() - DAY_MS)]
+    ).then((row) => { attention.failedAiCalls24h = num(row?.n); })
+  );
+
+  if (role === 'super_admin') {
+    jobs.push(
+      queryOne(
+        `SELECT COUNT(*) AS n FROM subscriptions
+         WHERE status = 'active' AND expires_at >= ? AND expires_at < ?`,
+        [now, new Date(now.getTime() + 7 * DAY_MS)]
+      ).then((row) => { attention.expiringSubscriptions7d = num(row?.n); })
+    );
+  }
+
+  await Promise.all(jobs);
+  res.json({ attention, checkedAt: now.toISOString() });
+}));
+
+/**
+ * The exact per-call cost has been written to `cost_micro_usd` by
+ * services/ai/index.js since migration 001; this route simply never selected
+ * it, so the admin re-derived a figure from one model's published rates and
+ * applied it to Claude, Gemini and Groq alike. It now reports what was
+ * actually charged, per provider and per feature.
+ *
+ * Rows written before the column existed carry a hard 0. A real call always
+ * costs more than one micro-USD, so `cost = 0 AND tokens > 0` means "not
+ * priced", and it is returned as null (rendered '—') rather than as free.
+ */
+router.get('/ai-usage', requireAdmin(), asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+
+  const days = Math.min(365, Math.max(1, Number(req.query.days) || 7));
+  const from = req.query.from ? new Date(String(req.query.from)) : new Date(Date.now() - days * 24 * 3600 * 1000);
+  const to = req.query.to ? new Date(String(req.query.to)) : new Date();
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    throw new HttpError(400, 'Invalid date range');
+  }
+
+  const clauses = ['created_at >= ?', 'created_at <= ?'];
+  const params = [from, to];
+
+  const provider = (req.query.provider || '').toString().trim();
+  if (provider) { clauses.push('provider = ?'); params.push(provider); }
+
+  const feature = (req.query.feature || '').toString().trim();
+  if (feature) { clauses.push('feature = ?'); params.push(feature); }
+
+  const status = (req.query.status || '').toString();
+  if (status === 'success') clauses.push('success = 1');
+  else if (status === 'error') clauses.push('success = 0');
+
+  const where = `WHERE ${clauses.join(' AND ')}`;
+
+  // Egypt is the product's day boundary (services/quota.js). CONVERT_TZ with a
+  // numeric offset needs no timezone tables loaded; it ignores DST, which can
+  // shift calls in the midnight hour by one day for part of the year.
+  const CAIRO_DATE = "DATE(CONVERT_TZ(created_at, '+00:00', '+02:00'))";
+  const UNPRICED = '(cost_micro_usd = 0 AND (input_tokens > 0 OR output_tokens > 0))';
+
+  const [logs, countRow, summaryRow, byProvider, byFeature, daily] = await Promise.all([
+    query(
+      `SELECT id, user_id AS userId, provider, model, feature,
+              input_tokens AS inputTokens, output_tokens AS outputTokens,
+              cache_read_tokens AS cacheReadTokens, cache_write_tokens AS cacheWriteTokens,
+              cost_micro_usd AS costMicroUsd, latency_ms AS latencyMs,
+              success, error_message AS errorMessage, created_at AS createdAt
+       FROM claude_api_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    ),
+    queryOne(`SELECT COUNT(*) AS n FROM claude_api_logs ${where}`, params),
+    queryOne(
+      `SELECT COUNT(*) AS calls,
+              SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failures,
+              SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens,
+              SUM(cache_read_tokens) AS cacheReadTokens, SUM(cache_write_tokens) AS cacheWriteTokens,
+              SUM(cost_micro_usd) AS costMicroUsd,
+              ROUND(AVG(latency_ms)) AS avgLatencyMs,
+              MAX(latency_ms) AS maxLatencyMs,
+              SUM(CASE WHEN ${UNPRICED} THEN 1 ELSE 0 END) AS unpricedCalls
+       FROM claude_api_logs ${where}`,
+      params
+    ),
+    query(
+      `SELECT provider, COUNT(*) AS calls,
+              SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failures,
+              SUM(cost_micro_usd) AS costMicroUsd,
+              SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens,
+              SUM(CASE WHEN ${UNPRICED} THEN 1 ELSE 0 END) AS unpricedCalls
+       FROM claude_api_logs ${where} GROUP BY provider ORDER BY calls DESC`,
+      params
+    ),
+    query(
+      `SELECT feature, COUNT(*) AS calls,
+              SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failures,
+              SUM(cost_micro_usd) AS costMicroUsd,
+              SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens,
+              SUM(CASE WHEN ${UNPRICED} THEN 1 ELSE 0 END) AS unpricedCalls
+       FROM claude_api_logs ${where} GROUP BY feature ORDER BY calls DESC`,
+      params
+    ),
+    query(
+      `SELECT ${CAIRO_DATE} AS day, COUNT(*) AS calls,
+              SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failures,
+              SUM(cost_micro_usd) AS costMicroUsd,
+              SUM(input_tokens) AS inputTokens, SUM(output_tokens) AS outputTokens
+       FROM claude_api_logs ${where} GROUP BY ${CAIRO_DATE} ORDER BY day ASC`,
+      params
+    ),
+  ]);
+
+  for (const l of logs) {
+    l.success = !!l.success;
+    const unpriced = l.costMicroUsd === 0 && (l.inputTokens > 0 || l.outputTokens > 0);
+    l.costMicroUsd = unpriced ? null : Number(l.costMicroUsd);
+  }
+
+  const bucket = (r) => ({
+    calls: Number(r.calls || 0),
+    failures: Number(r.failures || 0),
+    costMicroUsd: Number(r.costMicroUsd || 0),
+    inputTokens: Number(r.inputTokens || 0),
+    outputTokens: Number(r.outputTokens || 0),
+    unpricedCalls: Number(r.unpricedCalls || 0),
+  });
+
   res.json({
     logs,
+    page,
+    limit,
+    total: Number(countRow?.n || 0),
+    range: { from: from.toISOString(), to: to.toISOString() },
     summary: {
-      _count: { _all: Number(summary?.n || 0) },
-      _sum: {
-        inputTokens: Number(summary?.inputTokens || 0),
-        outputTokens: Number(summary?.outputTokens || 0),
-      },
+      ...bucket(summaryRow || {}),
+      cacheReadTokens: Number(summaryRow?.cacheReadTokens || 0),
+      cacheWriteTokens: Number(summaryRow?.cacheWriteTokens || 0),
+      avgLatencyMs: summaryRow?.avgLatencyMs === null || summaryRow?.avgLatencyMs === undefined
+        ? null
+        : Number(summaryRow.avgLatencyMs),
+      maxLatencyMs: Number(summaryRow?.maxLatencyMs || 0),
     },
+    byProvider: byProvider.map((r) => ({ provider: r.provider, ...bucket(r) })),
+    byFeature: byFeature.map((r) => ({ feature: r.feature, ...bucket(r) })),
+    daily: daily.map((r) => ({
+      // DATE() comes back as a JS Date under this driver config; take the
+      // calendar day, not an ISO instant that would re-shift the timezone.
+      day: r.day instanceof Date
+        ? `${r.day.getUTCFullYear()}-${String(r.day.getUTCMonth() + 1).padStart(2, '0')}-${String(r.day.getUTCDate()).padStart(2, '0')}`
+        : String(r.day),
+      calls: Number(r.calls || 0),
+      failures: Number(r.failures || 0),
+      costMicroUsd: Number(r.costMicroUsd || 0),
+      inputTokens: Number(r.inputTokens || 0),
+      outputTokens: Number(r.outputTokens || 0),
+    })),
   });
 }));
 
@@ -819,21 +1214,32 @@ router.put('/settings', requireAdmin('super_admin'), asyncHandler(async (req, re
 
 /* -----------------------  admin users (RBAC)  --------------------- */
 
-router.get('/admins', requireAdmin('super_admin'), asyncHandler(async (_req, res) => {
-  const admins = await query(
-    `SELECT id, email, name, role, is_active AS isActive, created_at AS createdAt
-     FROM admin_users ORDER BY created_at DESC`
-  );
+const ADMIN_ROLES = ['super_admin', 'moderator', 'content_editor'];
+
+router.get('/admins', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+
+  const [admins, countRow] = await Promise.all([
+    query(
+      `SELECT id, email, name, role, is_active AS isActive,
+              last_login_at AS lastLoginAt, created_at AS createdAt
+       FROM admin_users ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    ),
+    queryOne('SELECT COUNT(*) AS n FROM admin_users'),
+  ]);
   for (const a of admins) a.isActive = !!a.isActive;
-  res.json({ admins });
+  res.json({ admins, page, limit, total: Number(countRow?.n || 0) });
 }));
 
 router.post('/admins', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
   const schema = z.object({
     email: z.string().email().toLowerCase(),
-    password: z.string().min(8),
-    name: z.string().min(2),
-    role: z.enum(['super_admin', 'moderator', 'content_editor']).default('moderator'),
+    password: z.string().min(8).max(200),
+    name: z.string().min(2).max(120),
+    role: z.enum(ADMIN_ROLES).default('moderator'),
   });
   const body = schema.parse(req.body);
   const passwordHash = await bcrypt.hash(body.password, 12);
@@ -842,6 +1248,82 @@ router.post('/admins', requireAdmin('super_admin'), asyncHandler(async (req, res
   });
   const { passwordHash: _ph, ...rest } = admin;
   res.status(201).json({ admin: rest });
+}));
+
+/**
+ * Guards shared by PATCH and DELETE. requireAdmin() already refuses a
+ * deactivated admin (middleware/auth.js), but nothing could deactivate one —
+ * and nothing stopped the only super admin from locking everyone out.
+ */
+async function assertAdminMutable(target, actorId, { losingSuperAdmin, deleting }) {
+  if (target.id === actorId) {
+    throw new HttpError(
+      400,
+      deleting ? 'You cannot delete your own account' : 'You cannot change your own role or status',
+      undefined,
+      'ADMIN_SELF_ACTION'
+    );
+  }
+  if (losingSuperAdmin && target.role === 'super_admin') {
+    const others = await prisma.adminUser.count({
+      where: { role: 'super_admin', isActive: true, id: { not: target.id } },
+    });
+    if (others === 0) {
+      throw new HttpError(
+        409,
+        'The last active super admin cannot be demoted, deactivated or deleted',
+        undefined,
+        'LAST_SUPER_ADMIN'
+      );
+    }
+  }
+}
+
+router.patch('/admins/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const schema = z.object({
+    name: z.string().min(2).max(120).optional(),
+    role: z.enum(ADMIN_ROLES).optional(),
+    isActive: z.boolean().optional(),
+    // Optional password reset in the same call — an admin who lost their
+    // password previously had no recovery path at all.
+    password: z.string().min(8).max(200).optional(),
+  });
+  const body = schema.parse(req.body);
+  const id = bigId(req.params.id, 'admin id');
+
+  const target = await prisma.adminUser.findUnique({ where: { id } });
+  if (!target) throw new HttpError(404, 'Admin not found');
+
+  const changesRole = body.role !== undefined && body.role !== target.role;
+  const changesStatus = body.isActive !== undefined && body.isActive !== target.isActive;
+  if (changesRole || changesStatus) {
+    await assertAdminMutable(target, req.admin.id, {
+      losingSuperAdmin: (changesRole && body.role !== 'super_admin') || body.isActive === false,
+      deleting: false,
+    });
+  }
+
+  const data = {};
+  if (body.name !== undefined) data.name = body.name;
+  if (body.role !== undefined) data.role = body.role;
+  if (body.isActive !== undefined) data.isActive = body.isActive;
+  if (body.password !== undefined) data.passwordHash = await bcrypt.hash(body.password, 12);
+  if (Object.keys(data).length === 0) throw new HttpError(400, 'Nothing to update');
+
+  const updated = await prisma.adminUser.update({ where: { id }, data });
+  const { passwordHash: _ph, ...rest } = updated;
+  res.json({ admin: rest });
+}));
+
+router.delete('/admins/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const id = bigId(req.params.id, 'admin id');
+  const target = await prisma.adminUser.findUnique({ where: { id } });
+  if (!target) throw new HttpError(404, 'Admin not found');
+
+  await assertAdminMutable(target, req.admin.id, { losingSuperAdmin: true, deleting: true });
+
+  await prisma.adminUser.delete({ where: { id } });
+  res.json({ ok: true });
 }));
 
 export default router;
