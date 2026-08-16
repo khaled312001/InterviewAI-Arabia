@@ -1,6 +1,6 @@
 import { Card, CardContent, Grid, Typography, Box } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../lib/api';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
 
 const COLORS = ['#0F5AA8', '#F39C12', '#2E7D32', '#C62828', '#6A1B9A', '#00838F', '#4E342E'];

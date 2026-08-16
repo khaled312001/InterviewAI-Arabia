@@ -1,7 +1,7 @@
 import { Box, Card, CardContent, Grid, Typography, Chip } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../lib/api';
 
 // Rough Anthropic Haiku 4.5 pricing (adjust when Anthropic publishes updates):
 // input  ~$0.80 / 1M tokens

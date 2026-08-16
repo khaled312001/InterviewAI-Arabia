@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, Stack, TextField, Button, Typography, Alert } from '@mui/material';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../lib/api';
 
 const LABELS: Record<string, string> = {
   free_daily_question_limit: 'الحد اليومي المجاني (عدد الأسئلة)',

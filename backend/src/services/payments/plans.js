@@ -14,7 +14,7 @@ export const PLANS = {
     code: 'monthly',
     labelAr: 'شهري',
     labelEn: 'Monthly',
-    amountCents: 14900,     // 149.00 EGP
+    amountCents: 15000,     // 150.00 EGP
     days: 30,
     popular: false,
   },
@@ -30,7 +30,7 @@ export const PLANS = {
     code: 'yearly',
     labelAr: 'سنوي',
     labelEn: 'Yearly',
-    amountCents: 119900,    // 1199.00 EGP — 33% off monthly
+    amountCents: 120000,    // 1200.00 EGP — a third off the monthly rate
     days: 365,
     popular: true,
   },
@@ -41,10 +41,18 @@ export function getPlan(code) {
 }
 
 export function planList() {
-  const monthlyPerDay = PLANS.monthly.amountCents / PLANS.monthly.days;
   return Object.values(PLANS).map((p) => {
     const perDay = p.amountCents / p.days;
-    const savingPct = Math.round((1 - perDay / monthlyPerDay) * 100);
+    // Compared per MONTH, not per day. A year is 365 days but twelve monthly
+    // renewals cover 360, so a per-day basis quietly inflated the headline
+    // (1200 vs 1800 is 33%, and that is the sum a customer can check) —
+    // and it disagreed with the figure printed on the marketing site.
+    // Whole months: 365/30 is 12.17, which would price the comparison against
+    // 12.17 renewals nobody makes. The customer compares 1200 against twelve
+    // payments of 150 — so must we.
+    const months = Math.round(p.days / PLANS.monthly.days);
+    const monthlyCost = PLANS.monthly.amountCents * months;
+    const savingPct = Math.round((1 - p.amountCents / monthlyCost) * 100);
     return {
       ...p,
       amountEgp: p.amountCents / 100,

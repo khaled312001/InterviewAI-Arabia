@@ -1,0 +1,141 @@
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
+import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import Typography from '@mui/material/Typography';
+import CloseRounded from '@mui/icons-material/CloseRounded';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import { ApiErrorAlert } from './ApiErrorAlert';
+import { useConfirm } from './ConfirmDialog';
+
+export interface FormDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  mode?: 'create' | 'edit';
+  onSubmit: (e: React.FormEvent) => void;
+  submitting?: boolean;
+  submitLabel?: string;
+  disabled?: boolean;
+  error?: unknown;
+  width?: number;
+  dirty?: boolean;
+  /** e.g. a Delete button, pinned to the footer's inline-start. */
+  footerStart?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+/**
+ * The single create/edit surface. anchor="left" is the inline-start edge —
+ * MUI mirrors it to the visual right under theme.direction 'rtl'.
+ * The body is a real <form>, so required / type=email / minLength validate.
+ */
+export function FormDrawer({
+  open,
+  onClose,
+  title,
+  subtitle,
+  mode = 'create',
+  onSubmit,
+  submitting = false,
+  submitLabel,
+  disabled = false,
+  error,
+  width,
+  dirty = false,
+  footerStart,
+  children,
+}: FormDrawerProps) {
+  const theme = useTheme();
+  const confirm = useConfirm();
+  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
+
+  async function requestClose() {
+    if (submitting) return;
+    if (dirty) {
+      const ok = await confirm({
+        title: 'تجاهل التغييرات؟',
+        description: 'لديك تعديلات غير محفوظة سيتم فقدانها.',
+        confirmLabel: 'تجاهل',
+        cancelLabel: 'متابعة التحرير',
+        tone: 'danger',
+        onConfirm: () => {},
+      });
+      if (!ok) return;
+    }
+    onClose();
+  }
+
+  return (
+    <Drawer
+      open={open}
+      onClose={requestClose}
+      anchor={isXs ? 'bottom' : 'left'}
+      slotProps={{
+        paper: {
+          sx: {
+            width: isXs ? '100%' : { sm: 420, md: 480, lg: width ?? 520 },
+            height: isXs ? '92vh' : '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        },
+      }}
+    >
+      <Box component="form" onSubmit={onSubmit} noValidate={false} sx={{ display: 'contents' }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          gap={1}
+          sx={{ position: 'sticky', top: 0, zIndex: 1, bgcolor: 'background.paper', p: 2.5, pb: 1.5 }}
+        >
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="h5" noWrap>
+              {title}
+            </Typography>
+            {subtitle && (
+              <Typography variant="body2" color="text.secondary">
+                {subtitle}
+              </Typography>
+            )}
+          </Box>
+          <IconButton onClick={requestClose} aria-label="إغلاق" disabled={submitting}>
+            <CloseRounded />
+          </IconButton>
+        </Stack>
+        <Divider />
+
+        <Stack gap={2.5} sx={{ flexGrow: 1, overflowY: 'auto', p: 2.5 }}>
+          {error ? <ApiErrorAlert error={error} /> : null}
+          {children}
+        </Stack>
+
+        <Divider />
+        <Stack
+          direction="row"
+          alignItems="center"
+          gap={1}
+          sx={{ position: 'sticky', bottom: 0, bgcolor: 'background.paper', p: 2.5 }}
+        >
+          {footerStart}
+          <Box sx={{ flexGrow: 1 }} />
+          <Button variant="text" color="inherit" onClick={requestClose} disabled={submitting}>
+            إلغاء
+          </Button>
+          <Button type="submit" disabled={submitting || disabled} sx={{ minWidth: 120 }}>
+            {submitting ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : (
+              (submitLabel ?? (mode === 'create' ? 'إنشاء' : 'حفظ'))
+            )}
+          </Button>
+        </Stack>
+      </Box>
+    </Drawer>
+  );
+}

@@ -2,7 +2,7 @@ import { Box, Card, Chip, IconButton, Tooltip } from '@mui/material';
 import { MoneyOff } from '@mui/icons-material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../lib/api';
 
 export function SubscriptionsPage() {
   const qc = useQueryClient();

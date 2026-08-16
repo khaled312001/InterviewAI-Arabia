@@ -6,7 +6,7 @@ import {
 import { Add, Edit, Delete, Upload } from '@mui/icons-material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../lib/api';
 
 interface Q {
   id: string;

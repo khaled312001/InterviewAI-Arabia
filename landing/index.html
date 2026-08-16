@@ -113,8 +113,8 @@
       ],
       "offers": [
         { "@type": "Offer", "name": "المجاني", "price": "0", "priceCurrency": "EGP", "description": "٥ أسئلة يومياً" },
-        { "@type": "Offer", "name": "المميّز الشهري", "price": "149", "priceCurrency": "EGP" },
-        { "@type": "Offer", "name": "المميّز السنوي", "price": "1199", "priceCurrency": "EGP" }
+        { "@type": "Offer", "name": "المميّز الشهري", "price": "150", "priceCurrency": "EGP" },
+        { "@type": "Offer", "name": "المميّز السنوي", "price": "1200", "priceCurrency": "EGP" }
       ]
     },
     {
@@ -1125,8 +1125,8 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
       <details>
         <summary><span data-l="ar">ما طرق الدفع المتاحة؟</span><span data-l="en">What payment methods can I use?</span></summary>
         <p>
-          <span data-l="ar">بطاقات الائتمان والخصم (فيزا وماستركارد)، فوري، والمحافظ الإلكترونية — كلها عبر بوابة EasyKash المصرية.</span>
-          <span data-l="en">Credit and debit cards (Visa and Mastercard), Fawry, and e-wallets — all through the Egyptian payment gateway EasyKash.</span>
+          <span data-l="ar">فودافون كاش، وإنستاباي، وبطاقات فيزا وماستركارد، وفوري، وباقي المحافظ الإلكترونية — كلها عبر بوابة EasyKash المصرية.</span>
+          <span data-l="en">Vodafone Cash, InstaPay, Visa and Mastercard, Fawry, and the other e-wallets — all through the Egyptian payment gateway EasyKash.</span>
         </p>
       </details>
       <details>
@@ -1204,11 +1204,6 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <a href="https://barmagly.tech/" target="_blank" rel="noopener noreferrer">
           <span data-l="ar">شركة برمجلي</span><span data-l="en">Barmagly</span>
         </a>
-      </span>
-      <span>
-        <span data-l="ar">صُنع بـ</span><span data-l="en">Made with</span>
-        <span class="heart"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span>
-        <span data-l="ar">في مصر</span><span data-l="en">in Egypt</span>
       </span>
     </div>
   </div>
@@ -1301,19 +1296,22 @@ var refreshNums = function(){};
 // every word around them comes from PLAN_TEXT and follows the language.
 var PLAN_TEXT = {
   ar: {
-    cur: 'ج.م', per: 'شهرياً',
+    cur: 'ج.م', per: 'شهرياً', perYear: 'سنوياً',
     monthlySub: 'يُجدَّد شهرياً · ألغِ في أي وقت',
-    yearlySub: function(total, pct){ return 'تُدفع سنوياً ' + fmt(total) + ' ج.م — وفّر ' + fmt(pct) + '٪'; },
+    // The headline is the amount actually charged; the anchor price is what
+    // makes the saving legible.
+    yearlySub: function(was, pct){ return 'بدلاً من ' + fmt(was) + ' ج.م — وفّر ' + fmt(pct) + '٪'; },
     save: function(pct){ return 'وفّر ' + fmt(pct) + '٪'; }
   },
   en: {
-    cur: 'EGP', per: 'month',
+    cur: 'EGP', per: 'month', perYear: 'year',
     monthlySub: 'Renews monthly · cancel any time',
-    yearlySub: function(total, pct){ return 'Billed yearly at ' + fmt(total) + ' EGP — save ' + fmt(pct) + '%'; },
+    yearlySub: function(was, pct){ return 'Instead of ' + fmt(was) + ' EGP — save ' + fmt(pct) + '%'; },
     save: function(pct){ return 'Save ' + fmt(pct) + '%'; }
   }
 };
-var plans = { monthly: { amount: 149 }, yearly: { amount: 99, total: 1199, savingPct: 33 } };
+// `was` is twelve monthly renewals — the number a customer can check.
+  var plans = { monthly: { amount: 150 }, yearly: { amount: 1200, was: 1800, savingPct: 33 } };
 var activePlan = 'yearly';
 var elAmt = document.getElementById('price-amt');
 var elCur = document.getElementById('price-cur');
@@ -1326,8 +1324,8 @@ function renderPrice(key){
   var L = PLAN_TEXT[currentLang()], p = plans[activePlan];
   elAmt.textContent = fmt(p.amount);
   elCur.textContent = L.cur;
-  elPer.textContent = L.per;
-  elSub.textContent = activePlan === 'yearly' ? L.yearlySub(p.total, p.savingPct) : L.monthlySub;
+  elPer.textContent = activePlan === 'yearly' ? L.perYear : L.per;
+  elSub.textContent = activePlan === 'yearly' ? L.yearlySub(p.was, p.savingPct) : L.monthlySub;
   var pill = document.querySelector('.save-pill');
   if (pill) pill.textContent = L.save(plans.yearly.savingPct);
   tglM.setAttribute('aria-pressed', String(activePlan === 'monthly'));

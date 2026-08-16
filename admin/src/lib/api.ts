@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { useAuth } from '../store/auth';
+import { emitToast } from './toastBus';
+import { parseApiError } from './errors';
 
 // Frontend (this repo) and backend (InterviewAI-Arabia-Backend) deploy as
 // separate Vercel projects. By default we hit the backend's Vercel URL
@@ -6,14 +9,12 @@ import axios from 'axios';
 // admin SPA is served from the legacy single-domain Hostinger box.
 // Override via VITE_API_BASE_URL at build time.
 const BACKEND_VERCEL = 'https://interview-ai-arabia-backend.vercel.app/api';
-// Hosts where the backend serves the admin SPA AND the API same-origin.
 const SAME_ORIGIN_HOSTS = [
   'interview.khaledahmed.net',
   'intervie-ai-arabia.barmagly.tech',
 ];
 const fallback =
-  typeof window !== 'undefined' &&
-  SAME_ORIGIN_HOSTS.includes(window.location?.hostname)
+  typeof window !== 'undefined' && SAME_ORIGIN_HOSTS.includes(window.location?.hostname)
     ? '/api'
     : BACKEND_VERCEL;
 
@@ -30,12 +31,23 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('admin_token');
+    const status = err.response?.status;
+
+    if (status === 401) {
+      // Clear BOTH stores: the persisted zustand copy used to survive the
+      // token and keep rendering the whole shell after a revoke.
+      useAuth.getState().logout();
+      const loginUrl = `${import.meta.env.BASE_URL}login`;
       if (!window.location.pathname.endsWith('/login')) {
-        window.location.href = '/admin/login';
+        window.location.href = loginUrl;
       }
     }
+
+    // 403 never redirects — it surfaces, so RBAC stops being invisible.
+    if (status === 403) {
+      emitToast({ message: parseApiError(err).messageAr, severity: 'error' });
+    }
+
     return Promise.reject(err);
   },
 );

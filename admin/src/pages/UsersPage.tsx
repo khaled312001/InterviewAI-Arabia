@@ -3,7 +3,7 @@ import { Box, Card, TextField, Stack, Chip, IconButton, Tooltip, Button } from '
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { Block, CheckCircle, Star } from '@mui/icons-material';
-import { api } from '../api';
+import { api } from '../lib/api';
 
 export function UsersPage() {
   const [q, setQ] = useState('');

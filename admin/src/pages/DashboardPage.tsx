@@ -1,6 +1,6 @@
 import { Grid, Card, CardContent, Typography, Stack, CircularProgress, Box } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '../lib/api';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface Overview {

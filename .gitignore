@@ -12,6 +12,9 @@ node_modules/
 dist/
 build/
 public/
+# ...except the admin's static source assets (self-hosted Cairo woff2), which
+# are inputs to the build, not output.
+!admin/public/
 .next/
 .expo/
 .expo-shared/
