@@ -13,6 +13,24 @@ import Typography from '@mui/material/Typography';
 import { parseApiError } from '../../lib/errors';
 import { useToast } from './ToastProvider';
 
+/**
+ * A free-text field collected as part of the confirmation — a revoke reason,
+ * for example, which the backend stores in the audit row. It lives here rather
+ * than in each page because a controlled input owned by the caller cannot work:
+ * ConfirmOptions is captured once when the dialog opens, so a node built from
+ * caller state would never re-render as the operator types.
+ */
+export interface ConfirmPrompt {
+  label: string;
+  placeholder?: string;
+  helperText?: string;
+  /** Blocks confirm until `minLength` characters are typed. */
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  multiline?: boolean;
+}
+
 export interface ConfirmOptions {
   title: string;
   description?: React.ReactNode;
@@ -23,7 +41,9 @@ export interface ConfirmOptions {
   consequences?: string[];
   /** The user must type this exact string before confirm is enabled. */
   requireTypedConfirmation?: string;
-  onConfirm: () => Promise<unknown> | unknown;
+  prompt?: ConfirmPrompt;
+  /** Receives the trimmed `prompt` value ('' when no prompt was configured). */
+  onConfirm: (promptValue: string) => Promise<unknown> | unknown;
 }
 
 type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
@@ -34,12 +54,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const toast = useToast();
   const [options, setOptions] = useState<ConfirmOptions | null>(null);
   const [typed, setTyped] = useState('');
+  const [promptValue, setPromptValue] = useState('');
   const [busy, setBusy] = useState(false);
   const resolver = useRef<((v: boolean) => void) | null>(null);
 
   const confirm = useCallback<ConfirmFn>((opts) => {
     setOptions(opts);
     setTyped('');
+    setPromptValue('');
     return new Promise<boolean>((resolve) => {
       resolver.current = resolve;
     });
@@ -50,6 +72,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     resolver.current = null;
     setOptions(null);
     setTyped('');
+    setPromptValue('');
   }
 
   async function handleConfirm() {
@@ -58,7 +81,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     try {
       // The dialog stays open until the action settles, so the operator sees
       // the failure in context rather than after the surface disappeared.
-      await options.onConfirm();
+      await options.onConfirm(promptValue.trim());
       settle(true);
     } catch (err) {
       toast.error(parseApiError(err).messageAr);
@@ -67,7 +90,11 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const gateOk = !options?.requireTypedConfirmation || typed === options.requireTypedConfirmation;
+  const typedOk = !options?.requireTypedConfirmation || typed === options.requireTypedConfirmation;
+  const promptOk =
+    !options?.prompt?.required ||
+    promptValue.trim().length >= (options.prompt.minLength ?? 1);
+  const gateOk = typedOk && promptOk;
   const danger = options?.tone === 'danger';
 
   const value = useMemo(() => confirm, [confirm]);
@@ -100,6 +127,21 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   ))}
                 </Stack>
               </Alert>
+            )}
+
+            {options?.prompt && (
+              <TextField
+                label={options.prompt.label}
+                placeholder={options.prompt.placeholder}
+                value={promptValue}
+                onChange={(e) => setPromptValue(e.target.value)}
+                required={options.prompt.required}
+                multiline={options.prompt.multiline}
+                minRows={options.prompt.multiline ? 2 : undefined}
+                inputProps={{ maxLength: options.prompt.maxLength }}
+                helperText={options.prompt.helperText ?? ' '}
+                autoComplete="off"
+              />
             )}
 
             {options?.requireTypedConfirmation && (

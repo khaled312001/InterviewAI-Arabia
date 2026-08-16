@@ -6,10 +6,12 @@ import type { AdminRole } from '../store/auth';
  * rendered disabled with no explanation.
  */
 export type Action =
-  | 'users.read' | 'users.write' | 'users.delete'
+  | 'users.read' | 'users.create' | 'users.write' | 'users.delete'
   | 'questions.read' | 'questions.write' | 'questions.delete'
   | 'categories.read' | 'categories.write' | 'categories.delete'
   | 'subscriptions.read' | 'subscriptions.cancel'
+  | 'subscriptions.grant' | 'subscriptions.extend' | 'subscriptions.revoke'
+  | 'minutes.read' | 'minutes.adjust'
   | 'payments.read'
   | 'aiUsage.read'
   | 'reports.read' | 'reports.resolve'
@@ -24,6 +26,13 @@ const ALL: AdminRole[] = ['super_admin', 'moderator', 'content_editor'];
 const MATRIX: Record<Action, AdminRole[]> = {
   'analytics.read': ALL,
   'users.read': ALL,
+  // POST /admin/users is requireAdmin('super_admin') — deliberately narrower
+  // than users.write, because creating an account mints a credential.
+  'users.create': ['super_admin'],
+  // Renaming and suspending accounts. It does NOT cover the plan / expiry
+  // controls in the user drawer: those create a real subscription row, so they
+  // are gated on subscriptions.grant below and the backend answers
+  // ENTITLEMENT_SUPER_ADMIN_ONLY to a moderator who tries.
   'users.write': ['super_admin', 'moderator'],
   'users.delete': ['super_admin'],
   'questions.read': ALL,
@@ -34,6 +43,20 @@ const MATRIX: Record<Action, AdminRole[]> = {
   'categories.delete': ['super_admin'],
   'subscriptions.read': ['super_admin'],
   'subscriptions.cancel': ['super_admin'],
+  // POST /admin/subscriptions, PATCH /admin/subscriptions/:id and
+  // DELETE /admin/subscriptions/:id are all requireAdmin('super_admin').
+  // A moderator cannot even read GET /subscriptions, so it must never be
+  // offered a control on this page.
+  'subscriptions.grant': ['super_admin'],
+  'subscriptions.extend': ['super_admin'],
+  'subscriptions.revoke': ['super_admin'],
+  // GET /admin/users/:id/minutes is requireAdmin() — every role. Support has to
+  // answer "where did my minutes go?" without holding the keys to the balance.
+  'minutes.read': ALL,
+  // POST /admin/users/:id/minutes is requireAdmin('super_admin'). It is the
+  // only control in the panel that moves a customer's balance in either
+  // direction, so it is the narrowest.
+  'minutes.adjust': ['super_admin'],
   'payments.read': ['super_admin'],
   'aiUsage.read': ALL,
   'reports.read': ['super_admin', 'moderator'],

@@ -34,6 +34,24 @@ export interface FormDrawerProps {
   noValidate?: boolean;
   /** e.g. a Delete button, pinned to the footer's inline-start. */
   footerStart?: React.ReactNode;
+  /**
+   * Replaces the cancel/submit pair entirely. For a drawer that has stopped
+   * being a form — e.g. the one-time credential panel shown after a user is
+   * created, whose only sensible action is an acknowledgement.
+   */
+  footer?: React.ReactNode;
+  /**
+   * Overrides the "discard changes?" copy used when a dirty drawer is closed.
+   * The guard is worth reusing whenever closing loses something, but "لديك
+   * تعديلات غير محفوظة" is the wrong sentence when what is lost is a password
+   * that will never be shown again.
+   */
+  closeConfirm?: {
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  };
   children: React.ReactNode;
 }
 
@@ -57,6 +75,8 @@ export function FormDrawer({
   dirty = false,
   noValidate = false,
   footerStart,
+  footer,
+  closeConfirm,
   children,
 }: FormDrawerProps) {
   const theme = useTheme();
@@ -67,10 +87,10 @@ export function FormDrawer({
     if (submitting) return;
     if (dirty) {
       const ok = await confirm({
-        title: 'تجاهل التغييرات؟',
-        description: 'لديك تعديلات غير محفوظة سيتم فقدانها.',
-        confirmLabel: 'تجاهل',
-        cancelLabel: 'متابعة التحرير',
+        title: closeConfirm?.title ?? 'تجاهل التغييرات؟',
+        description: closeConfirm?.description ?? 'لديك تعديلات غير محفوظة سيتم فقدانها.',
+        confirmLabel: closeConfirm?.confirmLabel ?? 'تجاهل',
+        cancelLabel: closeConfirm?.cancelLabel ?? 'متابعة التحرير',
         tone: 'danger',
         onConfirm: () => {},
       });
@@ -132,16 +152,20 @@ export function FormDrawer({
         >
           {footerStart}
           <Box sx={{ flexGrow: 1 }} />
-          <Button variant="text" color="inherit" onClick={requestClose} disabled={submitting}>
-            إلغاء
-          </Button>
-          <Button type="submit" disabled={submitting || disabled} sx={{ minWidth: 120 }}>
-            {submitting ? (
-              <CircularProgress size={18} color="inherit" />
-            ) : (
-              (submitLabel ?? (mode === 'create' ? 'إنشاء' : 'حفظ'))
-            )}
-          </Button>
+          {footer ?? (
+            <>
+              <Button variant="text" color="inherit" onClick={requestClose} disabled={submitting}>
+                إلغاء
+              </Button>
+              <Button type="submit" disabled={submitting || disabled} sx={{ minWidth: 120 }}>
+                {submitting ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  (submitLabel ?? (mode === 'create' ? 'إنشاء' : 'حفظ'))
+                )}
+              </Button>
+            </>
+          )}
         </Stack>
       </Box>
     </Drawer>

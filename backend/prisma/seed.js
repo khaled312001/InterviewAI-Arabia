@@ -146,11 +146,36 @@ async function seedAdmin() {
   console.log(`✓ admin created: ${email}  (change password immediately)`);
 }
 
+/**
+ * Only keys the backend actually READS, and every one of them a metering
+ * constant.
+ *
+ * What used to be here: `free_daily_question_limit: '5'` (retired by migration
+ * 002 — a freshly seeded database started with a dead row the admin panel then
+ * had to badge as "does nothing"), plus `subscription_monthly_price_egp: '29'`
+ * and `subscription_yearly_price_egp: '249'`. Those last two were the real
+ * hazard: the catalogue in services/payments/plans.js says 150 EGP a month and
+ * has no yearly plan at all, so a new install came up with an app_settings row
+ * advertising a price the checkout would never honour and a product that no
+ * longer exists. Prices have ONE source of truth, and it is not this table.
+ *
+ * The values match migration 002 exactly. `update: {}` means re-seeding never
+ * stamps on an operator's edit.
+ */
 async function seedSettings() {
   const defaults = {
-    free_daily_question_limit: '5',
-    subscription_monthly_price_egp: '29',
-    subscription_yearly_price_egp: '249',
+    free_trial_seconds: '600',          // the 10 free minutes, and the kill switch
+    meeting_tick_seconds: '15',
+    meeting_max_gap_seconds: '40',
+    meeting_turn_gap_seconds: '120',
+    meeting_abandon_seconds: '120',
+    meeting_hold_seconds: '300',
+    meeting_min_start_seconds: '60',
+    meeting_min_turn_seconds: '30',
+    meeting_low_water_seconds: '120',
+    cv_prepare_seconds: '60',
+    practice_answer_seconds: '30',
+    subscription_cycle_seconds: '18000', // 300 minutes per 30-day cycle
     push_welcome_ar: 'أهلاً بك في InterviewAI Arabia! جاهز للتدريب؟',
     push_welcome_en: 'Welcome to InterviewAI Arabia! Ready to practice?',
   };

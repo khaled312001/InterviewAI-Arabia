@@ -1,17 +1,31 @@
 /**
- * Live mock interview ("meeting") — the flagship feature.
+ * Live mock interview ("meeting") — the flagship feature, and the thing the
+ * minute balance is actually spent on.
  *
- * Rewritten for three reasons:
+ * METERING, as of the move from daily questions to minutes:
  *
- * 1. It called Groq directly with its own hardcoded fetch, its own prompt
- *    builder, and its own copy of the JSON-scraping logic. Switching the
- *    product to Claude therefore left this feature — the most expensive and
- *    most marketed one — still on the old provider.
- * 2. None of the three endpoints consumed any quota, and /prepare had no AI
- *    rate limiter at all. A free user could run unlimited interviews and CV
- *    analyses, each far more expensive than the metered practice answers.
- * 3. /finish wrote answers with a hardcoded `questionId: 1`, corrupting that
- *    question's usage statistics and lying about the foreign key.
+ *   /start          opens the billing clock, places a reservation, resolves the
+ *                   free trial. Refuses below one minute — an interview that
+ *                   dies in eight seconds is worse than one that never opened.
+ *   /:id/tick       the clock. Cheap, no AI, every 15 seconds. Charges only the
+ *                   wall-clock it has evidence for.
+ *   /turn           accrues like a tick, plus a floor so a client that stops
+ *                   ticking cannot interview for free.
+ *   /prepare        flat charge for the CV analysis, free for subscribers.
+ *   /finish         FREE, never blocked by a balance — once per billed meeting.
+ *
+ * That last line is the one to read twice. The evaluation is the deliverable
+ * the minutes were spent ON; gating it behind a balance the interview itself
+ * just consumed would charge twice for one interview and withhold the thing
+ * they paid for. It runs for abandoned meetings too, so a user whose app was
+ * killed still gets the evaluation for the part they were charged for.
+ *
+ * "Free" is not the same as "unbounded", and it used to be implemented as the
+ * second: /finish checked nothing at all, including whether the caller had ever
+ * been billed for an interview, so a fabricated two-message `history` from a
+ * fresh account ran the evaluator. It is now one evaluation per meeting that
+ * actually accrued time — which every honest user has, and which costs them
+ * nothing.
  */
 
 import { Router } from 'express';
@@ -20,11 +34,17 @@ import multer from 'multer';
 
 import { logger } from '../utils/logger.js';
 import { requireUser } from '../middleware/auth.js';
-import { aiLimiter, heavyAiLimiter } from '../middleware/rateLimit.js';
+import { aiLimiter, heavyAiLimiter, tickLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import { prisma } from '../db/prisma.js';
 import { meetingTurn, evaluateInterview, summarizeCv, AiUnavailableError } from '../services/ai/index.js';
-import { requireQuota, refundQuota, hasPremium, QUOTA_COST } from '../services/quota.js';
+import {
+  CFG, hasPremium, chargeFlat, refundFlat, loadBalanceUser, balanceSnapshot,
+} from '../services/billing/minutes.js';
+import {
+  startMeeting, advanceMeeting, endMeeting, resolveTurnMeeting, reverseTurnFloor,
+  latestMeetingFor, readMeeting, alreadyClosed, meetingExpired,
+} from '../services/billing/meetings.js';
 
 const router = Router();
 
@@ -63,11 +83,21 @@ async function loadCategoryFor(req, categoryId) {
   if (!user) throw new HttpError(404, 'User not found');
   if (user.isDisabled) throw new HttpError(403, 'هذا الحساب موقوف / This account is suspended');
 
+  // PREMIUM_REQUIRED keeps its exact meaning: premium-only CATEGORIES. Minutes
+  // and premium are orthogonal — a pack buyer has minutes but no premium and
+  // must still be refused here. Never conflate the two codes.
   if (category.isPremium && !hasPremium(user)) {
     throw new HttpError(402, 'Premium subscription required', undefined, 'PREMIUM_REQUIRED');
   }
   return { category, user };
 }
+
+/** The install id used to claim the free trial. Absent on old clients. */
+const installIdOf = (req) => req.get('x-install-id') || null;
+
+const bigMeetingId = (raw) => {
+  try { return BigInt(raw); } catch { throw new HttpError(400, 'Invalid meeting id'); }
+};
 
 const contextSchema = z.object({
   categoryId: z.coerce.number().int().positive().optional(),
@@ -78,6 +108,70 @@ const contextSchema = z.object({
   cvKey: z.any().optional(),
   gender: z.enum(['male', 'female']).optional(),
 }).nullable().optional();
+
+/* ------------------------------------------------------------------ *
+ * POST /api/meeting/start — open the billing clock
+ * ------------------------------------------------------------------ */
+
+const startSchema = z.object({
+  categoryId: z.coerce.number().int().positive(),
+  client: z.string().max(32).optional(),
+  // The id THIS client was already given, if it has one. Presenting it is the
+  // only way to resume: see startMeeting(). A client that presents nothing is
+  // asking for a new interview, and any other live meeting on the account is a
+  // second concurrent one and gets settled and closed.
+  resumeMeetingId: z.union([z.string(), z.number()]).optional(),
+});
+
+router.post('/start', requireUser, asyncHandler(async (req, res) => {
+  const body = startSchema.parse(req.body ?? {});
+  await loadCategoryFor(req, body.categoryId);
+
+  const { meeting, resumed, billing } = await startMeeting({
+    userId: req.userId,
+    categoryId: body.categoryId,
+    client: body.client,
+    installId: installIdOf(req),
+    resumeMeetingId: body.resumeMeetingId ?? null,
+  });
+
+  res.status(resumed ? 200 : 201).json({
+    meetingId: meeting.id.toString(),
+    resumed,
+    startedAt: meeting.startedAt,
+    billing,
+  });
+}));
+
+/* ------------------------------------------------------------------ *
+ * POST /api/meeting/:meetingId/tick — the clock
+ *
+ * No body, no AI, cheap. Running out is NEVER an error here: the response is
+ * 200 with `billing.exhausted`, and the interview ends through the ordinary
+ * wrap-up path on the next turn. A 402 in the middle of someone speaking is a
+ * dead line, not a paywall.
+ * ------------------------------------------------------------------ */
+
+router.post('/:meetingId/tick', requireUser, tickLimiter, asyncHandler(async (req, res) => {
+  const meetingId = bigMeetingId(req.params.meetingId);
+  const { billing } = await advanceMeeting(meetingId, req.userId, { isTurn: false });
+  res.json({ billing });
+}));
+
+/* ------------------------------------------------------------------ *
+ * POST /api/meeting/:meetingId/end — user closed the interview
+ * ------------------------------------------------------------------ */
+
+router.post('/:meetingId/end', requireUser, asyncHandler(async (req, res) => {
+  const meetingId = bigMeetingId(req.params.meetingId);
+  const out = await endMeeting(meetingId, req.userId, { reason: 'user_ended' });
+  if (!out) throw new HttpError(404, 'Meeting not found');
+  res.json({
+    billing: out.billing,
+    billedSeconds: out.meeting.billedSeconds,
+    skippedSeconds: out.meeting.skippedSeconds,
+  });
+}));
 
 /* ------------------------------------------------------------------ *
  * POST /api/meeting/prepare — CV + job context
@@ -119,14 +213,22 @@ router.post('/prepare', requireUser, heavyAiLimiter, upload.single('cv'), asyncH
   let cvKey = null;
 
   if (cvText) {
-    // CV analysis is the most expensive single call in the product.
-    await requireQuota(req.userId, QUOTA_COST.meetingPrepare);
+    // CV analysis is the most expensive single call in the product, so it is a
+    // flat charge rather than free. Subscribers pay nothing — chargeFlat()
+    // exempts them — and the flat fee is listed on the pricing screen, because
+    // a hidden minimum is the thing users forgive least.
+    const receipt = await chargeFlat({
+      userId: req.userId,
+      seconds: CFG.cvPrepare(),
+      note: 'cv_analysis',
+    });
     try {
       const out = await summarizeCv({ cvText, language: body.language, userId: req.userId });
       cvSummary = out.cvSummary;
       cvKey = out.cvKey;
     } catch (err) {
-      await refundQuota(req.userId, QUOTA_COST.meetingPrepare);
+      // A failed model call costs the user nothing. Same discipline as before.
+      await refundFlat(receipt, 'cv_analysis_failed');
       if (err instanceof AiUnavailableError) {
         logger.error('CV summarise failed', { message: err.message });
         cvError = 'تعذّر تحليل السيرة الذاتية حاليًا. يمكنك متابعة المقابلة بدونها.';
@@ -155,6 +257,10 @@ router.post('/prepare', requireUser, heavyAiLimiter, upload.single('cv'), asyncH
 
 const turnSchema = z.object({
   categoryId: z.coerce.number().int().positive(),
+  // Optional on purpose. Old clients — the installed Play build and the cached
+  // /app bundle — do not send it, and neither does an interview that was
+  // already running when this backend went live.
+  meetingId: z.union([z.string(), z.number()]).optional(),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string().min(1).max(3000),
@@ -166,7 +272,7 @@ const turnSchema = z.object({
 
 router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
   const body = turnSchema.parse(req.body);
-  const { category, user } = await loadCategoryFor(req, body.categoryId);
+  const { category } = await loadCategoryFor(req, body.categoryId);
 
   // The old schema hard-rejected a history longer than 20 with a 400, which
   // killed the interview mid-conversation. Keep the opening turn (it anchors
@@ -177,9 +283,37 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
     history = [history[0], ...history.slice(-(MAX_TURNS - 1))];
   }
 
-  // The opening turn is free — nobody should spend quota on "hello".
+  // The opening turn is free — nobody should pay for "hello".
   const isOpening = history.length === 0 && !body.userMessage;
-  if (!isOpening) await requireQuota(req.userId, QUOTA_COST.meetingTurn);
+
+  // No meeting id is the legacy path. It resolves to the user's own live
+  // meeting when there is one — so a modern client that drops the field is
+  // metered exactly as if it had not — and otherwise opens a real, balance-
+  // checked meeting. It is NOT a way to get an unmetered one.
+  const meetingId = body.meetingId
+    ? bigMeetingId(body.meetingId)
+    : await resolveTurnMeeting({
+        userId: req.userId,
+        categoryId: body.categoryId,
+        installId: installIdOf(req),
+      });
+
+  // A meeting that already served its goodwill closing turn is done. This is
+  // the only place /turn returns 402: the client had its wrap-up.
+  const current = await readMeeting(meetingId, req.userId);
+  if (!current) throw meetingExpired();
+  if (alreadyClosed(current)) {
+    const user = await loadBalanceUser(req.userId);
+    const snap = await balanceSnapshot(user);
+    throw new HttpError(
+      402,
+      'لم يتبقَّ رصيد من دقائق المقابلات / You have run out of interview minutes',
+      { reason: 'insufficient_minutes', balanceSeconds: snap.availableSeconds, trialUsed: snap.trialGranted },
+      'QUOTA_EXCEEDED',
+    );
+  }
+
+  const { billing } = await advanceMeeting(meetingId, req.userId, { isTurn: !isOpening });
 
   const assistantTurns = history.filter((h) => h.role === 'assistant').length;
 
@@ -193,8 +327,33 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
         ? { ...body.context, jobTitle: body.context.jobTitle || (body.language === 'ar' ? category.nameAr : category.nameEn) }
         : null,
       userId: req.userId,
-      shouldClose: assistantTurns >= TARGET_ASSISTANT_TURNS,
+      // Exhaustion reuses the machinery that already exists. The interviewer
+      // says "شكرًا لوقتك، دي كانت آخر سؤال" and the call CONCLUDES; the client
+      // already handles status === 'closing'. The user is never cut off, and
+      // there is no new state machine to get wrong.
+      shouldClose: assistantTurns >= TARGET_ASSISTANT_TURNS || billing.exhausted,
     });
+
+    // The goodwill closing turn has now been served, so CLOSE THE MEETING here
+    // rather than leaving a flag on a live row for the next request to respect.
+    //
+    // The flag alone did not hold: `end_reason = 'exhausted'` was re-stamped to
+    // 'abandoned' by the every-minute sweep as soon as the heartbeat went
+    // stale, and the next /turn then opened a fresh meeting and served another
+    // goodwill turn — an unlimited interview at a zero balance, one exchange
+    // every two minutes, with the client supplying the history so the
+    // conversation never even noticed. A terminal status cannot be swept back
+    // into a live one, and the balance gate in startMeeting() refuses to open
+    // the replacement.
+    if (billing.exhausted) {
+      try {
+        await endMeeting(meetingId, req.userId, { reason: 'exhausted' });
+      } catch (err) {
+        logger.error('closing an exhausted meeting failed', {
+          meetingId: String(meetingId), message: err.message,
+        });
+      }
+    }
 
     res.json({
       reply: out.reply,
@@ -203,10 +362,15 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
       tips: out.tips,
       tokensUsed: out.tokensUsed,
       turnIndex: history.length + (body.userMessage ? 1 : 0),
+      meetingId: meetingId.toString(),
+      billing,
     });
   } catch (err) {
-    if (!isOpening) await refundQuota(req.userId, QUOTA_COST.meetingTurn);
     if (err instanceof AiUnavailableError) {
+      // Reverse this turn's floor top-up: a model call that failed is not
+      // interview time. The wall-clock already ticked is left charged — that
+      // time genuinely passed with the user waiting in the interview.
+      await reverseTurnFloor(meetingId, req.userId, billing.floorTopUp);
       logger.error('Meeting turn failed', { message: err.message });
       throw new HttpError(503, 'The interviewer is temporarily unavailable', undefined, 'AI_UNAVAILABLE');
     }
@@ -215,11 +379,12 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
 }));
 
 /* ------------------------------------------------------------------ *
- * POST /api/meeting/finish
+ * POST /api/meeting/finish — the evaluation. Always free, once per interview.
  * ------------------------------------------------------------------ */
 
 const finishSchema = z.object({
   categoryId: z.coerce.number().int().positive(),
+  meetingId: z.union([z.string(), z.number()]).optional(),
   history: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string().min(1).max(3000),
@@ -232,7 +397,85 @@ router.post('/finish', requireUser, aiLimiter, asyncHandler(async (req, res) => 
   const body = finishSchema.parse(req.body);
   await loadCategoryFor(req, body.categoryId);
 
-  await requireQuota(req.userId, QUOTA_COST.meetingFinish);
+  // STILL NO BALANCE CHECK, and there must never be one: the evaluation is the
+  // deliverable the minutes bought, and charging for it would charge twice for
+  // one interview. What there IS now is a check that an interview HAPPENED.
+  //
+  // "Free and unconditional" was implemented as "never check anything" — not
+  // even whether a meeting existed. `latestMeetingFor()` returning null meant
+  // no billing ran and evaluateInterview(), the second most expensive call in
+  // the product, was invoked anyway on a two-element `history` the client made
+  // up. Registration is unverified and authLimiter skips successful requests,
+  // so that was unbounded model spend from an unbounded number of accounts, all
+  // with a zero balance.
+  //
+  // The bound is one evaluation per BILLED meeting. Every honest user has one
+  // — the interview they just paid for with their minutes — and it costs them
+  // nothing.
+  const meetingId = body.meetingId
+    ? bigMeetingId(body.meetingId)
+    : await latestMeetingFor(req.userId);
+
+  // `turnCount` as well as `billedSeconds`, so a subscriber — who is exempt
+  // from the turn floor and is billed pure wall-clock — cannot be refused their
+  // evaluation for an interview the meter happened to round to zero seconds.
+  const meeting = meetingId ? await readMeeting(meetingId, req.userId) : null;
+  if (!meeting || (meeting.billedSeconds <= 0 && meeting.turnCount <= 0)) {
+    throw new HttpError(
+      409,
+      'لا توجد مقابلة لتقييمها / There is no interview to evaluate',
+      { reason: 'no_billed_interview' },
+      'NO_INTERVIEW',
+    );
+  }
+
+  // Claim the meeting in ONE conditional UPDATE, before the model call: the
+  // WHERE clause is the check, so two concurrent /finish calls cannot both pass
+  // it. Without this, aiLimiter's 20/min was the only cap on re-evaluating the
+  // same 30-second interview.
+  const previousReason = meeting.endReason ?? null;
+  const claimed = await prisma.$executeRaw`
+    UPDATE meeting_sessions
+       SET end_reason = 'evaluated'
+     WHERE id = ${meeting.id}
+       AND user_id = ${req.userId}
+       AND session_id IS NULL
+       AND (end_reason IS NULL OR end_reason <> 'evaluated')
+  `;
+  if (claimed === 0) {
+    // The evaluation is not lost — it was persisted as a session the moment it
+    // was generated, and it is in History. Say so, and hand back the id.
+    throw new HttpError(
+      409,
+      'تم تقييم هذه المقابلة بالفعل، وتجدها في سجلّ جلساتك / This interview has already been evaluated — it is in your session history',
+      { sessionId: meeting.sessionId ? meeting.sessionId.toString() : null },
+      'ALREADY_EVALUATED',
+    );
+  }
+
+  /** Hand the meeting back if the evaluation never happened. */
+  const releaseClaim = async () => {
+    try {
+      await prisma.$executeRaw`
+        UPDATE meeting_sessions SET end_reason = ${previousReason}
+         WHERE id = ${meeting.id} AND session_id IS NULL AND end_reason = 'evaluated'
+      `;
+    } catch (err) {
+      logger.error('releasing the evaluation claim failed', {
+        meetingId: String(meeting.id), message: err.message,
+      });
+    }
+  };
+
+  let settled = null;
+  try {
+    settled = await endMeeting(meetingId, req.userId, { reason: 'evaluated' });
+  } catch (err) {
+    // Billing must never be the reason a user cannot see their evaluation.
+    logger.error('meeting settle at finish failed', {
+      meetingId: String(meetingId), message: err.message,
+    });
+  }
 
   let evaluation;
   try {
@@ -247,16 +490,21 @@ router.post('/finish', requireUser, aiLimiter, asyncHandler(async (req, res) => 
     // Persist as a session so it appears in History and Stats.
     const answered = body.history.filter((h) => h.role === 'user');
     const overall = Math.max(0, Math.min(10, Math.round(Number(evaluation.overall_score) || 0)));
+    const billedSeconds = settled?.meeting?.billedSeconds ?? 0;
 
-    await prisma.$transaction(async (tx) => {
-      const session = await tx.session.create({
+    const session = await prisma.$transaction(async (tx) => {
+      const created = await tx.session.create({
         data: {
           userId: req.userId,
           categoryId: body.categoryId,
           kind: 'meeting',
           totalScore: overall * answered.length,
           answerCount: answered.length,
-          startedAt: new Date(Date.now() - body.history.length * 60_000),
+          billedSeconds,
+          // The REAL start, from the billing clock. The old code fabricated
+          // `Date.now() - history.length * 60_000`, so every interview in
+          // History claimed a duration nobody had measured.
+          startedAt: settled?.meeting?.startedAt ?? new Date(),
           endedAt: new Date(),
         },
       });
@@ -269,7 +517,7 @@ router.post('/finish', requireUser, aiLimiter, asyncHandler(async (req, res) => 
         if (turn.role === 'assistant') { lastQuestion = turn.content; continue; }
         const perQ = evaluation.per_question?.[i];
         rows.push({
-          sessionId: session.id,
+          sessionId: created.id,
           // NULL rather than a fabricated FK to question #1.
           questionId: null,
           questionText: lastQuestion,
@@ -284,11 +532,36 @@ router.post('/finish', requireUser, aiLimiter, asyncHandler(async (req, res) => 
         i += 1;
       }
       if (rows.length) await tx.answer.createMany({ data: rows });
+      return created;
     });
 
-    res.json({ evaluation, tokensUsed: out.tokensUsed });
+    // Unconditionally, not only when the settlement succeeded: `session_id` is
+    // half of the claim that stops this meeting being evaluated a second time,
+    // and a failed settlement is exactly when it must still hold.
+    await prisma.$executeRaw`
+      UPDATE meeting_sessions SET session_id = ${session.id} WHERE id = ${meeting.id}
+    `;
+
+    res.json({
+      evaluation,
+      tokensUsed: out.tokensUsed,
+      sessionId: session.id.toString(),
+      // The receipt. `skippedSeconds` is the trust argument made visible: it
+      // tells the user, on their own receipt, that the meter stopped when the
+      // interview did.
+      billing: settled
+        ? {
+            billedSeconds: settled.meeting.billedSeconds,
+            skippedSeconds: settled.meeting.skippedSeconds,
+            remainingSeconds: settled.billing.remainingSeconds,
+            remainingMinutes: settled.billing.remainingMinutes,
+          }
+        : null,
+    });
   } catch (err) {
-    await refundQuota(req.userId, QUOTA_COST.meetingFinish);
+    // The evaluation did not happen, so the claim on it must not stand: a user
+    // whose model call 529'd has to be able to press the button again.
+    await releaseClaim();
     if (err instanceof AiUnavailableError) {
       logger.error('Interview evaluation failed', { message: err.message });
       throw new HttpError(503, 'Could not generate the final evaluation', undefined, 'AI_UNAVAILABLE');

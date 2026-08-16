@@ -27,6 +27,46 @@ async function getApp() {
   }
 }
 
+/**
+ * CORS for requests the Express app never got to handle.
+ *
+ * When the app fails to boot — a bad DATABASE_URL, a short JWT_SECRET, a
+ * missing build artefact — the cors() middleware inside it never runs, so the
+ * error response carries no access-control-allow-* headers. The browser then
+ * reports a CORS failure and discards the response, and the actual boot error
+ * is invisible to whoever is debugging: a broken backend and a
+ * misconfigured-CORS backend look identical from the client, and the OPTIONS
+ * preflight fails before the real request is ever attempted. Answering
+ * preflights and labelling error responses here is what makes the difference
+ * legible from the outside.
+ *
+ * The allow-list is read straight from process.env rather than config/env.js,
+ * because config/env.js is one of the modules that can be the thing failing.
+ */
+function corsOrigins() {
+  return String(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function applyCors(req, res) {
+  const origin = req.headers?.origin;
+  if (!origin) return;
+  // Never reflect an arbitrary origin: with credentials: true that would let
+  // any site read authenticated responses.
+  if (!corsOrigins().includes(origin)) return;
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Vary', 'Origin');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    req.headers['access-control-request-headers'] || 'Content-Type, Authorization, X-Request-Id',
+  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
 export default async function handler(req, res) {
   try {
     const app = await getApp();
@@ -39,13 +79,29 @@ export default async function handler(req, res) {
       app(req, res);
     });
   } catch (err) {
-    if (!res.headersSent) {
-      res.statusCode = 500;
-      res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({
-        error: 'Function failed to initialise',
-        message: err?.message || String(err),
-      }));
+    console.error('[handler] app unavailable', err);
+    if (res.headersSent) return undefined;
+
+    applyCors(req, res);
+
+    // A preflight is answerable without the app: it asks whether the origin is
+    // allowed, which is env, not application state. Failing it would mask the
+    // 503 below behind a CORS error and hide the real fault.
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      return res.end();
     }
+
+    // 503, not 500: the service is not initialised, and the message is
+    // generic on purpose. The old version returned `err.message` to the
+    // internet, and boot errors routinely quote the offending config — a
+    // failed DATABASE_URL parse puts the connection string, credentials
+    // included, straight into the response body. The detail is logged above.
+    res.statusCode = 503;
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify({
+      error: 'Service unavailable',
+      code: 'BOOT_FAILED',
+    }));
   }
 }

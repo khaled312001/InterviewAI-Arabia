@@ -58,7 +58,12 @@ export interface DataTableProps<R extends GridValidRowModel> {
   density?: 'compact' | 'standard';
   height?: number | string;
   checkboxSelection?: boolean;
-  selectionActions?: (ids: GridRowId[]) => React.ReactNode;
+  /**
+   * The bulk bar shown above the grid while rows are selected. `clear` empties
+   * the selection — a bulk action that succeeded must not leave rows ticked, or
+   * the next click repeats it on rows that were already handled.
+   */
+  selectionActions?: (ids: GridRowId[], clear: () => void) => React.ReactNode;
 }
 
 export function DataTable<R extends GridValidRowModel>({
@@ -66,6 +71,7 @@ export function DataTable<R extends GridValidRowModel>({
   columns,
   getRowId,
   query,
+  paginationMode = 'server',
   paginationModel,
   onPaginationModelChange,
   rowCount,
@@ -87,6 +93,24 @@ export function DataTable<R extends GridValidRowModel>({
 
   const isEmpty = !query.isError && !query.isLoading && (rows?.length ?? 0) === 0;
 
+  const clearSelection = () => setSelection([]);
+
+  /**
+   * Turning the page drops the selection. With server pagination the rows
+   * behind the ticked ids are no longer on screen, and a bulk action the
+   * operator can no longer see the targets of is not a reviewable action.
+   */
+  const handlePaginationModelChange = (model: GridPaginationModel) => {
+    clearSelection();
+    onPaginationModelChange?.(model);
+  };
+
+  const paginated = paginationMode === 'server';
+  // With `paginationMode="none"` every row is already on the client, so the
+  // grid keeps one page big enough to hold them all and hides the footer.
+  const effectiveModel: GridPaginationModel =
+    paginated && paginationModel ? paginationModel : { page: 0, pageSize: 100 };
+
   const chrome = (body: React.ReactNode) => (
     <Card>
       {toolbar && (
@@ -97,8 +121,13 @@ export function DataTable<R extends GridValidRowModel>({
       )}
       {checkboxSelection && selectionActions && selection.length > 0 && (
         <>
-          <Stack direction="row" alignItems="center" gap={1} sx={{ p: 1.5, bgcolor: 'action.hover' }}>
-            {selectionActions(selection)}
+          <Stack
+            direction="row"
+            alignItems="center"
+            gap={1}
+            sx={{ p: 1.5, bgcolor: 'action.hover', flexWrap: 'wrap' }}
+          >
+            {selectionActions(selection, clearSelection)}
           </Stack>
           <Divider />
         </>
@@ -116,7 +145,7 @@ export function DataTable<R extends GridValidRowModel>({
   }
 
   if (query.isLoading) {
-    return chrome(<TableSkeleton rows={paginationModel.pageSize > 10 ? 8 : 5} cols={columns.length} />);
+    return chrome(<TableSkeleton rows={effectiveModel.pageSize > 10 ? 8 : 5} cols={columns.length} />);
   }
 
   if (isEmpty) return chrome(<EmptyState {...empty} size="md" />);
@@ -139,13 +168,17 @@ export function DataTable<R extends GridValidRowModel>({
         getRowId={getRowId}
         autoHeight={height === undefined}
         density={isSm ? 'compact' : density}
-        paginationMode="server"
-        rowCount={rowCount ?? -1}
-        paginationModel={paginationModel}
-        onPaginationModelChange={onPaginationModelChange}
-        pageSizeOptions={pageSizeOptions}
+        paginationMode={paginated ? 'server' : 'client'}
+        rowCount={paginated ? (rowCount ?? -1) : undefined}
+        paginationModel={effectiveModel}
+        onPaginationModelChange={paginated ? handlePaginationModelChange : undefined}
+        pageSizeOptions={paginated ? pageSizeOptions : [effectiveModel.pageSize]}
+        hideFooter={!paginated}
         keepNonExistentRowsSelected={false}
         checkboxSelection={checkboxSelection}
+        // Controlled, so `clear` empties the tick boxes too and not just the
+        // ids the bulk bar was holding.
+        rowSelectionModel={checkboxSelection ? selection : undefined}
         onRowSelectionModelChange={(model: GridRowSelectionModel) => setSelection(model as GridRowId[])}
         onRowClick={onRowClick ? (params) => onRowClick(params.row as R) : undefined}
         // Rows stay mounted across page changes; the refetch shows as a top

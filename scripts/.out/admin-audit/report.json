@@ -1,0 +1,1098 @@
+[
+  {
+    "route": "/login",
+    "name": "01-login",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 134,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/login",
+      "h1": [
+        "ثقتي"
+      ],
+      "overflowing": [],
+      "drawerLeft": null
+    },
+    "consoleErrors": [
+      "[error] Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "pageErrors": [],
+    "failedRequests": [
+      "404 http://localhost:5199/favicon.ico"
+    ],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\01-login.png"
+  },
+  {
+    "route": "/",
+    "name": "02-dashboard",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1472,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/",
+      "h1": [
+        "اللوحة الرئيسية",
+        "١٢٬٤٨٠",
+        "١٬٣٤٢",
+        "٨١٢"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\02-dashboard.png"
+  },
+  {
+    "route": "/analytics",
+    "name": "03-analytics",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1591,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/analytics",
+      "h1": [
+        "التحليلات",
+        "٧١٫٤",
+        "٣٬٤١١",
+        "٢٬١٤٠"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-130 right=670",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-130 right=670",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignLeft.MuiDataGrid-columnHeader--sortable left=-130 right=40",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-120 right=30",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-125 right=30",
+        "div.MuiDataGrid-columnHeaderTitleContainerContent left=-92 right=30",
+        "div.MuiDataGrid-columnHeaderTitle.muirtl-1rxsvxt left=-92 right=30"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\03-analytics.png"
+  },
+  {
+    "route": "/users",
+    "name": "04-users",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 2335,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/users",
+      "h1": [
+        "المستخدمون"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-277 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-277 right=1143",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignLeft.MuiDataGrid-columnHeader--sortable left=-127 right=23",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-117 right=13",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-122 right=13",
+        "div.MuiDataGrid-columnHeaderTitleContainerContent left=-30 right=13",
+        "div.MuiDataGrid-columnHeaderTitle.muirtl-1rxsvxt left=-30 right=13"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\04-users.png"
+  },
+  {
+    "route": "/users/usr_0001",
+    "name": "05-user-detail",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1366,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/users/usr_0001",
+      "h1": [
+        "أحمد محمد",
+        "٢٤",
+        "١٣٢",
+        "٧٤٫٢"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\05-user-detail.png"
+  },
+  {
+    "route": "/questions",
+    "name": "06-questions",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 3674,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/questions",
+      "h1": [
+        "الأسئلة"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-199 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-199 right=1143",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignLeft.MuiDataGrid-withBorderColor left=-67 right=83",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-57 right=73",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-62 right=73",
+        "button.MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeSmall left=-90 right=-62",
+        "svg.[object.SVGAnimatedString] left=-85 right=-67"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\06-questions.png"
+  },
+  {
+    "route": "/categories",
+    "name": "07-categories",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 853,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/categories",
+      "h1": [
+        "الأقسام"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-57 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-57 right=1143",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignRight.MuiDataGrid-withBorderColor left=-57 right=83",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-47 right=73",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-47 right=73",
+        "div.MuiDataGrid-columnSeparator.MuiDataGrid-columnSeparator--resizable.MuiDataGrid-columnSeparator--sideRight left=-62 right=-52",
+        "svg.[object.SVGAnimatedString] left=-69 right=-45"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\07-categories.png"
+  },
+  {
+    "route": "/subscriptions",
+    "name": "08-subscriptions",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1777,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/subscriptions",
+      "h1": [
+        "الاشتراكات",
+        "٥",
+        "٣",
+        "٢"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-90 right=-71"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\08-subscriptions.png"
+  },
+  {
+    "route": "/payments",
+    "name": "09-payments",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1946,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/payments",
+      "h1": [
+        "المدفوعات",
+        "‏٢٬١٩٨٫٠٠ ج.م.‏",
+        "٣",
+        "‏١٬٧٩٩٫٠٠ ج.م.‏"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-177 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-177 right=1143",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignLeft.MuiDataGrid-columnHeader--sortable left=-17 right=133",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-7 right=123",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-12 right=123",
+        "button.MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeSmall left=-40 right=-12",
+        "svg.[object.SVGAnimatedString] left=-35 right=-17"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [
+      "EXTERNAL data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTUgOWExIDEgMCAxMDAtMiAxIDEgMCAwMDAgMnpNNiAxMWExIDEgMCAxMS0yIDAgMSAxIDAgMDEyIDB6TTggOWExIDEgMCAxMDAtMiAxIDEgMCAwMDAgMnpNOSAxMWExIDEgMCAxMS0yIDAgMSAxIDAgMDEyIDB6TTExIDlhMSAxIDAgMTAwLTIgMSAxIDAgMDAwIDJ6IiBmaWxsPSJXaW5kb3dUZXh0Ii8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xNSAzLjVBMi41IDIuNSAwIDAwMTIuNSAxaC05QTIuNSAyLjUgMCAwMDEgMy41djlBMi41IDIuNSAwIDAwMy41IDE1aDlhMi41IDIuNSAwIDAwMi41LTIuNXYtOXpNMiA1aDEydjcuNWMwIC44My0uNjcgMS41LTEuNSAxLjVoLTlBMS41IDEuNSAwIDAxMiAxMi41VjV6bTEuNS0zaDljLjgzIDAgMS41LjY3IDEuNSAxLjVWNEgydi0uNUMyIDIuNjcgMi42NyAyIDMuNSAyeiIgZmlsbD0iV2luZG93VGV4dCIvPjwvc3ZnPg=="
+    ],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\09-payments.png"
+  },
+  {
+    "route": "/ai-usage",
+    "name": "10-ai-usage",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 3088,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/ai-usage",
+      "h1": [
+        "استخدام الذكاء الاصطناعي",
+        "٨٬٤٢١",
+        "‏٤١٫٢٠ US$",
+        "١١٫٣ مليون"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=1049 right=1551",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=1097 right=1599",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-257 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-257 right=1143",
+        "button.MuiButtonBase-root.MuiIconButton-root.MuiIconButton-sizeSmall left=-10 right=18",
+        "svg.[object.SVGAnimatedString] left=-5 right=13",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignLeft.MuiDataGrid-withBorderColor left=-97 right=13"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\10-ai-usage.png"
+  },
+  {
+    "route": "/reports",
+    "name": "11-reports",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 3763,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/reports",
+      "h1": [
+        "البلاغات"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-93 right=-79",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-67 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-67 right=1143",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignRight.MuiDataGrid-withBorderColor left=-67 right=53",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-57 right=43",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-57 right=43",
+        "div.MuiDataGrid-columnSeparator.MuiDataGrid-columnSeparator--resizable.MuiDataGrid-columnSeparator--sideRight left=-72 right=-62",
+        "svg.[object.SVGAnimatedString] left=-79 right=-55"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\11-reports.png"
+  },
+  {
+    "route": "/settings",
+    "name": "12-settings",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1336,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/settings",
+      "h1": [
+        "إعدادات التطبيق"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\12-settings.png"
+  },
+  {
+    "route": "/integrations/payments",
+    "name": "13-integrations-payments",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 2506,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/integrations/payments",
+      "h1": [
+        "تكامل الدفع — EasyKash"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-88 right=-65"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\13-integrations-payments.png"
+  },
+  {
+    "route": "/integrations/ai",
+    "name": "14-integrations-ai",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 2193,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/integrations/ai",
+      "h1": [
+        "تكامل الذكاء الاصطناعي"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-90 right=-71"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\14-integrations-ai.png"
+  },
+  {
+    "route": "/admins",
+    "name": "15-admins",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 825,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/admins",
+      "h1": [
+        "المدراء"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=1066 right=1510",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-82 right=-48",
+        "div.MuiDataGrid-columnHeaders.muirtl-1t374vw left=-27 right=1143",
+        "div.MuiDataGrid-row--borderBottom.muirtl-gvoll6 left=-27 right=1143",
+        "div.MuiDataGrid-columnHeader.MuiDataGrid-columnHeader--alignRight.MuiDataGrid-withBorderColor left=-27 right=133",
+        "div.MuiDataGrid-columnHeaderDraggableContainer left=-17 right=123",
+        "div.MuiDataGrid-columnHeaderTitleContainer left=-17 right=123",
+        "div.MuiDataGrid-columnSeparator.MuiDataGrid-columnSeparator--resizable.MuiDataGrid-columnSeparator--sideRight left=-32 right=-22"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\15-admins.png"
+  },
+  {
+    "route": "/audit",
+    "name": "16-audit",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1854,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/audit",
+      "h1": [
+        "سجل التدقيق"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-88 right=-65"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\16-audit.png"
+  },
+  {
+    "route": "/403",
+    "name": "17-forbidden",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 414,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/403",
+      "h1": [],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=-1058 right=0",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-16 right=141"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\17-forbidden.png"
+  },
+  {
+    "route": "/does-not-exist",
+    "name": "18-notfound",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 437,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/does-not-exist",
+      "h1": [],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=-1058 right=0",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-33 right=92"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\18-notfound.png"
+  },
+  {
+    "route": "/",
+    "name": "19-dashboard-dark",
+    "role": "super_admin",
+    "mode": "dark",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "dark",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(11, 18, 32)",
+      "textLen": 1472,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/",
+      "h1": [
+        "اللوحة الرئيسية",
+        "١٢٬٤٨٠",
+        "١٬٣٤٢",
+        "٨١٢"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\19-dashboard-dark.png"
+  },
+  {
+    "route": "/",
+    "name": "20-dashboard-mobile",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 390,
+      "docScrollWidth": 390,
+      "innerWidth": 390,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1055,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/",
+      "h1": [
+        "اللوحة الرئيسية",
+        "١٢٬٤٨٠",
+        "١٬٣٤٢",
+        "٨١٢"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-31 right=-27",
+        "div.MuiPaper-root.MuiPaper-elevation.MuiPaper-elevation16 left=390 right=654",
+        "div.MuiStack-root.muirtl-1e4br2p left=391 right=654",
+        "div.MuiStack-root.muirtl-19xfica left=391 right=654",
+        "div.MuiAvatar-root.MuiAvatar-circular.MuiAvatar-colorDefault left=602 right=634",
+        "div.MuiBox-root.muirtl-1ubmw25 left=535 right=592",
+        "h6.MuiTypography-root.MuiTypography-subtitle2.MuiTypography-noWrap left=535 right=592",
+        "span.MuiTypography-root.MuiTypography-caption.MuiTypography-noWrap left=535 right=592"
+      ],
+      "drawerLeft": {
+        "left": 390,
+        "right": 654,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\20-dashboard-mobile.png"
+  },
+  {
+    "route": "/users",
+    "name": "21-users-mobile",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 390,
+      "docScrollWidth": 390,
+      "innerWidth": 390,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1586,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/users",
+      "h1": [
+        "المستخدمون"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=342 right=492",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-28 right=-18",
+        "div.MuiPaper-root.MuiPaper-elevation.MuiPaper-elevation16 left=390 right=654",
+        "div.MuiStack-root.muirtl-1e4br2p left=391 right=654",
+        "div.MuiStack-root.muirtl-19xfica left=391 right=654",
+        "div.MuiAvatar-root.MuiAvatar-circular.MuiAvatar-colorDefault left=602 right=634",
+        "div.MuiBox-root.muirtl-1ubmw25 left=535 right=592",
+        "h6.MuiTypography-root.MuiTypography-subtitle2.MuiTypography-noWrap left=535 right=592"
+      ],
+      "drawerLeft": {
+        "left": 390,
+        "right": 654,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\21-users-mobile.png"
+  },
+  {
+    "route": "/login",
+    "name": "22-login-mobile",
+    "role": "super_admin",
+    "mode": "light",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 390,
+      "docScrollWidth": 390,
+      "innerWidth": 390,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 134,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/login",
+      "h1": [
+        "ثقتي"
+      ],
+      "overflowing": [],
+      "drawerLeft": null
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\22-login-mobile.png"
+  },
+  {
+    "route": "/",
+    "name": "23-dashboard-moderator",
+    "role": "moderator",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 1367,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/",
+      "h1": [
+        "اللوحة الرئيسية",
+        "١٢٬٤٨٠",
+        "١٬٣٤٢",
+        "٨١٢"
+      ],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-94 right=-82"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\23-dashboard-moderator.png"
+  },
+  {
+    "route": "/questions",
+    "name": "24-questions-moderator",
+    "role": "moderator",
+    "mode": "light",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "navError": null,
+    "metrics": {
+      "dir": "rtl",
+      "lang": "ar",
+      "colorScheme": "light",
+      "bodyDir": "rtl",
+      "scrollWidth": 1440,
+      "docScrollWidth": 1440,
+      "innerWidth": 1440,
+      "fontFamily": "Cairo, \"IBM Plex Sans Arabic\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+      "cairoLoaded": true,
+      "bodyBg": "rgb(245, 247, 251)",
+      "textLen": 323,
+      "title": "ثقتي — لوحة التحكم",
+      "urlPath": "/admin/questions",
+      "h1": [],
+      "overflowing": [
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar1.MuiLinearProgress-barColorPrimary left=-1058 right=0",
+        "span.MuiLinearProgress-bar.MuiLinearProgress-bar2.MuiLinearProgress-barColorPrimary left=-22 right=124"
+      ],
+      "drawerLeft": {
+        "left": 1176,
+        "right": 1440,
+        "width": 264
+      }
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "failedRequests": [],
+    "unmocked": [],
+    "screenshot": "F:\\InterviewAI Arabia\\scripts\\.out\\admin-audit\\24-questions-moderator.png"
+  }
+]

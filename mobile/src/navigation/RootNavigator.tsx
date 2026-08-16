@@ -23,6 +23,7 @@ import { HistoryScreen } from '../screens/HistoryScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SubscriptionScreen } from '../screens/SubscriptionScreen';
+import { LedgerScreen } from '../screens/LedgerScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 
 export type RootStackParamList = {
@@ -36,6 +37,7 @@ export type RootStackParamList = {
   Feedback: { answerId: string; feedback: any; tokensUsed: number; nextQuestion: any; sessionId: string };
   SessionSummary: { sessionId: string };
   Subscription: undefined;
+  Ledger: undefined;
   Settings: undefined;
   MeetingSetup: { categoryId?: number } | undefined;
   /** `language` is the interview language chosen on the setup screen — it
@@ -134,6 +136,7 @@ export function RootNavigator() {
           <Stack.Screen name="Feedback" component={FeedbackScreen} options={{ ...headerOptions, title: t('feedback.title') }} />
           <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} options={{ ...headerOptions, title: t('summary.title') }} />
           <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ ...headerOptions, title: t('subscription.title') }} />
+          <Stack.Screen name="Ledger" component={LedgerScreen} options={{ ...headerOptions, title: t('ledger.title') }} />
           <Stack.Screen name="MeetingSetup" component={MeetingSetupScreen} options={{ ...headerOptions, title: t('meeting.setupTitle') }} />
           <Stack.Screen name="Meeting" component={MeetingScreen} options={{ headerShown: false, animation: 'fade' }} />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ ...headerOptions, title: t('settings.title') }} />

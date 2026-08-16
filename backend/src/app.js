@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
 import { generalLimiter } from './middleware/rateLimit.js';
+import { warmCredentials } from './services/secrets/store.js';
+import { warmAppSettings } from './services/appSettings.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 import './utils/asyncHandler.js'; // registers BigInt.toJSON
 
@@ -47,6 +49,14 @@ const STATIC_OPTS = {
 
 export function createApp() {
   const app = express();
+
+  // Admin-managed provider credentials and app settings are read synchronously
+  // by request handlers (easykash.isConfigured(), quota's daily limit), so the
+  // caches are primed here. Both are best-effort: on failure every accessor
+  // falls back to the corresponding env var, which is the pre-existing
+  // behaviour, so a slow database at boot degrades rather than breaks.
+  void warmCredentials();
+  void warmAppSettings();
 
   // Exactly one proxy hop (LiteSpeed). Setting this to `true` would let a
   // client spoof req.ip via X-Forwarded-For, which is what made the old cron

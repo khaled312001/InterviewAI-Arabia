@@ -41,7 +41,6 @@ const cairoFaces = [
 export const components: ThemeOptions['components'] = {
   MuiCssBaseline: {
     styleOverrides: (t) => ({
-      '@font-face': cairoFaces,
       'html, body, #root': { height: '100%' },
       body: {
         backgroundColor: t.vars.palette.background.default,
@@ -50,8 +49,30 @@ export const components: ThemeOptions['components'] = {
         fontFamily,
       },
       // Latin/numeric runs inside Arabic get scrambled by the bidi algorithm
-      // (a trailing '.' or '-' jumps sides). Num/Money/Mono isolate them.
-      '.ltr-island': { direction: 'ltr', unicodeBidi: 'isolate', display: 'inline-block' },
+      // (a leading '+'/'−' or a trailing '.' jumps sides). Num/Money/Mono
+      // isolate them.
+      //
+      // THE INDIRECTION THROUGH A CUSTOM PROPERTY IS LOAD-BEARING. This rule is
+      // processed by stylis-plugin-rtl (cssjanus), whose whole job is to swap
+      // `direction: ltr` for `direction: rtl` — so written literally, the
+      // utility shipped as `direction: rtl` and did the exact opposite of its
+      // name in every build. cssjanus rewrites only the known `direction`
+      // property with a literal keyword, so reading the keyword out of a
+      // custom property survives the transform. Verified in the browser: the
+      // computed style is `ltr`.
+      //
+      // It went unnoticed because `unicode-bidi: isolate` alone is enough for
+      // the strings this class was first used on: a pure-Latin run (an email)
+      // and a pure-numeral run both carry their own strong direction. It only
+      // bites when the run STARTS WITH A NEUTRAL character — a signed figure
+      // like `−7:22`, where the sign jumped to the far end and a debit became
+      // indistinguishable from a credit.
+      '.ltr-island': {
+        '--iaa-dir-ltr': 'ltr',
+        direction: 'var(--iaa-dir-ltr)',
+        unicodeBidi: 'isolate',
+        display: 'inline-block',
+      },
       '.tabular': { fontVariantNumeric: 'tabular-nums' },
       '*:focus-visible': {
         outline: `2px solid ${t.vars.palette.primary.main}`,

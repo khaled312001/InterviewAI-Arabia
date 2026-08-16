@@ -1,11 +1,6 @@
-import { StubPage } from './StubPage';
+import { IntegrationPage } from '../features/integrations/IntegrationPage';
+import { PAYMENTS_PAGE } from '../features/integrations/registry';
 
 export function PaymentsIntegrationPage() {
-  return (
-    <StubPage
-      title="تكامل الدفع"
-      description="بيانات اعتماد EasyKash"
-      blockedBy="يحتاج جدول provider_credentials وتشفير AES-256-GCM ونقاط /admin/integrations."
-    />
-  );
+  return <IntegrationPage spec={PAYMENTS_PAGE} />;
 }

@@ -70,6 +70,42 @@ enum SessionKind {
   meeting
 }
 
+// --------------------------- minute metering --------------------------
+
+/// Why a row exists on the ledger. `consumption` and `expiry` are the only
+/// negative kinds; everything else adds seconds.
+enum TimeLedgerKind {
+  trial_grant
+  purchase
+  subscription_grant
+  promo_grant
+  admin_grant
+  consumption
+  refund
+  expiry
+  adjustment
+}
+
+/// Which counter the row moved. Perpetual seconds never expire; subscription
+/// seconds die with the cycle, which is why they are spent first.
+enum TimeBucket {
+  perpetual
+  subscription
+}
+
+enum MeetingStatus {
+  live
+  ended
+  abandoned
+  exhausted
+}
+
+enum TrialClaimType {
+  install
+  phone
+  email
+}
+
 // ------------------------------- models ------------------------------
 
 model User {
@@ -89,6 +125,30 @@ model User {
   // Denormalised mirror of the newest active subscription's expiry so the
   // hot path (every answer submission) never joins subscriptions.
   premiumUntil       DateTime? @map("premium_until")
+
+  // ------------------------- minute balance --------------------------
+  // Seconds, never minutes: minutes are a display unit, and storing the
+  // display unit is how a charge ends up rounded twice.
+  //
+  // These two counters are a denormalised cache of `time_ledger`, in exactly
+  // the same relationship `premiumUntil` has with `subscriptions`. The ledger
+  // is the record; the counters are what the 15-second meeting tick reads.
+  // maintenance.js:reconcileBalances() asserts nightly that they agree.
+
+  /// Perpetual seconds: free trial + purchased packs + admin grants. Never expires.
+  balanceSeconds      Int       @default(0) @map("balance_seconds")
+  /// The current subscription cycle's allowance. Expires with the cycle, and is
+  /// therefore spent BEFORE balanceSeconds — the perishable currency goes first,
+  /// so a subscriber never burns cash-bought minutes while their allowance rots.
+  subSeconds          Int       @default(0) @map("sub_seconds")
+  subSecondsExpiresAt DateTime? @map("sub_seconds_expires_at")
+  /// Sum of the outstanding reservations of this user's LIVE meetings. A hold,
+  /// not a spend: available = validSub + balance - held.
+  heldSeconds         Int       @default(0) @map("held_seconds")
+  /// The free trial's lock. Set exactly once, by an atomic conditional UPDATE.
+  trialGrantedAt      DateTime? @map("trial_granted_at")
+  trialSeconds        Int       @default(0) @map("trial_seconds")
+
   isDisabled         Boolean   @default(false) @map("is_disabled")
   emailVerifiedAt    DateTime? @map("email_verified_at")
   lastLoginAt        DateTime? @map("last_login_at")
@@ -101,9 +161,13 @@ model User {
   reports         AnswerReport[]
   passwordResets  PasswordReset[]
   refreshTokens   RefreshToken[]
+  timeLedger      TimeLedgerEntry[]
+  meetingSessions MeetingSession[]
+  trialClaims     TrialClaim[]
 
   @@index([plan, premiumUntil])
   @@index([createdAt])
+  @@index([subSecondsExpiresAt])
   @@map("users")
 }
 
@@ -152,12 +216,16 @@ model Session {
   totalScore Int         @default(0) @map("total_score")
   // Denormalised so History/Stats never need a COUNT subquery per row.
   answerCount Int        @default(0) @map("answer_count")
+  /// Denormalised from meeting_sessions, in the same spirit as answerCount, so
+  /// History can render "٧ دقائق" without joining the billing table.
+  billedSeconds Int      @default(0) @map("billed_seconds")
   startedAt  DateTime    @default(now()) @map("started_at")
   endedAt    DateTime?   @map("ended_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
   answers  Answer[]
+  meetingSessions MeetingSession[]
 
   @@index([userId, startedAt])
   @@index([userId, kind, startedAt])
@@ -243,11 +311,119 @@ model Payment {
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  timeLedger   TimeLedgerEntry[]
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@index([providerTxnId])
   @@map("payments")
+}
+
+// -------------------------- minute metering ---------------------------
+
+/// Append-only. Rows are NEVER updated or deleted — a correction is another
+/// row. This is what makes "where did my minutes go?" a SELECT rather than a
+/// data-archaeology project; every metering bug in this product's history was
+/// undiagnosable precisely because only the current value was stored.
+model TimeLedgerEntry {
+  id                BigInt         @id @default(autoincrement())
+  userId            BigInt         @map("user_id")
+  kind              TimeLedgerKind
+  bucket            TimeBucket     @default(perpetual)
+  /// Signed. +3600 for a 60-minute pack, -442 for a 7m22s interview.
+  seconds           Int
+  /// Both counters as they stood immediately after this row was written.
+  /// Makes counter/ledger drift locatable without replaying the whole history.
+  perpetualAfter    Int            @map("perpetual_after")
+  subscriptionAfter Int            @map("subscription_after")
+  paymentId         BigInt?        @map("payment_id")
+  subscriptionId    BigInt?        @map("subscription_id")
+  meetingSessionId  BigInt?        @map("meeting_session_id")
+  adminId           BigInt?        @map("admin_id")
+  /// The one thing that makes a grant safe to retry. `payment:<id>`,
+  /// `trial:<userId>`, `sub:<subId>:cycle:<n>`, `meeting:<id>:settle:<n>`.
+  idempotencyKey    String?        @unique @map("idempotency_key") @db.VarChar(191)
+  note              String?        @db.VarChar(255)
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment        Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  meetingSession MeetingSession? @relation(fields: [meetingSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+  @@map("time_ledger")
+}
+
+/// The server-side clock for one live interview.
+///
+/// Deliberately NOT columns on `sessions`: the two rows have different
+/// lifecycles and different audiences. `sessions` is the PRODUCT record the
+/// user browses in History and is created only at /finish; this is the BILLING
+/// record, created at /meeting/start and ticked from the first second. Creating
+/// `sessions` rows up front would fill every user's History with abandoned
+/// twelve-second meetings that produced nothing.
+model MeetingSession {
+  id                   BigInt        @id @default(autoincrement())
+  userId               BigInt        @map("user_id")
+  categoryId           Int           @map("category_id")
+  /// Populated at /finish. NULL for meetings that produced nothing.
+  sessionId            BigInt?       @map("session_id")
+  status               MeetingStatus @default(live)
+  /// Seconds currently reserved against this meeting (part of users.held_seconds).
+  heldSeconds          Int           @default(0) @map("held_seconds")
+  /// Seconds accrued so far. `billedSeconds - (subSecondsUsed + perpetualSecondsUsed)`
+  /// is the amount not yet moved out of the hold and onto the ledger.
+  billedSeconds        Int           @default(0) @map("billed_seconds")
+  /// Wall-clock deliberately NOT charged: network drops, backgrounded app,
+  /// phone asleep. Surfaced to the user after the interview — this number is
+  /// the whole trust argument for the model.
+  skippedSeconds       Int           @default(0) @map("skipped_seconds")
+  subSecondsUsed       Int           @default(0) @map("sub_seconds_used")
+  perpetualSecondsUsed Int           @default(0) @map("perpetual_seconds_used")
+  turnCount            Int           @default(0) @map("turn_count")
+  /// `billedSeconds` as it stood at the previous /turn. The turn floor is a
+  /// TOP-UP to `meeting_min_turn_seconds` measured against the wall-clock
+  /// accrued since the last turn — without this column the floor would be
+  /// measured against the last 15-second tick and would bind on every turn of
+  /// an honest client, which is exactly what it must never do.
+  billedAtLastTurn     Int           @default(0) @map("billed_at_last_turn")
+  /// Server clock only. A client-supplied timestamp never touches these.
+  startedAt            DateTime      @default(now()) @map("started_at")
+  lastTickAt           DateTime      @default(now()) @map("last_tick_at")
+  endedAt              DateTime?     @map("ended_at")
+  /// 'user_ended' | 'exhausted' | 'abandoned' | 'evaluated' | 'admin'
+  endReason            String?       @map("end_reason") @db.VarChar(32)
+  client               String?       @db.VarChar(32)
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session Session?          @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  ledger  TimeLedgerEntry[]
+
+  @@index([userId, startedAt])
+  /// The sweeper's index: find live meetings whose tick went stale.
+  @@index([status, lastTickAt])
+  @@map("meeting_sessions")
+}
+
+/// One row per identity signal a free trial was claimed against. The unique
+/// index is the entire anti-abuse mechanism — it stops casual double-dipping
+/// and, until email verification exists, nothing more. See services/billing.
+model TrialClaim {
+  id        BigInt         @id @default(autoincrement())
+  userId    BigInt         @map("user_id")
+  claimType TrialClaimType @map("claim_type")
+  /// SHA-256(salt || value). Hashed so a database leak is not a device map.
+  claimHash String         @map("claim_hash") @db.VarChar(64)
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([claimType, claimHash])
+  @@index([userId])
+  @@map("trial_claims")
 }
 
 /// Webhook de-duplication. Gateways retry aggressively and will happily
@@ -390,22 +566,20 @@ model AppSetting {
   @@map("app_settings")
 }
 
-/**
- * Integration credentials — deliberately NOT app_settings.
- *
- * GET /admin/settings returns every app_settings row in the clear to every
- * admin role, content_editor included. Putting the EasyKash API key there
- * would hand it to the lowest-privileged account in the system. This table is
- * super_admin-only, secrets are AES-256-GCM encrypted with the key name bound
- * in as AAD, and no endpoint ever returns `valueEnc`.
- */
+/// Integration credentials — deliberately NOT app_settings.
+///
+/// GET /admin/settings returns every app_settings row in the clear to every
+/// admin role, content_editor included. Putting the EasyKash API key there
+/// would hand it to the lowest-privileged account in the system. This table is
+/// super_admin-only, secrets are AES-256-GCM encrypted with the key name bound
+/// in as AAD, and no endpoint ever returns `valueEnc`.
 model ProviderCredential {
   key        String   @id @db.VarChar(100)
-  /** Secrets are encrypted into valueEnc; clear config lives in valuePlain. */
+  /// Secrets are encrypted into valueEnc; clear config lives in valuePlain.
   isSecret   Boolean  @default(true) @map("is_secret")
   valueEnc   String?  @map("value_enc") @db.Text
   valuePlain String?  @map("value_plain") @db.Text
-  /** The only fragment of a secret any response may contain. */
+  /// The only fragment of a secret any response may contain.
   last4      String?  @db.VarChar(8)
   updatedBy  BigInt?  @map("updated_by")
   updatedAt  DateTime @updatedAt @map("updated_at")

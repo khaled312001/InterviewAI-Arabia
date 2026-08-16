@@ -10,9 +10,10 @@ import Typography from '@mui/material/Typography';
 import CardMembershipRounded from '@mui/icons-material/CardMembershipRounded';
 import CancelScheduleSendRounded from '@mui/icons-material/CancelScheduleSendRounded';
 import EventBusyRounded from '@mui/icons-material/EventBusyRounded';
+import MoreTimeRounded from '@mui/icons-material/MoreTimeRounded';
 import TaskAltRounded from '@mui/icons-material/TaskAltRounded';
 import HourglassBottomRounded from '@mui/icons-material/HourglassBottomRounded';
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import VolunteerActivismRounded from '@mui/icons-material/VolunteerActivismRounded';
 import type { GridColDef } from '@mui/x-data-grid';
 
 import { DataTable } from '../components/common/DataTable';
@@ -21,54 +22,31 @@ import { StatCard } from '../components/common/StatCard';
 import { StatusChip } from '../components/common/StatusChip';
 import { Mono } from '../components/common/Mono';
 import { RelativeTime } from '../components/common/RelativeTime';
+import { Can } from '../components/common/Guard';
 import { useConfirm } from '../components/common/ConfirmDialog';
 import { useToast } from '../components/common/ToastProvider';
 import { chipCol, dateCol, textCol, actionsCol } from '../lib/columns';
-import { api } from '../lib/api';
-import { qk } from '../lib/queryKeys';
-import { can } from '../lib/permissions';
+import { can, effectivePlan } from '../lib/permissions';
+import { formatAbsolute } from '../lib/format';
 import { useAuth } from '../store/auth';
 import { useDebouncedValue } from '../lib/hooks/useDebouncedValue';
 import { useServerPagination } from '../lib/hooks/useServerPagination';
-
-interface SubscriptionUser {
-  id: string;
-  email: string | null;
-  name: string | null;
-  plan: string | null;
-  premiumUntil: string | null;
-}
-
-interface Subscription {
-  id: string;
-  userId: string;
-  provider: string;
-  providerRef: string | null;
-  planCode: string | null;
-  status: string;
-  autoRenew: boolean;
-  startedAt: string | null;
-  expiresAt: string | null;
-  cancelledAt: string | null;
-  createdAt: string | null;
-  user?: SubscriptionUser;
-}
+import { useRevokeSubscription, useSubscriptions } from '../features/subscriptions/api';
+import { GrantSubscriptionDrawer } from '../features/subscriptions/GrantSubscriptionDrawer';
+import { ExtendSubscriptionDrawer } from '../features/subscriptions/ExtendSubscriptionDrawer';
+import { CataloguePanel } from '../features/catalogue/CataloguePanel';
+import { planLabel, useCatalogue } from '../features/catalogue/api';
+import type { Subscription } from '../features/subscriptions/types';
 
 /** Flattened for the grid — the column factories read flat fields, not paths. */
 interface SubscriptionRow extends Subscription {
   userEmail: string | null;
-}
-
-interface SubscriptionsResponse {
-  subscriptions: Subscription[];
-  page: number;
-  limit: number;
-  total: number;
-  summary: {
-    byStatus: Record<string, number>;
-    total: number;
-    expiringIn7Days: number;
-  };
+  /**
+   * The account's *effective* plan, from the joined mirror. It is on the grid so
+   * a revoke can be seen to have landed: if a cancelled row left the user marked
+   * premium, this column would say so instead of the page implying success.
+   */
+  entitlement: 'free' | 'premium' | 'premium_expired';
 }
 
 const STATUS_OPTIONS = [
@@ -80,19 +58,47 @@ const STATUS_OPTIONS = [
   { value: 'refunded', label: 'مسترد' },
 ];
 
-/** Only a live subscription can be cancelled; the rest are already terminal. */
-const CANCELLABLE = new Set(['active', 'pending']);
+const PROVIDER_OPTIONS = [
+  { value: '', label: 'كل المصادر' },
+  { value: 'manual', label: 'منح يدوية' },
+  { value: 'easykash', label: 'EasyKash' },
+  { value: 'paymob', label: 'Paymob' },
+  { value: 'google_play', label: 'Google Play' },
+];
+
+/** Only a live subscription can be revoked; the rest are already terminal. */
+const REVOCABLE = new Set(['active', 'pending']);
+
+/**
+ * Extending anything but an active row would move a date the user does not
+ * benefit from — the mirror is derived from active rows only. Re-granting is a
+ * new subscription, not a resurrection.
+ */
+const EXTENDABLE = new Set(['active']);
+
+function isManual(row: Pick<Subscription, 'provider'>): boolean {
+  return row.provider === 'manual';
+}
+
+function providerTooltip(row: Subscription): string {
+  return isManual(row)
+    ? 'منحة يدوية من لوحة التحكم — لا توجد عملية دفع خلفها ولا تُحتسب ضمن الإيرادات'
+    : 'اشتراك مدفوع عبر بوابة الدفع';
+}
 
 export function SubscriptionsPage() {
-  const qc = useQueryClient();
   const toast = useToast();
   const confirm = useConfirm();
   const role = useAuth((s) => s.admin?.role);
-  const canCancel = can(role, 'subscriptions.cancel');
+  const canRevoke = can(role, 'subscriptions.revoke');
+  const canExtend = can(role, 'subscriptions.extend');
 
   const { paginationModel, onPaginationModelChange, page, pageSize, reset } = useServerPagination();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [provider, setProvider] = useState('');
+  const [granting, setGranting] = useState(false);
+  const [extending, setExtending] = useState<Subscription | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const params = useMemo(
@@ -101,47 +107,67 @@ export function SubscriptionsPage() {
       limit: pageSize,
       ...(debouncedSearch ? { q: debouncedSearch } : null),
       ...(status ? { status } : null),
+      ...(provider ? { provider } : null),
     }),
-    [page, pageSize, debouncedSearch, status],
+    [page, pageSize, debouncedSearch, status, provider],
   );
 
-  const query = useQuery<SubscriptionsResponse>({
-    queryKey: qk.subscriptions.list(params),
-    queryFn: async () => (await api.get('/admin/subscriptions', { params })).data,
-    // Rows stay on screen while the next page loads, so paging never blanks.
-    placeholderData: keepPreviousData,
-  });
+  const query = useSubscriptions(params);
+  const revoke = useRevokeSubscription();
+  // The live price list, so a plan chip carries the name the customer was
+  // shown. Codes it does not contain — `yearly_legacy`, `manual`, an old
+  // Google-Play code — fall back to StatusChip's static map, which still has to
+  // describe them because they are real rows the catalogue deliberately dropped.
+  const catalogue = useCatalogue();
 
-  const cancel = useMutation({
-    mutationFn: (id: string) => api.post(`/admin/subscriptions/${id}/cancel`),
-    onSuccess: (_res, id) => {
-      const row = query.data?.subscriptions.find((s) => s.id === id);
-      toast.success(
-        row?.user?.email ? `تم إلغاء اشتراك ${row.user.email}` : 'تم إلغاء الاشتراك',
-      );
-      qc.invalidateQueries({ queryKey: ['admin', 'subscriptions'] });
-      // The cancel writes users.plan/premium_until, so any user view is stale.
-      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
-    },
-    // ConfirmDialog surfaces the failure while its dialog is still open.
-    // Declaring onError here suppresses the duplicate global toast from
-    // queryClient's MutationCache.
-    onError: () => {},
-  });
+  /**
+   * The revoke reports the server's own answer, not an assumption. The response
+   * carries the re-derived mirror, so when another paid subscription still
+   * covers the user this says "still premium" rather than claiming a downgrade
+   * that did not happen — and when it does not, it names the downgrade.
+   */
+  async function requestRevoke(row: SubscriptionRow) {
+    const who = row.userEmail ?? 'هذا المستخدم';
+    const expires = row.expiresAt ? formatAbsolute(new Date(row.expiresAt)) : 'غير محدد';
 
-  async function requestCancel(row: SubscriptionRow) {
     await confirm({
       title: 'إلغاء الاشتراك؟',
-      description: `سيتم إنهاء اشتراك ${row.user?.email ?? 'هذا المستخدم'} فورًا.`,
+      description: `سيتم إنهاء اشتراك ${who} (${
+        planLabel(catalogue.data?.plans, row.planCode) ?? row.planCode ?? 'خطة غير محددة'
+      }) الذي ينتهي في ${expires} فورًا.`,
       tone: 'danger',
       confirmLabel: 'إلغاء الاشتراك',
       cancelLabel: 'تراجع',
       consequences: [
-        'لن يتم إرجاع أي مبالغ عبر بوابة الدفع — هذا الإجراء لا يحرّك أموالًا.',
         'يعود المستخدم إلى الخطة المجانية فورًا، ما لم يغطّه اشتراك نشط آخر.',
-        'لاسترداد المبلغ فعليًا، نفّذ ذلك من لوحة تحكم EasyKash.',
+        isManual(row)
+          ? 'هذه منحة يدوية — لم تُدفع أي أموال، فلا يوجد ما يُسترد.'
+          : 'لن يتم إرجاع أي مبالغ عبر البوابة؛ لاسترداد المبلغ فعليًا نفّذ ذلك من لوحة تحكم المزوّد.',
+        'لا يُحذف السجل — يُحفظ كاشتراك ملغي لأنه الدليل على المبلغ المدفوع.',
       ],
-      onConfirm: () => cancel.mutateAsync(row.id),
+      prompt: {
+        label: 'سبب الإلغاء',
+        placeholder: 'يظهر في سجل التدقيق',
+        required: true,
+        minLength: 3,
+        maxLength: 300,
+        multiline: true,
+        helperText: 'إلزامي — يُحفظ في سجل التدقيق مع اسمك',
+      },
+      // Runs inside the dialog so a refusal is seen in context; the dialog
+      // stays open on failure instead of vanishing over a silent error.
+      onConfirm: async (reason) => {
+        const result = await revoke.mutateAsync({ id: row.id, reason });
+        if (result.stillCovered && result.user.premiumUntil) {
+          toast.warning(
+            `أُلغي الاشتراك — لكن ${who} ما زال مميزًا حتى ${formatAbsolute(
+              new Date(result.user.premiumUntil),
+            )} باشتراك آخر`,
+          );
+        } else {
+          toast.success(`أُلغي الاشتراك وعاد ${who} إلى الخطة المجانية`);
+        }
+      },
     });
   }
 
@@ -150,12 +176,14 @@ export function SubscriptionsPage() {
       (query.data?.subscriptions ?? []).map((s) => ({
         ...s,
         userEmail: s.user?.email ?? null,
+        entitlement: effectivePlan(s.user),
       })),
     [query.data],
   );
 
   const summary = query.data?.summary;
   const failed = query.isError;
+  const busy = revoke.isPending;
 
   const columns = useMemo<GridColDef<SubscriptionRow>[]>(() => {
     const base: GridColDef<SubscriptionRow>[] = [
@@ -166,12 +194,23 @@ export function SubscriptionsPage() {
         minWidth: 220,
         mono: true,
       }),
-      chipCol<SubscriptionRow>({ field: 'planCode', headerName: 'الخطة', kind: 'planCode', width: 120 }),
+      chipCol<SubscriptionRow>({
+        field: 'planCode',
+        headerName: 'الخطة',
+        kind: 'planCode',
+        width: 140,
+        getLabel: (row) => planLabel(catalogue.data?.plans, row.planCode),
+        tooltip: (row) =>
+          row.planCode && !catalogue.data?.plans.some((p) => p.code === row.planCode)
+            ? 'خطة لم تعد معروضة للبيع — الصف قائم ويعمل حتى تاريخ انتهائه'
+            : undefined,
+      }),
       chipCol<SubscriptionRow>({
         field: 'provider',
-        headerName: 'المزوّد',
+        headerName: 'المصدر',
         kind: 'paymentProvider',
         width: 130,
+        tooltip: providerTooltip,
       }),
       chipCol<SubscriptionRow>({
         field: 'status',
@@ -183,51 +222,94 @@ export function SubscriptionsPage() {
             ? 'أُلغي من لوحة التحكم — لم يُسترد أي مبلغ عبر البوابة'
             : undefined,
       }),
+      chipCol<SubscriptionRow>({
+        field: 'entitlement',
+        headerName: 'وصول الحساب',
+        kind: 'plan',
+        width: 130,
+        getValue: (row) => row.entitlement,
+        tooltip: (row) =>
+          row.user?.premiumUntil
+            ? `صلاحية الحساب حتى ${formatAbsolute(new Date(row.user.premiumUntil))}`
+            : 'لا يوجد وصول مميز على الحساب',
+      }),
       dateCol<SubscriptionRow>({ field: 'startedAt', headerName: 'البداية', width: 150 }),
       dateCol<SubscriptionRow>({ field: 'expiresAt', headerName: 'الانتهاء', mode: 'both', width: 160 }),
     ];
 
-    // The action column is not rendered at all for a role that cannot cancel —
+    // The action column is not rendered at all for a role that can do neither —
     // an always-empty column is just noise.
-    if (!canCancel) return base;
+    if (!canRevoke && !canExtend) return base;
 
     return [
       ...base,
       actionsCol<SubscriptionRow>({
-        width: 120,
-        render: (row) =>
-          CANCELLABLE.has(row.status) ? (
-            <Tooltip title="إلغاء الاشتراك">
-              <span>
-                <Button
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                  startIcon={<CancelScheduleSendRounded />}
-                  disabled={cancel.isPending}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void requestCancel(row);
-                  }}
-                >
-                  إلغاء
-                </Button>
-              </span>
-            </Tooltip>
-          ) : null,
+        width: 190,
+        render: (row) => (
+          <>
+            {canExtend && EXTENDABLE.has(row.status) && (
+              <Tooltip title="تمديد الاشتراك">
+                <span>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<MoreTimeRounded />}
+                    disabled={busy}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExtending(row);
+                    }}
+                  >
+                    تمديد
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+            {canRevoke && REVOCABLE.has(row.status) && (
+              <Tooltip title="إلغاء الاشتراك">
+                <span>
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    startIcon={<CancelScheduleSendRounded />}
+                    disabled={busy}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void requestRevoke(row);
+                    }}
+                  >
+                    إلغاء
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+          </>
+        ),
       }),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canCancel, cancel.isPending, query.data]);
+  }, [canRevoke, canExtend, busy, query.data, catalogue.data]);
 
-  const filtersActive = Boolean(debouncedSearch || status);
+  const filtersActive = Boolean(debouncedSearch || status || provider);
 
   return (
     <>
       <PageHeader
         title="الاشتراكات"
-        description="كل اشتراكات المنصّة — الحالة، الخطة، وتاريخ الانتهاء."
+        // Packs deliberately do not appear here. Buying minutes creates a
+        // Payment and a ledger entry and no subscription row — it is not
+        // recurring access — so an operator looking for a pack purchase on this
+        // page would find nothing and conclude the payment failed.
+        description="اشتراكات المنصّة المتجددة — الحالة، الخطة، المصدر، وتاريخ الانتهاء. باقات الدقائق ليست اشتراكات وتظهر في صفحة المدفوعات وفي رصيد المستخدم."
         icon={<CardMembershipRounded />}
+        actions={
+          <Can action="subscriptions.grant">
+            <Button startIcon={<VolunteerActivismRounded />} onClick={() => setGranting(true)}>
+              منح اشتراك
+            </Button>
+          </Can>
+        }
       />
 
       <Grid container spacing={{ xs: 2, md: 3 }}>
@@ -235,7 +317,7 @@ export function SubscriptionsPage() {
           <StatCard
             index={0}
             label="اشتراكات نشطة"
-            value={summary?.byStatus.active ?? 0}
+            value={summary?.byStatus?.active ?? 0}
             icon={<TaskAltRounded />}
             tone="success"
             loading={query.isLoading}
@@ -258,7 +340,7 @@ export function SubscriptionsPage() {
           <StatCard
             index={2}
             label="ملغاة"
-            value={summary?.byStatus.cancelled ?? 0}
+            value={summary?.byStatus?.cancelled ?? 0}
             icon={<EventBusyRounded />}
             tone="neutral"
             loading={query.isLoading}
@@ -277,6 +359,8 @@ export function SubscriptionsPage() {
           />
         </Grid>
       </Grid>
+
+      <CataloguePanel />
 
       <DataTable<SubscriptionRow>
         rows={rows}
@@ -313,6 +397,23 @@ export function SubscriptionsPage() {
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              select
+              value={provider}
+              onChange={(e) => {
+                setProvider(e.target.value);
+                reset();
+              }}
+              label="المصدر"
+              helperText="«منح يدوية» تعني اشتراكات مُنحت من هنا بلا دفع"
+              sx={{ maxWidth: { sm: 220 } }}
+            >
+              {PROVIDER_OPTIONS.map((o) => (
+                <MenuItem key={o.value || 'all'} value={o.value}>
+                  {o.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Stack>
         }
         empty={
@@ -321,13 +422,14 @@ export function SubscriptionsPage() {
                 variant: 'search',
                 query: debouncedSearch || undefined,
                 title: 'لا اشتراكات مطابقة',
-                description: 'جرّب مصطلح بحث أو حالة مختلفة.',
+                description: 'جرّب مصطلح بحث أو حالة أو مصدرًا مختلفًا.',
                 action: (
                   <Button
                     variant="text"
                     onClick={() => {
                       setSearch('');
                       setStatus('');
+                      setProvider('');
                       reset();
                     }}
                   >
@@ -337,8 +439,14 @@ export function SubscriptionsPage() {
               }
             : {
                 title: 'لا توجد اشتراكات بعد',
-                description: 'سيظهر هنا كل اشتراك بمجرد إتمام أول عملية دفع ناجحة.',
+                description:
+                  'سيظهر هنا كل اشتراك بمجرد إتمام أول عملية دفع ناجحة — أو عند منح اشتراك يدويًا.',
                 icon: <CardMembershipRounded />,
+                action: can(role, 'subscriptions.grant') ? (
+                  <Button startIcon={<VolunteerActivismRounded />} onClick={() => setGranting(true)}>
+                    منح اشتراك
+                  </Button>
+                ) : undefined,
               }
         }
         renderMobileCard={(row) => (
@@ -349,8 +457,17 @@ export function SubscriptionsPage() {
                 <StatusChip kind="subscription" value={row.status} />
               </Stack>
               <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap">
-                <StatusChip kind="planCode" value={row.planCode} />
-                <StatusChip kind="paymentProvider" value={row.provider} />
+                <StatusChip
+                  kind="planCode"
+                  value={row.planCode}
+                  label={planLabel(catalogue.data?.plans, row.planCode)}
+                />
+                <StatusChip
+                  kind="paymentProvider"
+                  value={row.provider}
+                  tooltip={providerTooltip(row)}
+                />
+                <StatusChip kind="plan" value={row.entitlement} />
               </Stack>
               <Stack direction="row" gap={1} alignItems="center">
                 <Typography variant="caption" color="text.secondary">
@@ -358,21 +475,41 @@ export function SubscriptionsPage() {
                 </Typography>
                 <RelativeTime value={row.expiresAt} mode="both" variant="caption" />
               </Stack>
-              {canCancel && CANCELLABLE.has(row.status) && (
-                <Button
-                  size="small"
-                  color="error"
-                  variant="outlined"
-                  startIcon={<CancelScheduleSendRounded />}
-                  disabled={cancel.isPending}
-                  onClick={() => void requestCancel(row)}
-                >
-                  إلغاء الاشتراك
-                </Button>
-              )}
+              <Stack direction="row" gap={1} flexWrap="wrap">
+                {canExtend && EXTENDABLE.has(row.status) && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<MoreTimeRounded />}
+                    disabled={busy}
+                    onClick={() => setExtending(row)}
+                  >
+                    تمديد
+                  </Button>
+                )}
+                {canRevoke && REVOCABLE.has(row.status) && (
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    startIcon={<CancelScheduleSendRounded />}
+                    disabled={busy}
+                    onClick={() => void requestRevoke(row)}
+                  >
+                    إلغاء الاشتراك
+                  </Button>
+                )}
+              </Stack>
             </Stack>
           </Box>
         )}
+      />
+
+      <GrantSubscriptionDrawer open={granting} onClose={() => setGranting(false)} />
+      <ExtendSubscriptionDrawer
+        open={Boolean(extending)}
+        subscription={extending}
+        onClose={() => setExtending(null)}
       />
     </>
   );

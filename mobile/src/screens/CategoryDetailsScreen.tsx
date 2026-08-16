@@ -24,6 +24,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
+import { useBalance } from '../store/balance';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
 // `StyleSheet.create` runs outside the hook, so static rules read the raw
 // token module rather than inventing their own numbers.
@@ -31,6 +32,7 @@ import { spacing } from '../theme/tokens';
 import {
   Screen, Text, Button, Card, Badge, EmptyState, SectionHeader, Skeleton,
 } from '../components';
+import { durationLabel } from './mainShared';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryDetails'>;
@@ -52,13 +54,6 @@ type Level = (typeof LEVELS)[number];
 /** The API caps `limit` at 50, so a full page means "at least this many". */
 const POOL_LIMIT = 50;
 const SAMPLE_COUNT = 3;
-
-/**
- * The server enforces this in `env.FREE_DAILY_QUESTION_LIMIT` but never sends
- * it to the client — `/user/me` returns `dailyQuestionsUsed` with no ceiling.
- * Mirrored here so the quota readout is honest; see the API-gap note.
- */
-const FREE_DAILY_LIMIT = 5;
 
 interface CategoryRecord {
   id: number;
@@ -191,6 +186,8 @@ export function CategoryDetailsScreen({ route, navigation }: Props) {
   const { arrowForward } = useDirection();
   const user = useAuth((s) => s.user);
   const refreshMe = useAuth((s) => s.refreshMe);
+  const balance = useBalance((s) => s.balance);
+  const refreshBalance = useBalance((s) => s.refresh);
 
   const isEn = i18n.language.startsWith('en');
 
@@ -250,11 +247,14 @@ export function CategoryDetailsScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load, level]);
 
-  // The quota IS volatile — the server rolls `dailyQuestionsUsed` back to 0 on
-  // the first request of a new day, so a cached `user` can make the "left
-  // today" stat read 0 when the allowance has actually reset. Refreshed once
-  // per mount (never per focus) so the number under the hero is honest.
-  useEffect(() => { refreshMe().catch(() => {}); }, [refreshMe]);
+  // The balance IS volatile — a session on another device, an expired
+  // subscription allowance or a top-up all move it — so it is re-read once per
+  // mount (never per focus) and the stat under the hero reads the server's
+  // number rather than anything this screen inferred.
+  useEffect(() => {
+    refreshMe().catch(() => {});
+    refreshBalance().catch(() => {});
+  }, [refreshBalance, refreshMe]);
 
   const displayName = isEn
     ? (category?.nameEn ?? nameEn ?? nameAr)
@@ -267,9 +267,20 @@ export function CategoryDetailsScreen({ route, navigation }: Props) {
   const isSubscriber = user?.plan === 'premium';
   const locked = isPremiumCategory && !isSubscriber;
 
-  const remaining = isSubscriber
-    ? t('category.unlimited')
-    : String(Math.max(0, FREE_DAILY_LIMIT - (user?.dailyQuestionsUsed ?? 0)));
+  // Minutes, floored, straight from /user/balance. An em dash until it lands:
+  // a placeholder zero on a screen whose next button spends the balance is the
+  // most alarming possible lie.
+  const remaining = balance ? String(balance.minutesRemaining) : '—';
+
+  /**
+   * What pressing "start" will cost. `answerCostSeconds` is 0 for subscribers,
+   * so the sentence changes rather than printing "0 seconds".
+   */
+  const answerCost = balance?.costs?.practiceAnswerSeconds ?? null;
+  const costHint =
+    answerCost === null ? null
+    : answerCost === 0 ? t('category.answerCostFree')
+    : t('category.answerCost', { label: durationLabel(answerCost, t) });
 
   const countLabel = questions.length >= POOL_LIMIT
     ? `${POOL_LIMIT}+`
@@ -372,6 +383,12 @@ export function CategoryDetailsScreen({ route, navigation }: Props) {
               reason for the wait is spelled out beneath it. */}
           {starting ? (
             <Text role="caption" tone="muted" align="center">{t('category.starting')}</Text>
+          ) : !locked && costHint ? (
+            // A flat fee stated before the tap, never discovered after it —
+            // hidden minimums are the thing users forgive least.
+            <Text role="caption" tone="muted" align="center">
+              {balance && balance.availableSeconds <= 0 ? t('category.balanceEmpty') : costHint}
+            </Text>
           ) : null}
         </FooterBar>
       }
@@ -469,10 +486,10 @@ export function CategoryDetailsScreen({ route, navigation }: Props) {
             />
             <View style={[styles.statDivider, { backgroundColor: theme.colors.divider }]} />
             <StatCell
-              icon="flash-outline"
+              icon="time-outline"
               tone="accent"
               value={remaining}
-              label={t('category.remainingToday')}
+              label={t('category.balanceLabel')}
             />
           </View>
         </Card>

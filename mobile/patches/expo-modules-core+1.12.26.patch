@@ -1,0 +1,16 @@
+diff --git a/node_modules/expo-modules-core/android/src/main/java/expo/modules/adapters/react/permissions/PermissionsService.kt b/node_modules/expo-modules-core/android/src/main/java/expo/modules/adapters/react/permissions/PermissionsService.kt
+index ae0a811..5d40fe1 100644
+--- a/node_modules/expo-modules-core/android/src/main/java/expo/modules/adapters/react/permissions/PermissionsService.kt
++++ b/node_modules/expo-modules-core/android/src/main/java/expo/modules/adapters/react/permissions/PermissionsService.kt
+@@ -163,7 +163,10 @@ open class PermissionsService(val context: Context) : InternalModule, Permission
+   override fun isPermissionPresentInManifest(permission: String): Boolean {
+     try {
+       context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)?.run {
+-        return requestedPermissions.contains(permission)
++        // `requestedPermissions` is @Nullable from Android 15 (API 35) onward — it is
++        // null when the manifest declares none. Expo SDK 51 predates that annotation
++        // and dereferences it directly, which stops compiling against SDK 35.
++        return requestedPermissions?.contains(permission) ?: false
+       }
+       return false
+     } catch (e: PackageManager.NameNotFoundException) {

@@ -25,8 +25,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
+import { useBalance } from '../store/balance';
 import { useAppTheme, useDirection } from '../theme/useTheme';
 import { Screen, Text, Button, Card, Badge, Input, Skeleton } from '../components';
+import { balanceLabel, durationLabel } from './mainShared';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Interview'>;
@@ -37,8 +39,6 @@ const MAX_ANSWER = 5000;
 const MIN_ANSWER = 25;
 /** Below this the hint stays visible to nudge a fuller answer. */
 const HINT_UNTIL = 160;
-/** Mirrors `env.FREE_DAILY_QUESTION_LIMIT`; not exposed by any endpoint. */
-const FREE_DAILY_LIMIT = 5;
 /** How many segments before a segmented track becomes visual noise. */
 const MAX_SEGMENTS = 10;
 
@@ -63,10 +63,11 @@ function statusOf(err: unknown): number | undefined {
 /**
  * Segmented progress.
  *
- * When a total is known (free plan — the daily quota bounds the session) the
- * track shows every remaining step. When it isn't (premium is unbounded) it
- * shows only the questions already answered plus the current one, so nothing
- * implies a finish line that doesn't exist.
+ * When a total is known — the balance divided by the flat per-answer charge
+ * bounds how many more answers can be paid for — the track shows every
+ * remaining step. When it isn't (a subscriber answers for free) it shows only
+ * the questions already answered plus the current one, so nothing implies a
+ * finish line that doesn't exist.
  */
 function ProgressTrack({ current, total }: { current: number; total: number | null }) {
   const theme = useAppTheme();
@@ -309,6 +310,9 @@ export function InterviewScreen({ route, navigation }: Props) {
   const { arrowForward } = useDirection();
   const user = useAuth((s) => s.user);
   const refreshMe = useAuth((s) => s.refreshMe);
+  const balance = useBalance((s) => s.balance);
+  const refreshBalance = useBalance((s) => s.refresh);
+  const applyBalance = useBalance((s) => s.apply);
 
   const isEn = i18n.language.startsWith('en');
   const question = firstQuestion as QuestionRecord;
@@ -347,21 +351,34 @@ export function InterviewScreen({ route, navigation }: Props) {
       })
       .catch(() => { if (alive) setAnswered(0); });
 
-    // The quota IS volatile: the server rolls `dailyQuestionsUsed` back to 0 on
-    // the first request of a new day, so a cached `user` can claim the limit is
-    // spent when it isn't. Refreshed once per mount — never per focus.
+    // The balance IS volatile — another device, an expiring allowance, a
+    // top-up — so it is re-read once per mount, never per focus.
     refreshMe().catch(() => {});
+    refreshBalance().catch(() => {});
 
     return () => { alive = false; };
-  }, [sessionId, refreshMe]);
+  }, [sessionId, refreshBalance, refreshMe]);
 
-  const isPremium = user?.plan === 'premium';
-  const remainingToday = Math.max(0, FREE_DAILY_LIMIT - (user?.dailyQuestionsUsed ?? 0));
+  const isPremium = (balance?.plan ?? user?.plan) === 'premium';
   const current = (answered ?? 0) + 1;
-  // A free session is bounded by the daily quota; premium has no ceiling.
-  const total = isPremium ? null : (answered ?? 0) + Math.max(1, remainingToday);
 
-  const outOfQuota = !isPremium && (remainingToday <= 0 || quotaBlocked);
+  /**
+   * How many more answers the balance can pay for.
+   *
+   * `practiceAnswerSeconds` is a flat charge the server sends; dividing the
+   * available seconds by it is the only bounded number this screen can honestly
+   * show. A subscriber is charged 0, so there is no ceiling and no total —
+   * which is exactly what `ProgressTrack` renders when `total` is null.
+   */
+  const answerCost = balance?.costs?.practiceAnswerSeconds ?? null;
+  const affordable = answerCost && answerCost > 0
+    ? Math.floor((balance?.availableSeconds ?? 0) / answerCost)
+    : null;
+  const total = affordable === null ? null : (answered ?? 0) + Math.max(1, affordable);
+
+  // `quotaBlocked` is set by a 402 and outranks the local arithmetic: the
+  // server is the only authority on whether the next answer can be paid for.
+  const outOfQuota = quotaBlocked || (affordable !== null && affordable <= 0);
 
   const categoryName = isEn
     ? (sessionCategory?.nameEn ?? sessionCategory?.nameAr)
@@ -404,6 +421,10 @@ export function InterviewScreen({ route, navigation }: Props) {
         userAnswer: answer.trim(),
         language: isEn ? 'en' : 'ar',
       });
+      // The answer response already carries the new balance, so the extra GET
+      // is skipped — and the count under the progress track is right before the
+      // next screen even mounts.
+      applyBalance(data.balance);
       await refreshMe().catch(() => {});
       navigation.replace('Feedback', {
         answerId: data.answerId,
@@ -424,7 +445,7 @@ export function InterviewScreen({ route, navigation }: Props) {
     } finally {
       if (mounted.current) setSubmitting(false);
     }
-  }, [answer, isEn, navigation, question?.id, refreshMe, sessionId, t]);
+  }, [answer, applyBalance, isEn, navigation, question?.id, refreshMe, sessionId, t]);
 
   const onEnd = useCallback(async () => {
     setEnding(true);
@@ -648,6 +669,19 @@ export function InterviewScreen({ route, navigation }: Props) {
               disabled={submitting}
               accessibilityHint={t('interview.endConfirmBody')}
             />
+
+            {/* The charge and the balance, both from the server, stated before
+                the tap that spends them. */}
+            {answerCost !== null ? (
+              <Text role="caption" tone="muted" align="center">
+                {answerCost === 0
+                  ? t('interview.answerCostFree')
+                  : `${t('interview.answerCost', { label: durationLabel(answerCost, t) })} ${
+                    t('interview.balanceLeft', {
+                      label: balanceLabel(balance?.availableSeconds ?? 0, t),
+                    })}`}
+              </Text>
+            ) : null}
           </View>
         </>
       )}

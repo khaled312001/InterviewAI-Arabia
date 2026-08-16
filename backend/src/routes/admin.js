@@ -1,12 +1,26 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 import { prisma } from '../db/prisma.js';
 import { query, queryOne } from '../db/mysql.js';
-import { authLimiter } from '../middleware/rateLimit.js';
+import { authLimiter, integrationTestLimiter } from '../middleware/rateLimit.js';
 import { requireAdmin, signAdminToken } from '../middleware/auth.js';
-import { auditAdminMutations } from '../middleware/auditLog.js';
+import { auditAdminMutations, clientIp } from '../middleware/auditLog.js';
+import { writeAudit } from '../services/audit.js';
+import { cairoToday } from '../services/quota.js';
+import { PLANS, computeExpiry } from '../services/payments/plans.js';
+import {
+  grantSeconds, clawbackSeconds, balanceSnapshot, loadBalanceUser, ledgerFor,
+} from '../services/billing/minutes.js';
+import { normaliseEgyptianMobile } from '../services/payments/easykash.js';
+import { WIRED_KEYS, RETIRED_KEYS, reloadAppSettings } from '../services/appSettings.js';
+import { credentialDef, validateValue } from '../services/secrets/registry.js';
+import {
+  credentialStatus, writeCredential, deleteCredential, reloadCredentials, isCryptoAvailable,
+} from '../services/secrets/store.js';
+import { probeCredential } from '../services/secrets/probe.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -26,6 +40,257 @@ const loginSchema = z.object({
 function bigId(value, label = 'id') {
   if (!/^\d+$/.test(String(value ?? ''))) throw new HttpError(400, `Invalid ${label}`);
   return BigInt(value);
+}
+
+/* ---------------  entitlement invariants (users + subscriptions)  --------------- */
+
+/**
+ * The response shape for an end user. `prisma.user.*` returns every scalar,
+ * including `password_hash` — PATCH /users/:id used to hand the bcrypt hash of
+ * the account it had just edited straight back to the browser. Every handler
+ * that answers with a User row goes through here.
+ */
+function publicUser(u) {
+  if (!u) return null;
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    phone: u.phone ?? null,
+    language: u.language,
+    plan: u.plan,
+    dailyQuestionsUsed: u.dailyQuestionsUsed,
+    lastResetDate: u.lastResetDate ?? null,
+    premiumUntil: u.premiumUntil ?? null,
+    isDisabled: !!u.isDisabled,
+    emailVerifiedAt: u.emailVerifiedAt ?? null,
+    lastLoginAt: u.lastLoginAt ?? null,
+    createdAt: u.createdAt,
+  };
+}
+
+/**
+ * Re-derive `users.plan` / `users.premium_until` from the subscription rows.
+ *
+ * This is THE invariant of the whole monetisation surface: services/quota.js
+ * gates every answer submission on `plan === 'premium' && premiumUntil > now`
+ * and never joins subscriptions, so the mirror is the entitlement and the
+ * subscription table is only the ledger that explains it. Deriving instead of
+ * assigning is what makes the pair impossible to desync — revoking one of two
+ * overlapping subscriptions re-points the mirror at the survivor rather than
+ * dropping a paying customer to free.
+ *
+ * Always called with a transaction client, so the row and the mirror move
+ * together or not at all.
+ */
+async function syncPremiumMirror(tx, userId, now = new Date()) {
+  const covering = await tx.subscription.findFirst({
+    where: { userId, status: 'active', expiresAt: { gt: now } },
+    orderBy: { expiresAt: 'desc' },
+    select: { expiresAt: true },
+  });
+  const data = covering
+    ? { plan: 'premium', premiumUntil: covering.expiresAt }
+    : { plan: 'free', premiumUntil: null };
+  await tx.user.update({ where: { id: userId }, data });
+  return data;
+}
+
+/**
+ * Pin a user row for the whole read-decide-write cycle of an entitlement change.
+ *
+ * Everything below used to read the user, the disabled flag and the covering
+ * subscription OUTSIDE the transaction and only then write. MySQL's default
+ * REPEATABLE READ does not serialise those two windows, so two agents granting
+ * 30 days to the same account within the same minute both read the same current
+ * expiry, both computed the same target, and the customer received 30 days
+ * while the trail recorded two 30-day grants. `SELECT … FOR UPDATE` is the same
+ * lock services/billing/minutes.js takes before it spends anything: the second
+ * transaction queues on it and reads the first one's result.
+ */
+async function lockUserRow(tx, userId) {
+  await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+  const user = await tx.user.findUnique({ where: { id: userId } });
+  if (!user) throw new HttpError(404, 'المستخدم غير موجود / User not found', undefined, 'USER_NOT_FOUND');
+  return user;
+}
+
+/**
+ * Back a hand-made entitlement with a real Subscription row.
+ *
+ * `provider = 'manual'` is the marker: the enum value has existed since
+ * migration 001 with nothing ever writing it, the admin grid already renders a
+ * chip for it, and it is what distinguishes a goodwill grant from paid access
+ * without lying about where the money came from. No Payment row is created —
+ * revenue reporting stays money-only.
+ *
+ * ONLY called when nothing else covers the user. A grant to someone who is
+ * already covered extends the row they have (extendCoveringSubscription below);
+ * creating a second row and superseding the first is what rewrote paid history
+ * and refilled allowances. Every other active row is still superseded here, so
+ * exactly one subscription resolves coverage (the same rule
+ * routes/payments.js:activateSubscription enforces) — those rows are lapsed or
+ * cancelled ones, and folding their time in is the caller's job.
+ *
+ * A manual row grants NO minutes: services/maintenance.js skips
+ * provider='manual' when it credits cycle allowances, because a one-day
+ * goodwill grant is not a 300-minute month. Minutes are credited deliberately,
+ * through POST /users/:id/minutes, where they get a Payment row and a reason.
+ */
+async function grantManualSubscription(tx, {
+  user, expiresAt, planCode, reason, adminId, ip, via, days = null,
+}) {
+  const now = new Date();
+
+  const superseded = await tx.subscription.findMany({
+    where: { userId: user.id, status: 'active' },
+    select: { id: true },
+  });
+  if (superseded.length) {
+    await tx.subscription.updateMany({
+      where: { id: { in: superseded.map((s) => s.id) } },
+      data: { status: 'expired' },
+    });
+  }
+  const supersededIds = superseded.map((s) => s.id.toString());
+
+  const subscription = await tx.subscription.create({
+    data: {
+      userId: user.id,
+      provider: 'manual',
+      // provider_ref is UNIQUE NOT NULL VarChar(191); mirrors the reference
+      // convention in routes/payments.js so a manual row is recognisable.
+      providerRef: `manual_${user.id}_${Date.now().toString(36)}_${crypto.randomBytes(6).toString('hex')}`,
+      planCode,
+      status: 'active',
+      autoRenew: false,
+      startedAt: now,
+      expiresAt,
+      rawPayload: JSON.stringify({
+        grantedByAdminId: adminId.toString(),
+        reason,
+        days,
+        via,
+        supersededIds,
+        previousPremiumUntil: user.premiumUntil ?? null,
+      }),
+    },
+  });
+
+  const mirror = await syncPremiumMirror(tx, user.id, now);
+
+  await writeAudit(tx, {
+    adminId,
+    action: 'subscriptions.grant',
+    entityType: 'subscription',
+    entityId: subscription.id.toString(),
+    metadata: {
+      userId: user.id.toString(),
+      userEmail: user.email,
+      provider: 'manual',
+      planCode,
+      days,
+      reason,
+      via,
+      supersededIds,
+      previousPremiumUntil: user.premiumUntil ? user.premiumUntil.toISOString() : null,
+      expiresAt: expiresAt.toISOString(),
+      premiumUntil: mirror.premiumUntil ? mirror.premiumUntil.toISOString() : null,
+    },
+    ip,
+  });
+
+  return { subscription, mirror, supersededIds };
+}
+
+/**
+ * Extend the subscription that already covers a user — in place.
+ *
+ * Two things broke when a grant created a second row and superseded the first:
+ *
+ * 1. PROVENANCE. Superseding a provider='easykash' row moved coverage onto a
+ *    provider='manual' one, so a customer who paid 399 EGP for a quarter read
+ *    as a manual grant everywhere except the payments table. PATCH
+ *    /subscriptions/:id already refuses exactly this — "an EasyKash row
+ *    extended as goodwill stays EasyKash, because rewriting it to manual would
+ *    erase where the money came from" — and the grant path now agrees with it.
+ *    `planCode` is left alone for the same reason: a paid quarterly row is not
+ *    relabelled 'monthly' because someone granted 30 goodwill days.
+ *
+ * 2. MINUTES. A new row starts a new allowance cycle at `startedAt = now`, and
+ *    grantSeconds() REPLACES the subscription bucket rather than adding to it
+ *    (services/billing/minutes.js). One goodwill day granted to a subscriber
+ *    who had burned 290 of their 300 cycle minutes refilled all 300 — and
+ *    repeating the one-day grant refilled them again, without limit and without
+ *    a Payment row. Extending the existing row keeps the cycle numbering
+ *    services/maintenance.js derives from `startedAt`, so the already-used
+ *    cycle stays used.
+ */
+async function extendCoveringSubscription(tx, {
+  user, subscription, expiresAt, reason, adminId, ip, via, days = null,
+}) {
+  const now = new Date();
+
+  const updated = await tx.subscription.update({
+    where: { id: subscription.id },
+    data: {
+      expiresAt,
+      rawPayload: JSON.stringify({
+        previous: {
+          status: subscription.status,
+          expiresAt: subscription.expiresAt.toISOString(),
+          planCode: subscription.planCode,
+        },
+        grantedByAdminId: adminId.toString(),
+        grantedAt: now.toISOString(),
+        reason,
+        days,
+        via,
+        // The gateway's own payload is the only record of what the provider
+        // actually said; keep it rather than overwriting it with a grant note.
+        original: subscription.rawPayload ? subscription.rawPayload.slice(0, 40000) : null,
+      }).slice(0, 60000),
+    },
+  });
+
+  const mirror = await syncPremiumMirror(tx, user.id, now);
+
+  await writeAudit(tx, {
+    adminId,
+    action: 'subscriptions.grant',
+    entityType: 'subscription',
+    entityId: subscription.id.toString(),
+    metadata: {
+      // Says which of the two shapes a grant took, so the trail distinguishes
+      // "a new manual row" from "the paid row was extended".
+      mode: 'extend_in_place',
+      userId: user.id.toString(),
+      userEmail: user.email,
+      provider: subscription.provider,
+      planCode: subscription.planCode,
+      days,
+      reason,
+      via,
+      previousExpiresAt: subscription.expiresAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      premiumUntil: mirror.premiumUntil ? mirror.premiumUntil.toISOString() : null,
+    },
+    ip,
+  });
+
+  return { subscription: updated, mirror, supersededIds: [] };
+}
+
+/**
+ * The ONE way access is granted by hand, from the users drawer and from
+ * /subscriptions alike: extend what already covers the user, or create a manual
+ * row when nothing does. Both callers must resolve `covering` inside the same
+ * transaction, under lockUserRow().
+ */
+function applyManualGrant(tx, { covering, planCode, ...rest }) {
+  return covering
+    ? extendCoveringSubscription(tx, { subscription: covering, ...rest })
+    : grantManualSubscription(tx, { planCode, ...rest });
 }
 
 router.post('/auth/login', authLimiter, asyncHandler(async (req, res) => {
@@ -158,6 +423,115 @@ router.get('/users/:id', requireAdmin(), asyncHandler(async (req, res) => {
   });
 }));
 
+/**
+ * Alphabet for a temporary password: no 0/O/1/l/I, because this string is read
+ * down a phone line or copied by hand into a support chat.
+ */
+const TEMP_PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+function generateTemporaryPassword(length = 14) {
+  const n = TEMP_PASSWORD_ALPHABET.length;
+  // Reject the tail of the byte range so the modulo below is unbiased.
+  const limit = 256 - (256 % n);
+  let out = '';
+  while (out.length < length) {
+    for (const byte of crypto.randomBytes(length * 2)) {
+      if (byte >= limit) continue;
+      out += TEMP_PASSWORD_ALPHABET[byte % n];
+      if (out.length === length) break;
+    }
+  }
+  return out;
+}
+
+/**
+ * Create an end-user account by hand.
+ *
+ * Support needs this for the cases signup cannot serve: a corporate buyer whose
+ * seats are paid offline, a candidate whose registration failed at the gateway.
+ *
+ * WHY A TEMPORARY PASSWORD AND NOT AN INVITE LINK. There is no email sender in
+ * this deployment — no SMTP config, no mail dependency, and
+ * POST /api/auth/forgot-password is an acknowledged stub that issues no token
+ * and sends nothing. An invite link would be a link nobody could deliver. The
+ * password is returned exactly once, in this response, for the agent who is
+ * already on the phone with the person — the same pattern POST /admins uses.
+ *
+ * Deliberately does NOT accept plan/premiumUntil: entitlement is granted
+ * afterwards through POST /subscriptions, so there is exactly one code path
+ * that writes the premium mirror.
+ */
+router.post('/users', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const schema = z.object({
+    email: z.string().email().toLowerCase(),
+    name: z.string().min(2).max(120),
+    language: z.enum(['ar', 'en']).default('ar'),
+    // EasyKash needs a mobile on the billing payload; collecting it here saves
+    // a prompt at the user's first checkout.
+    phone: z.string().min(8).max(20).optional(),
+  });
+  const body = schema.parse(req.body);
+
+  // Answered up front rather than left to the P2002 mapping, because "this
+  // person already has an account" is only useful with the account attached.
+  const existing = await prisma.user.findUnique({
+    where: { email: body.email },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new HttpError(
+      409,
+      'البريد الإلكتروني مستخدم بالفعل / Email already registered',
+      { userId: existing.id.toString() },
+      'EMAIL_TAKEN'
+    );
+  }
+
+  const phone = body.phone ? normaliseEgyptianMobile(body.phone) : null;
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+
+  // The automatic middleware row would carry entity_id = null: POST /users has
+  // no id in the path, so the trail would record that an account was created
+  // but not which one.
+  req.skipAutoAudit = true;
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: {
+        email: body.email,
+        passwordHash,
+        name: body.name,
+        language: body.language,
+        phone,
+        // cairoToday(), not new Date(): last_reset_date is a DATE column and
+        // services/quota.js compares it against the Cairo day boundary.
+        lastResetDate: cairoToday(),
+      },
+    });
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: 'users.create',
+      entityType: 'user',
+      entityId: created.id.toString(),
+      // The password exists only in the RESPONSE, which the audit middleware
+      // never sees — keeping it out of here is discipline, not a framework
+      // guarantee. Record that one was issued, never the value.
+      metadata: {
+        email: created.email,
+        name: created.name,
+        language: created.language,
+        hasPhone: Boolean(phone),
+        temporaryPasswordIssued: true,
+      },
+      ip: clientIp(req),
+    });
+    return created;
+  });
+
+  // Shown once, never retrievable: no GET returns it and no audit row holds it.
+  res.status(201).json({ user: publicUser(user), temporaryPassword });
+}));
+
 router.patch('/users/:id', requireAdmin('super_admin', 'moderator'), asyncHandler(async (req, res) => {
   const schema = z.object({
     plan: z.enum(['free', 'premium']).optional(),
@@ -166,40 +540,227 @@ router.patch('/users/:id', requireAdmin('super_admin', 'moderator'), asyncHandle
     // ISO-8601. Accepting this is what makes the "grant premium" control real:
     // services/quota.js:hasPremium() requires premiumUntil > now, so writing
     // plan alone grants nothing and reverts on the next subscription sweep.
-    premiumUntil: z.union([z.string().datetime(), z.null()]).optional(),
+    premiumUntil: z.union([z.string().datetime({ offset: true }), z.null()]).optional(),
+    reason: z.string().min(3).max(300).optional(),
   });
   const body = schema.parse(req.body);
+  const id = bigId(req.params.id, 'user id');
+  const now = new Date();
 
-  const data = {};
-  if (body.name !== undefined) data.name = body.name;
-  if (body.isDisabled !== undefined) data.isDisabled = body.isDisabled;
-  if (body.plan !== undefined) data.plan = body.plan;
-  if (body.premiumUntil !== undefined) {
-    data.premiumUntil = body.premiumUntil ? new Date(body.premiumUntil) : null;
+  const profile = {};
+  if (body.name !== undefined) profile.name = body.name;
+  if (body.isDisabled !== undefined) profile.isDisabled = body.isDisabled;
+
+  const touchesEntitlement = body.plan !== undefined || body.premiumUntil !== undefined;
+  if (Object.keys(profile).length === 0 && !touchesEntitlement) {
+    throw new HttpError(400, 'لا يوجد ما يتم تحديثه / Nothing to update', undefined, 'NOTHING_TO_UPDATE');
   }
 
-  if (data.plan === 'premium') {
-    const until = data.premiumUntil;
-    if (!until || until.getTime() <= Date.now()) {
+  // ENTITLEMENT IS A SUPER-ADMIN ACTION WHEREVER IT IS TRIGGERED.
+  //
+  // This route is open to moderators because renaming and suspending accounts
+  // is their job. Granting premium is not: every dedicated subscription route
+  // below is requireAdmin('super_admin'), and this handler creates the same
+  // provider='manual' Subscription row they do. Left ungated, a moderator could
+  // mint an entitlement here — free practice answers, free CV analysis and
+  // premium-only categories, at real AI cost — and then not be able to see,
+  // extend or revoke it, because GET /subscriptions is closed to them.
+  if (touchesEntitlement && req.admin.role !== 'super_admin') {
+    throw new HttpError(
+      403,
+      'منح الاشتراك المميز أو إلغاؤه متاح للمدير العام فقط / Granting or clearing premium is restricted to a super admin',
+      undefined,
+      'ENTITLEMENT_SUPER_ADMIN_ONLY'
+    );
+  }
+  // POST /subscriptions requires a reason because a manual grant with no stated
+  // reason is unauditable. The same grant made from here is no different, so
+  // the default that used to stand in for one ('Set from the user form') is
+  // gone.
+  if (touchesEntitlement && !body.reason) {
+    throw new HttpError(
+      400,
+      'اكتب سبب تغيير الاشتراك — يُحفظ في سجل التدقيق / A reason is required for an entitlement change; it is recorded in the audit trail',
+      undefined,
+      'REASON_REQUIRED'
+    );
+  }
+
+  // The whole read-decide-write cycle runs under a row lock: `existing`, the
+  // disabled state and the covering subscription are all read inside the
+  // transaction, so a concurrent grant cannot be computed from a stale expiry.
+  const user = await prisma.$transaction(async (tx) => {
+    const existing = await lockUserRow(tx, id);
+
+    // Resolve what the caller is actually asking for as a single target expiry.
+    // Clearing the expiry and selecting the free plan are the same request.
+    let targetExpiry;
+    if (touchesEntitlement) {
+      const wantsFree = body.plan === 'free' || (body.plan === undefined && body.premiumUntil === null);
+      if (wantsFree) {
+        targetExpiry = null;
+      } else {
+        const raw = body.premiumUntil !== undefined
+          ? (body.premiumUntil ? new Date(body.premiumUntil) : null)
+          : existing.premiumUntil;
+        if (!raw || raw.getTime() <= now.getTime()) {
+          throw new HttpError(
+            400,
+            'منح الاشتراك المميز يتطلّب تاريخ انتهاء في المستقبل / Granting premium requires premiumUntil in the future',
+            undefined,
+            'PREMIUM_UNTIL_REQUIRED'
+          );
+        }
+        targetExpiry = raw;
+      }
+    }
+
+    // Suspending an account and granting it premium in one request is the same
+    // contradiction POST /subscriptions refuses with USER_DISABLED — and this
+    // drawer sends `isDisabled` and the plan together. Judged on the state the
+    // request would LEAVE the account in, not the one it started from.
+    const willBeDisabled = body.isDisabled ?? existing.isDisabled;
+    if (targetExpiry && willBeDisabled) {
       throw new HttpError(
-        400,
-        'Granting premium requires premiumUntil in the future',
+        409,
+        'الحساب موقوف؛ أعِد تفعيله قبل منح الاشتراك / This account is suspended; re-enable it before granting a subscription',
         undefined,
-        'PREMIUM_UNTIL_REQUIRED'
+        'USER_DISABLED'
       );
     }
-  }
-  // Downgrading must clear the expiry too, or hasPremium() keeps returning
-  // true off a stale date the moment plan flips back.
-  if (data.plan === 'free') data.premiumUntil = null;
 
-  const user = await prisma.user.update({ where: { id: bigId(req.params.id, 'user id') }, data });
-  res.json({ user });
+    // This drawer used to write the mirror with NO subscription behind it,
+    // which the hourly sweep then erased the moment any other row of that user
+    // lapsed — a grant that vanished with no trace beyond its audit entry. It
+    // now goes through the same path as POST /subscriptions, and refuses the
+    // two cases where doing so would destroy paid access.
+    const covering = touchesEntitlement
+      ? await tx.subscription.findFirst({
+        where: { userId: id, status: 'active', expiresAt: { gt: now } },
+        orderBy: { expiresAt: 'desc' },
+      })
+      : null;
+
+    if (covering) {
+      if (targetExpiry === null) {
+        throw new HttpError(
+          409,
+          'لهذا المستخدم اشتراك فعّال؛ ألغِ الاشتراك بدلًا من تصفير الصلاحية من هنا / This user has an active subscription; revoke it instead of clearing the entitlement here',
+          { subscriptionId: covering.id.toString(), expiresAt: covering.expiresAt.toISOString() },
+          'ACTIVE_SUBSCRIPTION_EXISTS'
+        );
+      }
+      if (targetExpiry.getTime() < covering.expiresAt.getTime()) {
+        throw new HttpError(
+          409,
+          'لا يمكن تقصير اشتراك فعّال من هنا؛ استخدم تعديل الاشتراك أو إلغاءه / This would shorten an active subscription; use the subscription edit or revoke instead',
+          { subscriptionId: covering.id.toString(), expiresAt: covering.expiresAt.toISOString() },
+          'SUBSCRIPTION_SHORTENING_BLOCKED'
+        );
+      }
+    }
+
+    // Re-sending the expiry the user already has is what the drawer does when
+    // the operator only meant to rename someone. Touching the subscription in
+    // that case would rewrite history for no reason.
+    const entitlementUnchanged = Boolean(
+      covering && targetExpiry && targetExpiry.getTime() === covering.expiresAt.getTime()
+    );
+
+    if (Object.keys(profile).length) await tx.user.update({ where: { id }, data: profile });
+
+    if (touchesEntitlement) {
+      if (targetExpiry && !entitlementUnchanged) {
+        await applyManualGrant(tx, {
+          user: existing,
+          covering,
+          expiresAt: targetExpiry,
+          planCode: 'manual',
+          reason: body.reason,
+          adminId: req.admin.id,
+          ip: clientIp(req),
+          via: 'users.patch',
+        });
+      } else {
+        // Nothing to grant — either the expiry is unchanged, or this is a
+        // downgrade with no covering row (refused above if there were one).
+        // Re-derive either way so a drifted mirror is repaired.
+        await syncPremiumMirror(tx, id, now);
+      }
+    }
+    return tx.user.findUnique({ where: { id } });
+  });
+
+  res.json({ user: publicUser(user) });
 }));
 
+/**
+ * Hard-delete an account — and REFUSE to when money or minutes are attached.
+ *
+ * `Payment.user`, `Subscription.user` and `TimeLedgerEntry.user` are all
+ * onDelete: Cascade (prisma/schema.prisma), so this statement used to destroy
+ * the customer's entire financial history along with the row. Deleting someone
+ * who had paid 150 EGP silently dropped 150 EGP out of GET /payments with no
+ * reversing entry, left reconcileBalances() with no ledger to check, and left
+ * EasyKash holding a transaction for a customer the system no longer knew.
+ *
+ * routes/user.js already answers this correctly for self-serve deletion: it
+ * ERASES the personal data and keeps the financial rows attached to an
+ * anonymous shell, which is what the privacy policy promises and what Egyptian
+ * bookkeeping requires. An admin cannot be allowed to do less than that, so the
+ * delete is refused here and the operator is pointed at suspension instead.
+ *
+ * What survives when a delete IS allowed: the audit row is written inside the
+ * transaction, before the delete, and carries the identity being destroyed —
+ * the automatic middleware row records `users.delete / user / 5` and nothing
+ * else, because a DELETE has no body to derive metadata from.
+ */
 router.delete('/users/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const id = bigId(req.params.id, 'user id');
+  const existing = await prisma.user.findUnique({ where: { id } });
+  if (!existing) throw new HttpError(404, 'المستخدم غير موجود / User not found', undefined, 'USER_NOT_FOUND');
+
+  const [payments, subscriptions, ledgerEntries] = await Promise.all([
+    prisma.payment.count({ where: { userId: id } }),
+    prisma.subscription.count({ where: { userId: id } }),
+    prisma.timeLedgerEntry.count({ where: { userId: id } }),
+  ]);
+
+  if (payments || subscriptions || ledgerEntries) {
+    throw new HttpError(
+      409,
+      'لهذا الحساب سجل مالي (مدفوعات أو اشتراكات أو حركات رصيد) لا يجوز حذفه؛ أوقف الحساب بدلًا من ذلك / This account has financial history (payments, subscriptions or minute ledger) that must be retained; suspend the account instead',
+      { payments, subscriptions, ledgerEntries },
+      'USER_HAS_FINANCIAL_HISTORY'
+    );
+  }
+
+  req.skipAutoAudit = true;
   try {
-    await prisma.user.delete({ where: { id: bigId(req.params.id, 'user id') } });
+    await prisma.$transaction(async (tx) => {
+      await writeAudit(tx, {
+        adminId: req.admin.id,
+        action: 'users.delete',
+        entityType: 'user',
+        entityId: id.toString(),
+        // The account is about to stop existing: whatever is not recorded here
+        // is unrecoverable. Written transactionally so a delete with no trace
+        // cannot happen.
+        metadata: {
+          email: existing.email,
+          name: existing.name,
+          plan: existing.plan,
+          premiumUntil: existing.premiumUntil ? existing.premiumUntil.toISOString() : null,
+          balanceSeconds: existing.balanceSeconds,
+          subSeconds: existing.subSeconds,
+          createdAt: existing.createdAt.toISOString(),
+          lastLoginAt: existing.lastLoginAt ? existing.lastLoginAt.toISOString() : null,
+          hadFinancialHistory: false,
+        },
+        ip: clientIp(req),
+      });
+      await tx.user.delete({ where: { id } });
+    });
   } catch (err) {
     // answer_reports.reporter_id is a Restrict relation (schema.prisma:353), so
     // a user who ever filed a report cannot be deleted. Unhandled this surfaced
@@ -245,6 +806,211 @@ router.get('/users/:id/sessions', requireAdmin(), asyncHandler(async (req, res) 
     s._count = { answers: s.answersCount };
   }
   res.json({ sessions, page, limit, total: Number(countRow?.n || 0) });
+}));
+
+/**
+ * That user's subscription history.
+ *
+ * The detail page showed a `subscriptionsCount` with nothing behind it, so the
+ * one question support actually asks — "what is this person's access and where
+ * did it come from?" — had no answer anywhere in the admin. Read-only; the
+ * grant/extend/revoke calls live under /subscriptions.
+ */
+router.get('/users/:id/subscriptions', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const userId = bigId(req.params.id, 'user id').toString();
+  const subscriptions = await query(
+    `SELECT id, provider, provider_ref AS providerRef, plan_code AS planCode, status,
+            auto_renew AS autoRenew, started_at AS startedAt, expires_at AS expiresAt,
+            cancelled_at AS cancelledAt, created_at AS createdAt
+     FROM subscriptions WHERE user_id = ? ORDER BY expires_at DESC, id DESC`,
+    [userId]
+  );
+  for (const s of subscriptions) s.autoRenew = !!s.autoRenew;
+  res.json({ subscriptions });
+}));
+
+/* -------------------------  minute balance  -------------------------- */
+
+/**
+ * The user's balance and their statement.
+ *
+ * "Where did my minutes go?" arrives at support, not at the user's own ledger
+ * page, so the agent needs the same view the customer has.
+ */
+router.get('/users/:id/minutes', requireAdmin(), asyncHandler(async (req, res) => {
+  const userId = bigId(req.params.id, 'user id');
+  const user = await loadBalanceUser(userId);
+  const [balance, entries] = await Promise.all([
+    balanceSnapshot(user),
+    ledgerFor(userId, { limit: 100 }),
+  ]);
+  res.json({ balance, entries });
+}));
+
+/**
+ * Credit — or take back — minutes by hand.
+ *
+ * The credit direction is the honest bridge while EasyKash is not live: it lets
+ * the owner sell time over InstaPay or Vodafone Cash and credit it the same day.
+ * It is also the tool support will need for goodwill credits after the gateway
+ * goes live, so it does not go away afterwards. It writes a `provider='manual'`
+ * Payment row alongside the ledger entry — mirroring grantManualSubscription()'s
+ * discipline — so the minutes have a document behind them, and `amountCents: 0`
+ * keeps a goodwill credit out of revenue reporting.
+ *
+ * The deduct direction (`minutes` negative) is the correction: minutes credited
+ * to the wrong account, an off-platform transfer that bounced, a promo applied
+ * twice. It writes NO Payment row — nothing was sold, and inventing a negative
+ * payment would corrupt the revenue figures the credit path is careful to stay
+ * out of. It is `clawbackSeconds()`, so it carries that function's two rules:
+ * the deduction is CLAMPED at the perpetual balance (a balance never goes
+ * negative, so a user cannot be put in debt by a typo) and it only ever touches
+ * the perpetual bucket — subscription allowance expires wholesale with its
+ * cycle and is not withdrawable a minute at a time. The response reports what
+ * was actually applied so the caller can state the clamp instead of implying
+ * the full amount landed.
+ *
+ * Both directions require a `reason`: an unexplained balance change is
+ * unauditable, and this is the one endpoint that can move a customer's money.
+ */
+const minutesAdjustSchema = z.object({
+  // Minutes in the API because that is what a human types; seconds everywhere
+  // below, because that is what the balance is measured in. Signed: positive
+  // credits, negative deducts. Zero is rejected rather than being a silent
+  // no-op that still writes an audit row.
+  minutes: z.number().int().min(-6000).max(6000).refine((n) => n !== 0, {
+    message: 'minutes must not be zero',
+  }),
+  reason: z.string().min(3).max(300),
+  // Set when money actually changed hands off-platform, so the row can be
+  // reconciled against a bank statement later. Credits only.
+  amountEgp: z.number().min(0).max(100000).optional(),
+});
+
+router.post('/users/:id/minutes', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const userId = bigId(req.params.id, 'user id');
+  const body = minutesAdjustSchema.parse(req.body ?? {});
+
+  const isCredit = body.minutes > 0;
+  const requestedSeconds = Math.abs(body.minutes) * 60;
+  const reference = isCredit
+    ? `manual_${userId}_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`
+    : null;
+
+  // THE PAYMENT, THE LEDGER AND THE AUDIT ROW ARE ONE TRANSACTION.
+  //
+  // They used to be three statements in sequence. grantSeconds() takes a row
+  // lock, so it can fail on a lock-wait timeout while the customer is in a live
+  // meeting — and when it did, the Payment row was already committed: 100 EGP
+  // of recorded revenue, no minutes delivered, no ledger row, and logAudit()
+  // never reached, so no trail either. The agent's natural retry then created a
+  // SECOND Payment row with a new id, hence a new idempotency key, so nothing
+  // deduped it: 200 EGP recorded for 100 EGP received.
+  req.skipAutoAudit = true;
+  const { appliedSeconds } = await prisma.$transaction(async (tx) => {
+    const user = await lockUserRow(tx, userId);
+    // A suspended account blocks a CREDIT (do not hand minutes to an account
+    // that cannot use them, and re-enabling first forces the operator to decide
+    // about the suspension). A DEDUCTION is allowed: taking minutes back off a
+    // suspended account is exactly what you want to do while it is suspended.
+    if (user.isDisabled && isCredit) {
+      throw new HttpError(
+        409,
+        'الحساب موقوف؛ أعِد تفعيله قبل منح الدقائق / This account is suspended; re-enable it before granting minutes',
+        undefined,
+        'USER_DISABLED',
+      );
+    }
+
+    let payment = null;
+    let applied = 0;
+
+    if (isCredit) {
+      payment = await tx.payment.create({
+        data: {
+          userId,
+          provider: 'manual',
+          reference,
+          planCode: 'manual_minutes',
+          amountCents: Math.round((body.amountEgp ?? 0) * 100),
+          currency: 'EGP',
+          status: 'paid',
+          method: 'manual',
+          paidAt: new Date(),
+        },
+      });
+
+      const granted = await grantSeconds({
+        tx,
+        userId,
+        seconds: requestedSeconds,
+        kind: 'admin_grant',
+        bucket: 'perpetual',
+        paymentId: payment.id,
+        adminId: req.admin.id,
+        idempotencyKey: `payment:${payment.id}`,
+        note: body.reason,
+      });
+      applied = granted.granted ? requestedSeconds : 0;
+    } else {
+      const clawed = await clawbackSeconds({
+        tx,
+        userId,
+        seconds: requestedSeconds,
+        // 'adjustment', not 'refund': no money moved, so the ledger must not
+        // let this be read as a gateway refund when the two are reconciled.
+        kind: 'adjustment',
+        adminId: req.admin.id,
+        // Not payment-keyed: a deduction has no payment behind it. Two
+        // identical corrections are two real corrections — an operator who
+        // deducts 10 minutes twice meant to deduct 20 — so the key is unique
+        // per request rather than per (admin, user, amount). The random suffix
+        // is what stops a double-submitted form inside the same millisecond
+        // from throwing a duplicate key and 500-ing instead of applying.
+        idempotencyKey: `admin:${req.admin.id}:deduct:${userId}:${Date.now().toString(36)}:${crypto.randomBytes(4).toString('hex')}`,
+        note: body.reason,
+      });
+      applied = clawed.clawed;
+    }
+
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      // `resource.verb`, the shape middleware/auditLog.js writes and the admin
+      // panel's audit filter groups by. A bare `grant_minutes` sorted under a
+      // resource called "grant_minutes" and read as an untranslated verb.
+      action: isCredit ? 'users.grant_minutes' : 'users.deduct_minutes',
+      entityType: 'user',
+      entityId: userId.toString(),
+      metadata: {
+        minutes: body.minutes,
+        requestedSeconds,
+        // What actually landed. On a deduction the clamp can make this smaller
+        // than the request, and the trail has to record the outcome, not the
+        // intention.
+        appliedSeconds: applied,
+        reason: body.reason,
+        reference,
+        amountEgp: isCredit ? (body.amountEgp ?? 0) : 0,
+        paymentId: payment ? payment.id.toString() : null,
+        userEmail: user.email,
+      },
+      ip: clientIp(req),
+    });
+
+    return { appliedSeconds: applied };
+  });
+
+  const balance = await balanceSnapshot(await loadBalanceUser(userId));
+  res.status(201).json({
+    ok: true,
+    direction: isCredit ? 'credit' : 'deduct',
+    requestedSeconds,
+    appliedSeconds,
+    // > 0 only when a deduction hit the clamp: the minutes were already spent.
+    unappliedSeconds: requestedSeconds - appliedSeconds,
+    reference,
+    balance,
+  });
 }));
 
 /* ---------------------  categories + questions  ----------------------- */
@@ -468,6 +1234,20 @@ router.delete('/questions/:id', requireAdmin('super_admin', 'content_editor'), a
 /* ---------------------------  subscriptions  --------------------------- */
 
 const SUBSCRIPTION_STATUSES = ['pending', 'active', 'expired', 'cancelled', 'refunded'];
+const PAYMENT_PROVIDERS = ['easykash', 'paymob', 'google_play', 'manual'];
+
+/**
+ * Codes a subscription row may legitimately be labelled with, plus 'manual'.
+ *
+ * Derived from the live catalogue rather than typed out, so a retired plan
+ * disappears from here the moment services/payments/plans.js retires it —
+ * 'yearly' is exactly that case: LEGACY_PLANS keeps it resolvable so old rows
+ * render a name, and nothing may stamp it on a new one. Packs are excluded
+ * because a pack is minutes, not a subscription.
+ */
+const SUBSCRIPTION_PLAN_CODES = Object.values(PLANS)
+  .filter((p) => p.kind === 'subscription')
+  .map((p) => p.code);
 
 /**
  * Every load of this route used to throw ER_BAD_FIELD_ERROR: it selected
@@ -491,6 +1271,20 @@ router.get('/subscriptions', requireAdmin('super_admin'), asyncHandler(async (re
   if (SUBSCRIPTION_STATUSES.includes(status)) {
     clauses.push('s.status = ?');
     params.push(status);
+  }
+  // Free-text `q` matches the email, but support arrives holding an id — and a
+  // grant made from the user page needs a way to be seen from this one.
+  if (req.query.userId) {
+    clauses.push('s.user_id = ?');
+    params.push(bigId(req.query.userId, 'user id').toString());
+  }
+  if (req.query.provider) {
+    const provider = req.query.provider.toString().trim();
+    if (!PAYMENT_PROVIDERS.includes(provider)) {
+      throw new HttpError(400, 'مزوّد غير معروف / Unknown provider', undefined, 'UNKNOWN_PROVIDER');
+    }
+    clauses.push('s.provider = ?');
+    params.push(provider);
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
 
@@ -564,11 +1358,16 @@ router.get('/subscriptions', requireAdmin('super_admin'), asyncHandler(async (re
  * also never wrote cancelled_at, and it downgraded the user even when another
  * paid subscription still covered them.
  */
-async function cancelSubscription(id) {
+async function cancelSubscription(id, { adminId, ip, reason = null, action = 'subscriptions.cancel' }) {
   const now = new Date();
   return prisma.$transaction(async (tx) => {
-    const sub = await tx.subscription.findUnique({ where: { id } });
-    if (!sub) throw new HttpError(404, 'Subscription not found');
+    const sub = await tx.subscription.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, email: true } } },
+    });
+    if (!sub) {
+      throw new HttpError(404, 'الاشتراك غير موجود / Subscription not found', undefined, 'SUBSCRIPTION_NOT_FOUND');
+    }
 
     const subscription = await tx.subscription.update({
       where: { id },
@@ -577,43 +1376,405 @@ async function cancelSubscription(id) {
 
     // Same rule as services/maintenance.js and the payments webhook: only drop
     // the user to free when no OTHER active subscription still covers them.
-    const stillCovered = await tx.subscription.findFirst({
-      where: { userId: sub.userId, status: 'active', expiresAt: { gt: now }, id: { not: sub.id } },
-      orderBy: { expiresAt: 'desc' },
-      select: { expiresAt: true },
+    // The row above is already 'cancelled' inside this transaction, so the
+    // derivation cannot see it.
+    const mirror = await syncPremiumMirror(tx, sub.userId, now);
+
+    // The automatic row records the subscription id and nothing else, so the
+    // log could not answer "who lost access, and how much time?".
+    await writeAudit(tx, {
+      adminId,
+      action,
+      entityType: 'subscription',
+      entityId: id.toString(),
+      metadata: {
+        userId: sub.userId.toString(),
+        userEmail: sub.user?.email ?? null,
+        provider: sub.provider,
+        planCode: sub.planCode,
+        previousStatus: sub.status,
+        previousExpiresAt: sub.expiresAt.toISOString(),
+        reason,
+        // No money moves here — the EasyKash adapter has no refund call.
+        moneyMoved: false,
+        stillCovered: Boolean(mirror.premiumUntil),
+        premiumUntil: mirror.premiumUntil ? mirror.premiumUntil.toISOString() : null,
+      },
+      ip,
     });
 
-    await tx.user.update({
-      where: { id: sub.userId },
-      data: stillCovered
-        ? { plan: 'premium', premiumUntil: stillCovered.expiresAt }
-        : { plan: 'free', premiumUntil: null },
-    });
-
-    return { subscription, stillCovered: Boolean(stillCovered) };
+    return {
+      subscription,
+      stillCovered: Boolean(mirror.premiumUntil),
+      user: { id: sub.userId.toString(), plan: mirror.plan, premiumUntil: mirror.premiumUntil },
+    };
   });
 }
 
+/** `reason` is optional on the cancel paths so the older admin build still works. */
+function optionalReason(req) {
+  const raw = req.body?.reason;
+  return typeof raw === 'string' && raw.trim() ? raw.trim().slice(0, 300) : null;
+}
+
 router.post('/subscriptions/:id/cancel', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
-  res.json({ ok: true, ...(await cancelSubscription(bigId(req.params.id, 'subscription id'))) });
+  req.skipAutoAudit = true;
+  const result = await cancelSubscription(bigId(req.params.id, 'subscription id'), {
+    adminId: req.admin.id, ip: clientIp(req), reason: optionalReason(req),
+  });
+  res.json({ ok: true, ...result });
+}));
+
+/**
+ * Revoke. Identical to POST /:id/cancel — the row is cancelled, never deleted:
+ * subscriptions are the ledger behind the payments a customer can still see on
+ * their statement, and DELETE would destroy the explanation for money already
+ * taken. The user's plan and premium_until are re-derived in the same
+ * transaction, so access ends the instant this returns.
+ */
+router.delete('/subscriptions/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  req.skipAutoAudit = true;
+  const result = await cancelSubscription(bigId(req.params.id, 'subscription id'), {
+    adminId: req.admin.id, ip: clientIp(req), reason: optionalReason(req), action: 'subscriptions.revoke',
+  });
+  res.json({ ok: true, ...result });
 }));
 
 // Deprecated alias kept so an older admin build does not 404. Same behaviour —
 // the old path name claimed a gateway refund that never happened.
 router.post('/subscriptions/:id/refund', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
-  res.json({ ok: true, ...(await cancelSubscription(bigId(req.params.id, 'subscription id'))) });
+  req.skipAutoAudit = true;
+  const result = await cancelSubscription(bigId(req.params.id, 'subscription id'), {
+    adminId: req.admin.id, ip: clientIp(req), reason: optionalReason(req),
+  });
+  res.json({ ok: true, ...result });
+}));
+
+/**
+ * Grant premium by hand.
+ *
+ * The gap this closes: the only manual lever was PATCH /users writing the
+ * mirror with no row behind it, invisible on this page and erased by the next
+ * expiry sweep. This creates a real provider='manual' subscription and no
+ * Payment row, so the customer has verifiable access and revenue reporting
+ * stays money-only.
+ *
+ * `days` EXTENDS from the current expiry when it is still in the future
+ * (services/payments/plans.js:computeExpiry, the same function the paid
+ * webhook uses), so granting goodwill days to a paying customer adds to what
+ * they bought instead of overwriting it — and when a subscription is already
+ * covering them, the added days land ON THAT ROW rather than on a manual
+ * replacement for it. See extendCoveringSubscription(): superseding a paid row
+ * erased where the money came from, and starting a fresh row re-granted a full
+ * cycle allowance for a one-day grant.
+ *
+ * `planCode` therefore applies only when a NEW row is created. It never
+ * relabels the row a customer paid for.
+ */
+const grantSchema = z.object({
+  userId: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]),
+  // Exactly one of these two. 730 days is the ceiling: a longer "grant" is a
+  // typo far more often than it is a decision.
+  days: z.number().int().min(1).max(730).optional(),
+  expiresAt: z.string().datetime({ offset: true }).optional(),
+  planCode: z.string().min(1).max(64).optional(),
+  // A manual grant with no stated reason is unauditable.
+  reason: z.string().min(3).max(300),
+});
+
+router.post('/subscriptions', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const body = grantSchema.parse(req.body);
+  const now = new Date();
+
+  if ((body.days === undefined) === (body.expiresAt === undefined)) {
+    throw new HttpError(
+      400,
+      'حدّد عدد الأيام أو تاريخ الانتهاء، وليس كليهما / Supply exactly one of days or expiresAt',
+      undefined,
+      'GRANT_DURATION_REQUIRED'
+    );
+  }
+
+  const userId = BigInt(String(body.userId));
+
+  // The user, the disabled flag and the covering row are ALL read inside the
+  // transaction, under the same row lock. Read outside it, two agents handling
+  // one duplicated ticket both computed +30 days from the same starting expiry
+  // and the customer received 30 days while the trail recorded two grants of 30.
+  req.skipAutoAudit = true;
+  const { subscription, mirror, supersededIds } = await prisma.$transaction(async (tx) => {
+    const user = await lockUserRow(tx, userId);
+    if (user.isDisabled) {
+      throw new HttpError(
+        409,
+        'الحساب موقوف؛ أعِد تفعيله قبل منح الاشتراك / This account is suspended; re-enable it before granting a subscription',
+        undefined,
+        'USER_DISABLED'
+      );
+    }
+
+    const current = await tx.subscription.findFirst({
+      where: { userId, status: 'active', expiresAt: { gt: now } },
+      orderBy: { expiresAt: 'desc' },
+    });
+
+    let expiresAt;
+    if (body.days !== undefined) {
+      expiresAt = computeExpiry({ currentExpiresAt: current?.expiresAt ?? null, days: body.days, now });
+    } else {
+      expiresAt = new Date(body.expiresAt);
+      if (expiresAt.getTime() <= now.getTime()) {
+        throw new HttpError(
+          400,
+          'تاريخ الانتهاء يجب أن يكون في المستقبل / The expiry date must be in the future',
+          undefined,
+          'EXPIRY_IN_PAST'
+        );
+      }
+      // An absolute date that lands before the current expiry is a shortening,
+      // not a grant. Say so instead of quietly taking away paid days.
+      if (current && expiresAt.getTime() < current.expiresAt.getTime()) {
+        throw new HttpError(
+          409,
+          'التاريخ المطلوب أقصر من الاشتراك الحالي؛ استخدم تعديل الاشتراك أو إلغاءه / That date is earlier than the current subscription; use the subscription edit or revoke instead',
+          { subscriptionId: current.id.toString(), currentExpiresAt: current.expiresAt.toISOString() },
+          'GRANT_SHORTENS_ACCESS'
+        );
+      }
+    }
+
+    // Only ever stamped on a NEW manual row. A duration that matches a
+    // catalogue plan is labelled as that plan; anything else is 'manual'.
+    // planCode is free text and is NOT what marks a grant as manual —
+    // provider='manual' is. A code the catalogue has retired is not accepted:
+    // services/payments/plans.js keeps 'yearly' resolvable for history only,
+    // and stamping it on a new row re-creates a product that was withdrawn.
+    const planCode = body.planCode
+      ?? (body.days !== undefined
+        ? (Object.values(PLANS).find((p) => p.days === body.days)?.code ?? 'manual')
+        : 'manual');
+    if (!current && planCode !== 'manual' && !SUBSCRIPTION_PLAN_CODES.includes(planCode)) {
+      throw new HttpError(
+        400,
+        'كود خطة غير معروف أو متوقف؛ اترك الحقل فارغًا ليُسجَّل «يدوي» / Unknown or retired plan code; leave it empty to record the grant as manual',
+        { planCode, allowed: [...SUBSCRIPTION_PLAN_CODES, 'manual'] },
+        'UNKNOWN_PLAN_CODE'
+      );
+    }
+
+    return applyManualGrant(tx, {
+      user,
+      covering: current,
+      expiresAt,
+      planCode,
+      reason: body.reason,
+      adminId: req.admin.id,
+      ip: clientIp(req),
+      via: 'subscriptions.post',
+      days: body.days ?? null,
+    });
+  });
+
+  res.status(201).json({
+    subscription,
+    supersededIds,
+    user: { id: userId.toString(), plan: mirror.plan, premiumUntil: mirror.premiumUntil },
+  });
+}));
+
+/**
+ * Adjust an existing subscription: extend it, correct its expiry, or fix a
+ * status that the gateway left wrong.
+ *
+ * Unlike a grant this never changes `provider` — an EasyKash row extended as
+ * goodwill stays EasyKash, because rewriting it to 'manual' would erase where
+ * the money came from. The adjustment is appended to raw_payload and recorded
+ * in the audit trail instead.
+ */
+const subscriptionPatchSchema = z.object({
+  extendDays: z.number().int().min(1).max(730).optional(),
+  expiresAt: z.string().datetime({ offset: true }).optional(),
+  status: z.enum(SUBSCRIPTION_STATUSES).optional(),
+  planCode: z.string().min(1).max(64).optional(),
+  autoRenew: z.boolean().optional(),
+  reason: z.string().min(3).max(300),
+});
+
+router.patch('/subscriptions/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const body = subscriptionPatchSchema.parse(req.body);
+  const id = bigId(req.params.id, 'subscription id');
+  const now = new Date();
+
+  if (body.extendDays !== undefined && body.expiresAt !== undefined) {
+    throw new HttpError(
+      400,
+      'حدّد التمديد بالأيام أو تاريخ انتهاء جديدًا، وليس كليهما / Supply either extendDays or expiresAt, not both',
+      undefined,
+      'EXPIRY_CONFLICT'
+    );
+  }
+  const changesSomething = ['extendDays', 'expiresAt', 'status', 'planCode', 'autoRenew']
+    .some((k) => body[k] !== undefined);
+  if (!changesSomething) {
+    throw new HttpError(400, 'لا يوجد ما يتم تحديثه / Nothing to update', undefined, 'NOTHING_TO_UPDATE');
+  }
+
+  const sub = await prisma.subscription.findUnique({
+    where: { id },
+    include: { user: { select: { id: true, email: true, isDisabled: true } } },
+  });
+  if (!sub) {
+    throw new HttpError(404, 'الاشتراك غير موجود / Subscription not found', undefined, 'SUBSCRIPTION_NOT_FOUND');
+  }
+
+  // Correcting a mislabelled row is what this field is for; re-introducing a
+  // withdrawn product is not. 'yearly' stays resolvable in LEGACY_PLANS so old
+  // rows render a name, and that is the only place it may appear.
+  if (
+    body.planCode !== undefined
+    && body.planCode !== sub.planCode
+    && body.planCode !== 'manual'
+    && !SUBSCRIPTION_PLAN_CODES.includes(body.planCode)
+  ) {
+    throw new HttpError(
+      400,
+      'كود خطة غير معروف أو متوقف / Unknown or retired plan code',
+      { planCode: body.planCode, allowed: [...SUBSCRIPTION_PLAN_CODES, 'manual', sub.planCode] },
+      'UNKNOWN_PLAN_CODE'
+    );
+  }
+
+  let expiresAt = sub.expiresAt;
+  if (body.extendDays !== undefined) {
+    // From the current expiry when it is still ahead, otherwise from now — an
+    // extension must never start in the past.
+    expiresAt = computeExpiry({ currentExpiresAt: sub.expiresAt, days: body.extendDays, now });
+  } else if (body.expiresAt !== undefined) {
+    expiresAt = new Date(body.expiresAt);
+  }
+
+  const status = body.status ?? sub.status;
+  // A row that is active with an expiry in the past is exactly the state the
+  // sweep exists to clean up, and it grants nothing. Refuse to create one.
+  if (status === 'active' && expiresAt.getTime() <= now.getTime()) {
+    throw new HttpError(
+      400,
+      'اشتراك فعّال يجب أن ينتهي في المستقبل؛ اضبط الحالة على منتهٍ بدلًا من ذلك / An active subscription must expire in the future; set the status to expired instead',
+      { expiresAt: expiresAt.toISOString() },
+      'EXPIRY_IN_PAST'
+    );
+  }
+  if (status === 'active' && sub.user?.isDisabled) {
+    throw new HttpError(
+      409,
+      'الحساب موقوف؛ أعِد تفعيله أولًا / This account is suspended; re-enable it first',
+      undefined,
+      'USER_DISABLED'
+    );
+  }
+
+  const data = { expiresAt, status };
+  if (body.planCode !== undefined) data.planCode = body.planCode;
+  // auto_renew on anything that is not active is a promise nothing keeps.
+  if (body.autoRenew !== undefined) data.autoRenew = status === 'active' ? body.autoRenew : false;
+  else if (status !== 'active') data.autoRenew = false;
+  if (status === 'cancelled') data.cancelledAt = sub.cancelledAt ?? now;
+  if (status === 'active') data.cancelledAt = null;
+
+  req.skipAutoAudit = true;
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await tx.subscription.update({
+      where: { id },
+      data: {
+        ...data,
+        rawPayload: JSON.stringify({
+          previous: {
+            status: sub.status,
+            expiresAt: sub.expiresAt.toISOString(),
+            planCode: sub.planCode,
+            autoRenew: sub.autoRenew,
+          },
+          adjustedByAdminId: req.admin.id.toString(),
+          adjustedAt: now.toISOString(),
+          reason: body.reason,
+          // Keep the gateway's own payload rather than dropping it — it is the
+          // only record of what the provider actually said.
+          original: sub.rawPayload ? sub.rawPayload.slice(0, 40000) : null,
+        }).slice(0, 60000),
+      },
+    });
+
+    // Re-activating this row while another still covers the user would leave
+    // two active rows and an ambiguous mirror. Supersede the others, exactly as
+    // a grant does.
+    let supersededIds = [];
+    if (status === 'active') {
+      const others = await tx.subscription.findMany({
+        where: { userId: sub.userId, status: 'active', id: { not: id } },
+        select: { id: true },
+      });
+      if (others.length) {
+        await tx.subscription.updateMany({
+          where: { id: { in: others.map((o) => o.id) } },
+          data: { status: 'expired' },
+        });
+        supersededIds = others.map((o) => o.id.toString());
+      }
+    }
+
+    const mirror = await syncPremiumMirror(tx, sub.userId, now);
+
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: 'subscriptions.update',
+      entityType: 'subscription',
+      entityId: id.toString(),
+      metadata: {
+        userId: sub.userId.toString(),
+        userEmail: sub.user?.email ?? null,
+        provider: sub.provider,
+        reason: body.reason,
+        extendDays: body.extendDays ?? null,
+        from: { status: sub.status, expiresAt: sub.expiresAt.toISOString(), planCode: sub.planCode },
+        to: { status, expiresAt: expiresAt.toISOString(), planCode: data.planCode ?? sub.planCode },
+        supersededIds,
+        premiumUntil: mirror.premiumUntil ? mirror.premiumUntil.toISOString() : null,
+      },
+      ip: clientIp(req),
+    });
+
+    return { subscription: updated, supersededIds, mirror };
+  });
+
+  res.json({
+    subscription: result.subscription,
+    supersededIds: result.supersededIds,
+    user: {
+      id: sub.userId.toString(),
+      plan: result.mirror.plan,
+      premiumUntil: result.mirror.premiumUntil,
+    },
+  });
 }));
 
 /* -----------------------------  payments  ------------------------------ */
 
 const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded', 'expired'];
 
-/** Date-only input means the whole day in the operator's terms, not midnight. */
+/**
+ * A date-only bound means the whole of that day, not the instant of midnight —
+ * otherwise `to=2026-08-16` silently excludes everything paid that day.
+ *
+ * Both bounds are given an explicit time component so both are read in server
+ * local time. Bare '2026-08-16' parses as UTC midnight per ES spec while
+ * '2026-08-16T23:59:59.999' parses as local, so mixing the two forms would
+ * skew the two ends of the range against each other by the UTC offset.
+ */
 function parseBoundary(raw, endOfDay) {
   const s = (raw || '').toString().trim();
   if (!s) return null;
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s);
-  const d = new Date(dateOnly && endOfDay ? `${s}T23:59:59.999` : s);
+  const d = new Date(dateOnly ? `${s}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}` : s);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -1290,19 +2451,194 @@ router.post('/reports/:id/resolve', requireAdmin('super_admin', 'moderator'), as
 
 /* ---------------------------  settings  ----------------------------- */
 
+/**
+ * `wired` names the keys the backend actually reads at runtime (see
+ * services/appSettings.js). The admin UI badges everything else
+ * "لا يقرأها التطبيق بعد" rather than letting an operator change a number,
+ * see "تم الحفظ", and believe the product changed. Deriving the list from the
+ * server means the badge cannot drift from the truth.
+ */
 router.get('/settings', requireAdmin(), asyncHandler(async (_req, res) => {
-  const rows = await query('SELECT `key`, `value` FROM app_settings');
-  res.json({ settings: Object.fromEntries(rows.map((r) => [r.key, r.value])) });
+  const rows = await query('SELECT `key`, `value`, `updated_at` AS updatedAt FROM app_settings');
+  res.json({
+    settings: Object.fromEntries(rows.map((r) => [r.key, r.value])),
+    updatedAt: Object.fromEntries(rows.map((r) => [r.key, r.updatedAt])),
+    wired: Object.keys(WIRED_KEYS),
+    // A key the backend used to read and no longer does. Badged "retired" in
+    // the UI rather than deleted, so an operator is never shown an editable
+    // number that changes nothing — the exact failure appSettings.js exists to
+    // prevent, applied to its own history.
+    retired: RETIRED_KEYS,
+  });
 }));
 
 router.put('/settings', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
-  const body = z.record(z.string(), z.string()).parse(req.body);
+  const body = z.record(
+    z.string().min(1).max(100),
+    z.string().max(5000),
+  ).parse(req.body);
+
   const entries = Object.entries(body);
+  if (entries.length === 0) throw new HttpError(400, 'No settings supplied');
+  if (entries.length > 100) throw new HttpError(400, 'Too many settings in one request');
+
   await Promise.all(entries.map(([key, value]) =>
     prisma.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } })
   ));
-  res.json({ ok: true });
+
+  // Without this the cached copy keeps serving the old value for up to a
+  // minute, so the operator saves, reloads, and sees the change "not stick".
+  await reloadAppSettings().catch(() => {});
+
+  res.json({ ok: true, wired: Object.keys(WIRED_KEYS), retired: RETIRED_KEYS });
 }));
+
+/* -------------------------  integrations  --------------------------- */
+
+/**
+ * Provider credentials — EasyKash and the AI providers.
+ *
+ * Design rules, all load-bearing:
+ *  - super_admin only. app_settings is readable by content_editor, which is
+ *    why these live in their own table and their own routes.
+ *  - No endpoint here ever returns a secret. GET reports isSet / last4 /
+ *    source and nothing else; the test endpoint reports an HTTP status class.
+ *  - Writes require the admin's password again (step-up). A stolen or
+ *    forgotten session must not be enough to swap the payment gateway key.
+ *  - The audit row is written in the same transaction as the credential, so a
+ *    credential change with no trace cannot exist.
+ */
+
+/** Re-authentication for a write. Never distinguishes "no password" from "wrong password". */
+async function requireStepUp(req) {
+  const password = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : '';
+  const ok = password ? await bcrypt.compare(password, req.admin.passwordHash) : false;
+  if (!ok) {
+    // 422, deliberately: a 401 would trip the admin app's session interceptor
+    // and log the operator out mid-form, and a 403 would toast "ليس لديك
+    // صلاحية" for what is really a typo.
+    throw new HttpError(422, 'Password confirmation failed', undefined, 'REAUTH_FAILED');
+  }
+}
+
+function requireCredentialDef(key) {
+  const def = credentialDef(key);
+  // The registry is an allow-list, not documentation. Without this the route
+  // is a "write any config key" primitive.
+  if (!def) throw new HttpError(404, 'Unknown credential key', undefined, 'UNKNOWN_CREDENTIAL');
+  return def;
+}
+
+router.get('/integrations', requireAdmin('super_admin'), asyncHandler(async (_req, res) => {
+  res.json({
+    credentials: await credentialStatus(),
+    // Surfaces "the box cannot decrypt anything" as a first-class state rather
+    // than as every row mysteriously reading `unset`.
+    cryptoAvailable: isCryptoAvailable(),
+  });
+}));
+
+router.put('/integrations/:key', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const def = requireCredentialDef(req.params.key);
+  await requireStepUp(req);
+
+  if (!isCryptoAvailable() && def.secret) {
+    throw new HttpError(503, 'Credential encryption is unavailable', undefined, 'CRYPTO_UNAVAILABLE');
+  }
+
+  // Named so middleware/auditLog.js's redaction regex matches it: if this
+  // handler ever stops setting skipAutoAudit, the generic row still cannot
+  // capture the plaintext.
+  const raw = req.body?.credentialValue;
+  let value;
+  try {
+    value = validateValue(def, raw);
+  } catch (err) {
+    throw new HttpError(400, err.message, undefined, 'INVALID_CREDENTIAL_VALUE');
+  }
+
+  const existing = await queryOne('SELECT `key` FROM provider_credentials WHERE `key` = ?', [def.key]);
+
+  req.skipAutoAudit = true;
+  await prisma.$transaction(async (tx) => {
+    await writeCredential(tx, { def, value, adminId: req.admin.id });
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: existing ? 'integrations.replace' : 'integrations.set',
+      entityType: 'integration',
+      entityId: def.key,
+      metadata: {
+        group: def.group,
+        secret: def.secret,
+        hadPreviousValue: Boolean(existing),
+        // Shape only for secrets. For non-secrets the value IS the answer to
+        // "what did they change it to" — and GET /integrations already returns
+        // it in the clear, so withholding it here bought no confidentiality and
+        // cost the audit trail its content: a redirected EASYKASH_BASE_URL used
+        // to leave a row saying a payments setting changed, but not to what.
+        ...(def.secret ? {} : { newValue: value.slice(0, 300) }),
+      },
+      ip: clientIp(req),
+    });
+  });
+
+  await reloadCredentials().catch(() => {});
+  res.json({ ok: true, credentials: await credentialStatus() });
+}));
+
+router.delete('/integrations/:key', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const def = requireCredentialDef(req.params.key);
+  await requireStepUp(req);
+
+  const existing = await queryOne('SELECT `key` FROM provider_credentials WHERE `key` = ?', [def.key]);
+  if (!existing) throw new HttpError(404, 'No stored value for this key', undefined, 'NOT_STORED');
+
+  req.skipAutoAudit = true;
+  await prisma.$transaction(async (tx) => {
+    await deleteCredential(tx, def.key);
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: 'integrations.clear',
+      entityType: 'integration',
+      entityId: def.key,
+      metadata: { group: def.group, secret: def.secret, fallsBackToEnv: true },
+      ip: clientIp(req),
+    });
+  });
+
+  await reloadCredentials().catch(() => {});
+  res.json({ ok: true, credentials: await credentialStatus() });
+}));
+
+/**
+ * Test a credential without saving it. The response is derived from the
+ * provider's HTTP status only and never contains the value that was tested.
+ */
+router.post(
+  '/integrations/:key/test',
+  requireAdmin('super_admin'),
+  integrationTestLimiter,
+  asyncHandler(async (req, res) => {
+    const def = requireCredentialDef(req.params.key);
+
+    const candidateRaw = req.body?.credentialValue;
+    let candidate = null;
+    if (typeof candidateRaw === 'string' && candidateRaw.trim()) {
+      try {
+        candidate = validateValue(def, candidateRaw);
+      } catch (err) {
+        throw new HttpError(400, err.message, undefined, 'INVALID_CREDENTIAL_VALUE');
+      }
+    }
+
+    const result = await probeCredential(def.key, candidate);
+
+    // Testing is not a mutation; the generic audit row would be noise, and a
+    // row per keystroke-driven retry would bury the writes that matter.
+    req.skipAutoAudit = true;
+    res.json({ key: def.key, checkedAt: new Date().toISOString(), ...result });
+  }),
+);
 
 /* -----------------------  admin users (RBAC)  --------------------- */
 
@@ -1335,9 +2671,26 @@ router.post('/admins', requireAdmin('super_admin'), asyncHandler(async (req, res
   });
   const body = schema.parse(req.body);
   const passwordHash = await bcrypt.hash(body.password, 12);
-  const admin = await prisma.adminUser.create({
-    data: { email: body.email, passwordHash, name: body.name, role: body.role },
+
+  // Same entity_id blind spot as POST /users: there is no id in the path, so
+  // the automatic row would record that an admin account was created without
+  // saying which one — for the route that hands out privileges.
+  req.skipAutoAudit = true;
+  const admin = await prisma.$transaction(async (tx) => {
+    const created = await tx.adminUser.create({
+      data: { email: body.email, passwordHash, name: body.name, role: body.role },
+    });
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: 'admins.create',
+      entityType: 'admin',
+      entityId: created.id.toString(),
+      metadata: { email: created.email, name: created.name, role: created.role },
+      ip: clientIp(req),
+    });
+    return created;
   });
+
   const { passwordHash: _ph, ...rest } = admin;
   res.status(201).json({ admin: rest });
 }));
@@ -1402,11 +2755,58 @@ router.patch('/admins/:id', requireAdmin('super_admin'), asyncHandler(async (req
   if (body.password !== undefined) data.passwordHash = await bcrypt.hash(body.password, 12);
   if (Object.keys(data).length === 0) throw new HttpError(400, 'Nothing to update');
 
-  const updated = await prisma.adminUser.update({ where: { id }, data });
+  // A ROLE CHANGE USES THE TRANSACTIONAL WRITER, as services/audit.js and
+  // middleware/auditLog.js both say it does. Left to the derived row, a
+  // privilege escalation was recorded as metadata={"role":"super_admin"} with
+  // no previous role, no target account and no way to tell it from a re-save —
+  // and because that writer swallows its own errors behind a 1500 ms timeout,
+  // the escalation could return 200 with no trace at all. Here the audit insert
+  // is part of the same transaction: if it fails, the promotion rolls back.
+  req.skipAutoAudit = true;
+  const updated = await prisma.$transaction(async (tx) => {
+    const row = await tx.adminUser.update({ where: { id }, data });
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: 'admins.update',
+      entityType: 'admin',
+      entityId: id.toString(),
+      metadata: {
+        targetEmail: target.email,
+        targetName: target.name,
+        from: { role: target.role, isActive: target.isActive },
+        to: { role: row.role, isActive: row.isActive },
+        roleChanged: changesRole,
+        statusChanged: changesStatus,
+        nameChanged: body.name !== undefined && body.name !== target.name,
+        // The value never appears — the FACT does. Redaction alone left no
+        // record that a password had been reset at all.
+        passwordReset: body.password !== undefined,
+      },
+      ip: clientIp(req),
+    });
+    return row;
+  });
+
   const { passwordHash: _ph, ...rest } = updated;
   res.json({ admin: rest });
 }));
 
+/**
+ * Delete an admin account — and REFUSE to when it has an audit trail.
+ *
+ * `AdminAuditLog.admin` is onDelete: Cascade (prisma/schema.prisma:510), so
+ * this statement used to delete every audit row that admin had ever written.
+ * That is the exact opposite of what the trail is for: the credential and
+ * subscription writes go through the transactional writer specifically so that
+ * "a credential change with no trace cannot exist" — and one DELETE on the
+ * author's account erased all of them, leaving a single derived row
+ * `admins.delete / admin / 7` that does not even name the account.
+ *
+ * Deactivation is the operation that was actually wanted: requireAdmin()
+ * refuses an inactive admin at the door (middleware/auth.js), so the account
+ * can do nothing, while the row survives to keep naming the author of every
+ * action it took. Deleting stays possible only for an account that never acted.
+ */
 router.delete('/admins/:id', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
   const id = bigId(req.params.id, 'admin id');
   const target = await prisma.adminUser.findUnique({ where: { id } });
@@ -1414,7 +2814,36 @@ router.delete('/admins/:id', requireAdmin('super_admin'), asyncHandler(async (re
 
   await assertAdminMutable(target, req.admin.id, { losingSuperAdmin: true, deleting: true });
 
-  await prisma.adminUser.delete({ where: { id } });
+  const auditRows = await prisma.adminAuditLog.count({ where: { adminId: id } });
+  if (auditRows > 0) {
+    throw new HttpError(
+      409,
+      'لهذا الحساب سجل عمليات لا يجوز حذفه؛ عطّل الحساب بدلًا من حذفه / This account has an audit trail that must be retained; deactivate it instead of deleting it',
+      { auditRows, email: target.email },
+      'ADMIN_HAS_AUDIT_TRAIL'
+    );
+  }
+
+  req.skipAutoAudit = true;
+  await prisma.$transaction(async (tx) => {
+    await writeAudit(tx, {
+      adminId: req.admin.id,
+      action: 'admins.delete',
+      entityType: 'admin',
+      entityId: id.toString(),
+      // Names the account being destroyed: after the delete, nothing else can.
+      metadata: {
+        email: target.email,
+        name: target.name,
+        role: target.role,
+        isActive: target.isActive,
+        lastLoginAt: target.lastLoginAt ? target.lastLoginAt.toISOString() : null,
+        auditRows: 0,
+      },
+      ip: clientIp(req),
+    });
+    await tx.adminUser.delete({ where: { id } });
+  });
   res.json({ ok: true });
 }));
 
@@ -1497,9 +2926,10 @@ router.get('/audit', requireAdmin('super_admin'), asyncHandler(async (req, res) 
   ]);
 
   for (const l of logs) {
-    // The admin row is gone once the account is deleted (ON DELETE CASCADE
-    // removes their rows, but a re-pointed id would still read null): say so
-    // rather than rendering a blank author.
+    // An author can only be missing on rows written before DELETE /admins/:id
+    // started refusing to delete an account that has a trail (the FK is
+    // ON DELETE CASCADE, so a delete used to take the rows with it). Say the
+    // author is unknown rather than rendering a blank one.
     l.admin = l.adminName || l.adminEmail
       ? { id: l.adminId, name: l.adminName, email: l.adminEmail, role: l.adminRole }
       : null;

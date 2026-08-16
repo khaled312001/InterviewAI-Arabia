@@ -48,7 +48,7 @@ export function textCol<R extends GridValidRowModel>(
 }
 
 export function numCol<R extends GridValidRowModel>(
-  o: BaseOptions & { format?: NumFormat },
+  o: BaseOptions & { format?: NumFormat; digits?: number; emptyLabel?: string },
 ): GridColDef<R> {
   return {
     field: o.field,
@@ -60,7 +60,15 @@ export function numCol<R extends GridValidRowModel>(
     type: 'number',
     align: 'left',
     headerAlign: 'left',
-    renderCell: ({ value }) => <Num value={value as number} format={o.format ?? 'int'} variant="body2" />,
+    renderCell: ({ value }) => (
+      <Num
+        value={value as number}
+        format={o.format ?? 'int'}
+        digits={o.digits}
+        emptyLabel={o.emptyLabel}
+        variant="body2"
+      />
+    ),
   };
 }
 
@@ -134,7 +142,14 @@ export function chipCol<R extends GridValidRowModel>(
      * premiumUntil has lapsed) or an inverted `isDisabled` flag.
      */
     getValue?: (row: R) => string | boolean | null | undefined;
-    label?: (row: R) => string | undefined;
+    /**
+     * Overrides the label the static map would produce, for values whose name
+     * is data rather than an enum — a plan code, whose Arabic name lives in the
+     * price list the server returns. Returning `undefined` falls back to the
+     * map, which still has to describe retired and legacy codes the live
+     * catalogue no longer contains.
+     */
+    getLabel?: (row: R) => string | undefined;
   },
 ): GridColDef<R> {
   return {
@@ -150,7 +165,7 @@ export function chipCol<R extends GridValidRowModel>(
       <StatusChip
         kind={o.kind}
         value={o.getValue ? o.getValue(row as R) : (value as string)}
-        label={o.label?.(row as R)}
+        label={o.getLabel?.(row as R)}
         tone={o.tone}
         tooltip={o.tooltip?.(row as R)}
       />

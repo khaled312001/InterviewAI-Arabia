@@ -1,15 +1,25 @@
 /**
- * SubscriptionScreen — the screen that makes money.
+ * SubscriptionScreen — the store.
  *
- * Treated as a real pricing page rather than a settings row: one dominant
- * decision (monthly vs yearly), a concrete free-vs-premium comparison instead
- * of adjectives, social proof, an FAQ that kills the common objections, and a
- * CTA that is always on screen.
+ * It stopped being a subscription page when metering moved from "5 questions a
+ * day" to a balance of interview MINUTES. It now sells two different things
+ * that are priced on two different axes:
  *
- * Prices are never hardcoded — they come from GET /payments/config so the
- * product owner can change them server-side without shipping an app update.
- * When `enabled` is false the page still sells, but the CTA degrades into an
- * honest "not yet" instead of a button that throws a 503.
+ *   - a PACK: a one-off purchase of minutes that never expire and stack,
+ *   - a SUBSCRIPTION: a monthly allowance of minutes that renews and does not
+ *     roll over, plus the premium tracks and the waived flat fees.
+ *
+ * The yearly plan is gone. It is not hidden behind a flag here — the server no
+ * longer returns it from `/payments/config`, and this screen renders whatever
+ * that endpoint sends, so there is nothing to remove locally.
+ *
+ * THE RULE THIS SCREEN EXISTS TO KEEP: no number on it is written in the app.
+ * Prices, minute counts, per-minute rates and saving percentages come from
+ * `GET /payments/config`; the balance, the trial length and every flat fee come
+ * from `GET /user/balance`. The previous build hardcoded the daily limit in
+ * three screens and they drifted from the server and from each other. Anything
+ * the API has not sent is not rendered at all — a blank row is honest, an
+ * invented one is not.
  */
 
 import { ReactNode, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,33 +33,48 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
+import { useBalance, formatClock } from '../store/balance';
 import { useAppTheme, useResponsive } from '../theme/useTheme';
 import {
   Screen, Text, Card, Button, Badge, EmptyState, SectionHeader, Skeleton, Input,
 } from '../components';
+import { balanceLabel, durationLabel, formatShortDate, minuteCountLabel } from './mainShared';
 
 /* ------------------------------------------------------------------ *
  * API shapes
  * ------------------------------------------------------------------ */
 
-/** The two billing periods this screen sells. The catalogue also carries a
- *  `quarterly` plan; it is deliberately not offered here to keep the decision
- *  binary — `planFor()` looks plans up by code, so adding it is a one-liner. */
-type PlanKey = 'monthly' | 'yearly';
+type PlanKind = 'pack' | 'subscription';
 
 /** One entry of `plans` from GET /payments/config — see the backend's
- *  services/payments/plans.js#planList for the authoritative shape. */
+ *  services/payments/plans.js#planList for the authoritative shape. A pack
+ *  carries `minutes`, a subscription carries `minutesPerMonth`; both are
+ *  optional here because a catalogue change must degrade to "not shown"
+ *  rather than to `undefined` on screen. */
 interface PlanSpec {
   code: string;
+  kind: PlanKind;
   labelAr: string;
   labelEn: string;
   /** Integer piastres. The decimal amount is `amountEgp`. */
   amountCents: number;
   amountEgp: number;
-  days: number;
-  popular: boolean;
-  savingPct: number;
-  monthlyEquivalentEgp: number;
+  popular?: boolean;
+  pricePerMinuteEgp?: number;
+
+  /** Packs. */
+  grantSeconds?: number;
+  minutes?: number;
+  neverExpires?: boolean;
+
+  /** Subscriptions. */
+  days?: number;
+  months?: number;
+  cycleSeconds?: number;
+  minutesPerMonth?: number;
+  rollsOver?: boolean;
+  savingPct?: number;
+  monthlyEquivalentEgp?: number;
 }
 
 interface PaymentsConfig {
@@ -77,13 +102,8 @@ interface SubscriptionStatus {
   } | null;
 }
 
-/** Rows of the comparison table. Copy lives in i18n, order lives here. */
-const BENEFIT_KEYS = [
-  'questions', 'tracks', 'feedback', 'live', 'cv', 'history', 'support',
-] as const;
-
-/** FAQ order — most common objection first. */
-const FAQ_KEYS = ['cancel', 'difference', 'payment', 'activation', 'arabic'] as const;
+/** FAQ order — the objection people actually raise first is "do these expire?". */
+const FAQ_KEYS = ['expiry', 'counted', 'topup', 'packVsSub', 'payment', 'cancel'] as const;
 
 const POLL_INTERVAL_MS = 4000;
 const POLL_TIMEOUT_MS = 180_000;
@@ -94,24 +114,26 @@ function groupDigits(value: number) {
 }
 
 /**
- * Index the plan catalogue by code.
+ * Money with up to two decimals, trailing zeros trimmed.
  *
- * `plans` arrives as an array. It is tolerated as an object here only so a
- * backend that later switches to a keyed map does not blank out every price on
- * the paywall before the app ships an update.
+ * A per-minute rate is 1.67 EGP and rounding it to 2 turns a real figure into a
+ * wrong one — the old `groupDigits`-only helper did exactly that.
  */
-function planFor(config: PaymentsConfig | null, code: PlanKey): PlanSpec | undefined {
-  const raw = config?.plans;
-  const list: PlanSpec[] = Array.isArray(raw) ? raw : Object.values(raw ?? {});
-  return list.find((p) => p?.code === code);
+function formatAmount(value: number) {
+  if (!Number.isFinite(value)) return '';
+  if (Number.isInteger(value)) return groupDigits(value);
+  const fixed = value.toFixed(2).replace(/\.?0+$/, '');
+  const [whole, frac] = fixed.split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return frac ? `${grouped}.${frac}` : grouped;
 }
 
-/** Decimal EGP for a plan, falling back to the minor-unit field. */
-function priceOf(plan: PlanSpec | undefined) {
-  if (!plan) return 0;
-  if (typeof plan.amountEgp === 'number') return plan.amountEgp;
-  if (typeof plan.amountCents === 'number') return plan.amountCents / 100;
-  return 0;
+/** `plans` arrives as an array; an object is tolerated only so a backend that
+ *  later switches to a keyed map does not blank every price on the paywall. */
+function planArray(config: PaymentsConfig | null): PlanSpec[] {
+  const raw = config?.plans;
+  if (Array.isArray(raw)) return raw;
+  return Object.values(raw ?? {}) as PlanSpec[];
 }
 
 /* ------------------------------------------------------------------ *
@@ -136,9 +158,86 @@ function Reveal({ index = 0, children }: { index?: number; children: ReactNode }
   );
 }
 
-const BenefitRow = memo(function BenefitRow({
-  label, free, premium, last,
-}: { label: string; free: string; premium: string; last: boolean }) {
+/**
+ * One buyable product.
+ *
+ * Deliberately the same component for both kinds: a pack and a subscription
+ * differ in the lines they carry, not in how they are chosen, and two card
+ * components would drift apart the first time the selected state changed.
+ */
+const PlanCard = memo(function PlanCard({
+  name, price, lines, badge, popular, selected, onSelect,
+}: {
+  name: string;
+  price: string;
+  lines: string[];
+  badge?: string;
+  popular?: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const theme = useAppTheme();
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      onPress={onSelect}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={t('subscription.selectPlan', { name })}
+      accessibilityHint={price}
+      style={({ pressed }) => [
+        {
+          borderRadius: theme.radii.lg,
+          borderWidth: selected ? 1.5 : theme.layout.hairline,
+          borderColor: selected ? theme.colors.accentBorder : theme.colors.border,
+          backgroundColor: selected ? theme.colors.accentMuted : theme.colors.surface,
+          padding: theme.spacing.lg,
+          gap: theme.spacing.xs,
+          minHeight: theme.layout.touchTarget,
+          transform: [{ scale: pressed ? 0.99 : 1 }],
+        },
+      ]}
+    >
+      <View style={[styles.rowCenter, { gap: theme.spacing.sm }]}>
+        <View
+          style={[
+            styles.center,
+            {
+              width: theme.layout.icon.lg,
+              height: theme.layout.icon.lg,
+              borderRadius: theme.radii.pill,
+              borderWidth: 1.5,
+              borderColor: selected ? theme.colors.accent : theme.colors.borderStrong,
+              backgroundColor: selected ? theme.colors.accent : 'transparent',
+            },
+          ]}
+        >
+          {selected ? (
+            <Ionicons name="checkmark" size={theme.layout.icon.xs} color={theme.colors.onAccent} />
+          ) : null}
+        </View>
+
+        <Text role="body" weight="bold" flex numberOfLines={1}>{name}</Text>
+
+        {popular ? <Badge label={t('subscription.popular')} tone="accent" icon="flame" /> : null}
+        {badge ? <Badge label={badge} tone="success" /> : null}
+      </View>
+
+      <View style={[styles.rowCenter, { gap: theme.spacing.sm }]}>
+        <Text role="h3" weight="bold">{price}</Text>
+      </View>
+
+      {lines.map((line) => (
+        <Text key={line} role="caption" tone="secondary">{line}</Text>
+      ))}
+    </Pressable>
+  );
+});
+
+const CompareRow = memo(function CompareRow({
+  label, free, pack, sub, last,
+}: { label: string; free: string; pack: string; sub: string; last: boolean }) {
   const theme = useAppTheme();
 
   return (
@@ -152,38 +251,29 @@ const BenefitRow = memo(function BenefitRow({
         },
       ]}
     >
-      <View style={[styles.cellFeature, { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md }]}>
-        <Text role="bodySm">{label}</Text>
+      <View style={[styles.cellFeature, { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md }]}>
+        <Text role="caption">{label}</Text>
       </View>
-
-      <View style={[styles.cell, { paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.md }]}>
-        <Text role="caption" tone="muted" align="center">{free}</Text>
+      <View style={[styles.cell, { paddingHorizontal: theme.spacing.xs, paddingVertical: theme.spacing.md }]}>
+        <Text role="micro" tone="muted" align="center">{free}</Text>
       </View>
-
+      <View style={[styles.cell, { paddingHorizontal: theme.spacing.xs, paddingVertical: theme.spacing.md }]}>
+        <Text role="micro" tone="muted" align="center">{pack}</Text>
+      </View>
       <View
         style={[
           styles.cell,
           {
-            paddingHorizontal: theme.spacing.sm,
+            paddingHorizontal: theme.spacing.xs,
             paddingVertical: theme.spacing.md,
             backgroundColor: theme.colors.accentMuted,
           },
         ]}
       >
-        <Text role="caption" weight="bold" align="center" tone="inherit" style={{ color: theme.colors.accentText }}>
-          {premium}
+        <Text role="micro" weight="bold" align="center" tone="inherit" style={{ color: theme.colors.accentText }}>
+          {sub}
         </Text>
       </View>
-    </View>
-  );
-});
-
-const StatTile = memo(function StatTile({ value, label }: { value: string; label: string }) {
-  const theme = useAppTheme();
-  return (
-    <View style={[styles.statTile, { gap: theme.spacing.xxs }]}>
-      <Text role="h3" weight="bold" align="center" tone="primary">{value}</Text>
-      <Text role="micro" tone="muted" align="center">{label}</Text>
     </View>
   );
 });
@@ -251,15 +341,11 @@ function PricingSkeleton() {
   return (
     <View style={{ gap: theme.spacing['2xl'], paddingTop: theme.spacing.lg }}>
       <Skeleton height={168} radius={theme.radii.xl} />
-      <View style={{ gap: theme.spacing.md }}>
-        <Skeleton height={theme.layout.control.md} radius={theme.radii.pill} />
-        <Skeleton height={196} radius={theme.radii.lg} />
-      </View>
+      <Skeleton height={96} radius={theme.radii.lg} />
       <View style={{ gap: theme.spacing.sm }}>
         <Skeleton width="45%" height={18} />
-        <Skeleton height={theme.layout.control.md} radius={theme.radii.lg} />
-        <Skeleton height={theme.layout.control.md} radius={theme.radii.lg} />
-        <Skeleton height={theme.layout.control.md} radius={theme.radii.lg} />
+        <Skeleton height={116} radius={theme.radii.lg} />
+        <Skeleton height={116} radius={theme.radii.lg} />
       </View>
     </View>
   );
@@ -275,13 +361,15 @@ export function SubscriptionScreen({ navigation }: any) {
   const { maxWidth } = useResponsive();
   const user = useAuth((s) => s.user);
   const refreshMe = useAuth((s) => s.refreshMe);
+  const balance = useBalance((s) => s.balance);
+  const refreshBalance = useBalance((s) => s.refresh);
 
   const [config, setConfig] = useState<PaymentsConfig | null>(null);
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
-  const [plan, setPlan] = useState<PlanKey>('yearly');
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -292,10 +380,15 @@ export function SubscriptionScreen({ navigation }: any) {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
   const [pollTimedOut, setPollTimedOut] = useState(false);
-  const [justActivated, setJustActivated] = useState(false);
+  /** What just landed — the two purchases have different good news. */
+  const [justBought, setJustBought] = useState<PlanKind | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartedAt = useRef(0);
+  /** The balance the moment checkout opened. A purchase is confirmed by the
+   *  minutes ARRIVING, which is true for a pack and a subscription alike. */
+  const secondsBeforeCheckout = useRef(0);
+  const wasActiveBeforeCheckout = useRef(false);
   const phoneRef = useRef<TextInput>(null);
 
   /* ---------------------------- data ---------------------------- */
@@ -306,6 +399,9 @@ export function SubscriptionScreen({ navigation }: any) {
       const [cfg, st] = await Promise.all([
         api.get<PaymentsConfig>('/payments/config'),
         api.get<SubscriptionStatus>('/subscriptions/status').catch(() => null),
+        // Also the call that grants the free trial, so opening the store on a
+        // brand-new account shows ten minutes rather than zero.
+        refreshBalance().catch(() => {}),
       ]);
       setConfig(cfg.data);
       if (st) setStatus(st.data);
@@ -314,9 +410,26 @@ export function SubscriptionScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshBalance]);
 
   useEffect(() => { load(); }, [load]);
+
+  const plans = useMemo(() => planArray(config), [config]);
+  const packs = useMemo(() => plans.filter((p) => p.kind === 'pack'), [plans]);
+  const subs = useMemo(() => plans.filter((p) => p.kind === 'subscription'), [plans]);
+
+  /** Pre-select what the catalogue itself marks popular — the 60-minute pack
+   *  today — so the CTA is never a dead button on arrival. */
+  useEffect(() => {
+    if (selectedCode || plans.length === 0) return;
+    const preferred = packs.find((p) => p.popular) ?? packs[0] ?? plans[0];
+    if (preferred) setSelectedCode(preferred.code);
+  }, [packs, plans, selectedCode]);
+
+  const selected = useMemo(
+    () => plans.find((p) => p.code === selectedCode) ?? null,
+    [plans, selectedCode],
+  );
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -325,38 +438,57 @@ export function SubscriptionScreen({ navigation }: any) {
     }
   }, []);
 
-  const checkStatus = useCallback(async () => {
+  /**
+   * Did the purchase land?
+   *
+   * The webhook — not the redirect back — is what credits the account, so this
+   * watches for the effect rather than trusting the return trip. Minutes
+   * arriving is the signal for both product kinds; the subscription flag is
+   * checked too because a renewal can activate before the cycle grant runs.
+   */
+  const checkPurchase = useCallback(async () => {
     try {
-      const { data } = await api.get<SubscriptionStatus>('/subscriptions/status');
-      setStatus(data);
-      if (data.active) {
+      const [st] = await Promise.all([
+        api.get<SubscriptionStatus>('/subscriptions/status').catch(() => null),
+        refreshBalance().catch(() => {}),
+      ]);
+      if (st) setStatus(st.data);
+
+      const now = useBalance.getState().balance?.availableSeconds ?? 0;
+      const credited = now > secondsBeforeCheckout.current;
+      const activated = !!st?.data.active && !wasActiveBeforeCheckout.current;
+
+      if (credited || activated) {
         stopPolling();
         setAwaitingPayment(false);
         setPollTimedOut(false);
-        setJustActivated(true);
+        setJustBought(activated ? 'subscription' : 'pack');
         await refreshMe().catch(() => {});
+        return true;
       }
-      return data.active;
+      return false;
     } catch {
       return false;
     }
-  }, [refreshMe, stopPolling]);
+  }, [refreshBalance, refreshMe, stopPolling]);
 
-  /** Poll after checkout — the webhook, not the redirect, is what activates. */
   const startPolling = useCallback(() => {
     stopPolling();
     setAwaitingPayment(true);
     setPollTimedOut(false);
+    setJustBought(null);
+    secondsBeforeCheckout.current = balance?.availableSeconds ?? 0;
+    wasActiveBeforeCheckout.current = !!status?.active;
     pollStartedAt.current = Date.now();
     pollRef.current = setInterval(async () => {
-      const active = await checkStatus();
-      if (!active && Date.now() - pollStartedAt.current > POLL_TIMEOUT_MS) {
+      const done = await checkPurchase();
+      if (!done && Date.now() - pollStartedAt.current > POLL_TIMEOUT_MS) {
         stopPolling();
         setAwaitingPayment(false);
         setPollTimedOut(true);
       }
     }, POLL_INTERVAL_MS);
-  }, [checkStatus, stopPolling]);
+  }, [balance?.availableSeconds, checkPurchase, status?.active, stopPolling]);
 
   useEffect(() => stopPolling, [stopPolling]);
 
@@ -377,15 +509,16 @@ export function SubscriptionScreen({ navigation }: any) {
   useEffect(() => {
     if (!awaitingPayment) return;
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') checkStatus();
+      if (state === 'active') checkPurchase();
     });
     return () => sub.remove();
-  }, [awaitingPayment, checkStatus]);
+  }, [awaitingPayment, checkPurchase]);
 
   /* --------------------------- derived --------------------------- */
 
-  const isPremium = status?.active ?? user?.plan === 'premium';
+  const isPremium = balance?.plan === 'premium' || status?.active || user?.plan === 'premium';
   const paymentsEnabled = !!config?.enabled;
+  const costs = balance?.costs ?? null;
 
   const currencyLabel = useMemo(
     () => t(`subscription.currency.${config?.currency ?? 'EGP'}`, { defaultValue: config?.currency ?? '' }),
@@ -393,42 +526,30 @@ export function SubscriptionScreen({ navigation }: any) {
   );
 
   const money = useCallback(
-    (amount: number) => `${groupDigits(amount)} ${currencyLabel}`.trim(),
+    (amount: number) => `${formatAmount(amount)} ${currencyLabel}`.trim(),
     [currencyLabel],
   );
 
-  const monthlyPrice = useMemo(() => priceOf(planFor(config, 'monthly')), [config]);
-  const yearlyPrice = useMemo(() => priceOf(planFor(config, 'yearly')), [config]);
-  const yearlyIfMonthly = monthlyPrice * 12;
-  const savingAmount = Math.max(0, yearlyIfMonthly - yearlyPrice);
-  const savingPercent = yearlyIfMonthly > 0 ? Math.round((savingAmount / yearlyIfMonthly) * 100) : 0;
-  const selectedPrice = plan === 'yearly' ? yearlyPrice : monthlyPrice;
+  const planName = useCallback(
+    (plan: PlanSpec) => (i18n.language.startsWith('ar') ? plan.labelAr : plan.labelEn) || plan.code,
+    [i18n.language],
+  );
 
   const expiryDate = useMemo(() => {
     // Premium can be granted without a Subscription row, in which case only
     // `premiumUntil` carries the date — reading the row alone hid the expiry.
     const raw = status?.subscription?.expiresAt ?? status?.premiumUntil;
-    if (!raw) return '';
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) return '';
-    try {
-      return d.toLocaleDateString(i18n.language === 'ar' ? 'ar-EG' : 'en-GB', {
-        year: 'numeric', month: 'long', day: 'numeric',
-      });
-    } catch {
-      return d.toISOString().slice(0, 10);
-    }
-  }, [status?.subscription?.expiresAt, i18n.language]);
+    return formatShortDate(raw, i18n.language);
+  }, [status?.subscription?.expiresAt, status?.premiumUntil, i18n.language]);
 
   /* --------------------------- actions --------------------------- */
 
-  const onSelectPlan = useCallback((key: PlanKey) => setPlan(key), []);
   const onToggleFaq = useCallback((key: string) => {
     setOpenFaq((prev) => (prev === key ? null : key));
   }, []);
 
   const onCheckout = useCallback(async () => {
-    if (!paymentsEnabled || checkingOut) return;
+    if (!paymentsEnabled || checkingOut || !selected) return;
 
     // Matches the server's own rule (min 8 chars) rather than guessing a
     // stricter Egyptian format the gateway may well accept.
@@ -444,7 +565,7 @@ export function SubscriptionScreen({ navigation }: any) {
     setPhoneError(null);
     try {
       const { data } = await api.post('/payments/checkout', {
-        plan,
+        plan: selected.code,
         ...(digits ? { phone: digits } : null),
       });
       // EasyKash returns a hosted-checkout `redirectUrl`; `iframeUrl` is
@@ -474,7 +595,7 @@ export function SubscriptionScreen({ navigation }: any) {
     } finally {
       setCheckingOut(false);
     }
-  }, [paymentsEnabled, checkingOut, plan, phone, phoneRequired, startPolling, t]);
+  }, [paymentsEnabled, checkingOut, selected, phone, phoneRequired, startPolling, t]);
 
   const onChangePhone = useCallback((value: string) => {
     setPhone(value);
@@ -487,9 +608,13 @@ export function SubscriptionScreen({ navigation }: any) {
     ? t('subscription.ctaSoon')
     : checkingOut
       ? t('subscription.ctaRedirecting')
-      : isPremium
-        ? t('subscription.ctaRenew', { price: money(selectedPrice) })
-        : t('subscription.ctaSubscribe', { price: money(selectedPrice) });
+      : !selected
+        ? t('subscription.ctaPickPlan')
+        : selected.kind === 'pack'
+          ? t('subscription.ctaBuy', { price: money(selected.amountEgp) })
+          : isPremium
+            ? t('subscription.ctaRenew', { price: money(selected.amountEgp) })
+            : t('subscription.ctaSubscribe', { price: money(selected.amountEgp) });
 
   const footer = loading || loadFailed ? null : (
     <View
@@ -540,7 +665,7 @@ export function SubscriptionScreen({ navigation }: any) {
           variant="accent"
           size="lg"
           loading={checkingOut}
-          disabled={!paymentsEnabled}
+          disabled={!paymentsEnabled || !selected}
           accessibilityLabel={ctaLabel}
           accessibilityHint={t('subscription.footerNote')}
           iconLeft={
@@ -597,7 +722,7 @@ export function SubscriptionScreen({ navigation }: any) {
             theme.shadow.lg,
           ]}
         >
-          <Badge label={t('subscription.heroBadge')} tone="accent" size="md" icon="sparkles" />
+          <Badge label={t('subscription.heroBadge')} tone="accent" size="md" icon="time" />
 
           <Text role="h2" weight="bold" tone="onBrand">{t('subscription.heroTitle')}</Text>
           <Text role="bodySm" tone="onBrand" style={styles.heroSubtitle}>
@@ -608,7 +733,7 @@ export function SubscriptionScreen({ navigation }: any) {
             {[
               { icon: 'shield-checkmark' as const, label: t('subscription.trustSecure') },
               { icon: 'card-outline' as const, label: t('subscription.trustNoCard') },
-              { icon: 'time-outline' as const, label: t('subscription.trustCancel') },
+              { icon: 'infinite-outline' as const, label: t('subscription.trustNoExpiry') },
             ].map((item) => (
               <View key={item.label} style={[styles.heroTrustItem, { gap: theme.spacing.xs }]}>
                 <Ionicons name={item.icon} size={theme.layout.icon.xs} color={theme.colors.textOnBrand} />
@@ -619,9 +744,56 @@ export function SubscriptionScreen({ navigation }: any) {
         </LinearGradient>
       </Reveal>
 
-      {/* --------------------- Activation / status --------------------- */}
-      {justActivated ? (
-        <Reveal index={1}>
+      {/* --------------------------- Balance --------------------------- */}
+      <Reveal index={1}>
+        <Card variant="elevated" padding="lg" style={{ marginTop: theme.spacing.lg, gap: theme.spacing.xs }}>
+          <Text role="caption" tone="muted">{t('subscription.balanceTitle')}</Text>
+          {balance ? (
+            <>
+              <Text role="display" weight="bold">
+                {balanceLabel(balance.availableSeconds, t)}
+              </Text>
+              <Text role="caption" tone="muted">
+                {balance.availableSeconds > 0
+                  ? t('subscription.balanceExact', { clock: formatClock(balance.availableSeconds) })
+                  : t('subscription.balanceEmpty')}
+              </Text>
+              {balance.subSeconds > 0 && balance.subExpiresAt ? (
+                <Text role="caption" tone="secondary">
+                  {t('subscription.balanceSubPart', {
+                    label: minuteCountLabel(Math.floor(balance.subSeconds / 60), t),
+                    date: formatShortDate(balance.subExpiresAt, i18n.language),
+                  })}
+                </Text>
+              ) : null}
+
+              {/* The statement is reachable from the number it explains. The
+                  published terms tell the user to check consumption here
+                  before asking for a refund, so it cannot be buried. */}
+              <Pressable
+                onPress={() => navigation.navigate('Ledger')}
+                accessibilityRole="button"
+                accessibilityLabel={t('ledger.title')}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: theme.spacing.xs,
+                  minHeight: theme.layout.touchTarget,
+                }}
+              >
+                <Ionicons name="receipt-outline" size={16} color={theme.colors.primary} />
+                <Text role="bodySm" weight="bold" tone="primary">{t('ledger.title')}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text role="bodySm" tone="muted">{t('subscription.balanceLoading')}</Text>
+          )}
+        </Card>
+      </Reveal>
+
+      {/* ---------------- Purchase landed / active plan ---------------- */}
+      {justBought ? (
+        <Reveal index={2}>
           <Card
             variant="outlined"
             padding="md"
@@ -634,16 +806,22 @@ export function SubscriptionScreen({ navigation }: any) {
             <View style={[styles.rowCenter, { gap: theme.spacing.md }]}>
               <Ionicons name="checkmark-circle" size={theme.layout.icon.xl} color={theme.colors.success} />
               <View style={styles.flex}>
-                <Text role="h4" weight="bold" tone="success">{t('subscription.activatedTitle')}</Text>
+                <Text role="h4" weight="bold" tone="success">
+                  {t(justBought === 'subscription' ? 'subscription.activatedTitle' : 'subscription.creditedTitle')}
+                </Text>
                 <Text role="caption" tone="secondary" style={{ marginTop: theme.spacing.xxs }}>
-                  {t('subscription.activatedBody')}
+                  {justBought === 'subscription'
+                    ? t('subscription.activatedBody')
+                    : t('subscription.creditedBody', {
+                      label: balanceLabel(balance?.availableSeconds ?? 0, t),
+                    })}
                 </Text>
               </View>
             </View>
           </Card>
         </Reveal>
       ) : isPremium ? (
-        <Reveal index={1}>
+        <Reveal index={2}>
           <Card variant="filled" padding="md" style={{ marginTop: theme.spacing.lg }}>
             <View style={[styles.rowCenter, { gap: theme.spacing.md }]}>
               <Ionicons name="star" size={theme.layout.icon.xl} color={theme.colors.accent} />
@@ -701,7 +879,7 @@ export function SubscriptionScreen({ navigation }: any) {
             </View>
             <Button
               title={t('subscription.pendingCheck')}
-              onPress={checkStatus}
+              onPress={() => { void checkPurchase(); }}
               variant="outline"
               size="sm"
               fullWidth={false}
@@ -746,207 +924,224 @@ export function SubscriptionScreen({ navigation }: any) {
         </Reveal>
       ) : null}
 
-      {/* --------------------------- Plan picker --------------------------- */}
-      <Reveal index={3}>
-        <View style={{ marginTop: theme.spacing['2xl'] }}>
-          <SectionHeader title={t('subscription.billingTitle')} />
-
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t('subscription.billingTitle')}
-            style={[
-              styles.segment,
-              {
-                backgroundColor: theme.colors.surfaceSunken,
-                borderRadius: theme.radii.pill,
-                padding: theme.spacing.xs,
-                gap: theme.spacing.xs,
-              },
-            ]}
-          >
-            {(['monthly', 'yearly'] as PlanKey[]).map((key) => {
-              const selected = plan === key;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => onSelectPlan(key)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={t(`subscription.${key}`)}
-                  style={({ pressed }) => [
-                    styles.segmentItem,
-                    {
-                      // Full control height so each half clears the 48px target.
-                      height: theme.layout.control.md,
-                      borderRadius: theme.radii.pill,
-                      gap: theme.spacing.sm,
-                      backgroundColor: selected ? theme.colors.surface : 'transparent',
-                      transform: [{ scale: pressed ? 0.98 : 1 }],
-                    },
-                    selected ? theme.shadow.sm : null,
-                  ]}
-                >
-                  <Text role="bodySm" weight="bold" tone={selected ? 'default' : 'muted'}>
-                    {t(`subscription.${key}`)}
-                  </Text>
-                  {key === 'yearly' && savingPercent > 0 ? (
-                    <Badge label={t('subscription.saveBadge', { percent: savingPercent })} tone="success" />
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Price card */}
-          <Card
-            variant="elevated"
-            padding="lg"
-            style={[
-              { marginTop: theme.spacing.md },
-              plan === 'yearly'
-                ? { borderColor: theme.colors.accentBorder, borderWidth: 1.5 }
-                : null,
-            ]}
-          >
-            {plan === 'yearly' ? (
-              <View style={{ marginBottom: theme.spacing.md }}>
-                <Badge label={t('subscription.mostPopular')} tone="accent" size="md" icon="flame" />
-              </View>
-            ) : null}
-
-            <MotiView
-              key={plan}
-              from={{ opacity: 0, translateY: 8 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: theme.motion.duration.fast }}
+      {/* ----------------------------- Packs ----------------------------- */}
+      {packs.length ? (
+        <Reveal index={3}>
+          <View style={{ marginTop: theme.spacing['2xl'] }}>
+            <SectionHeader
+              title={t('subscription.packsTitle')}
+              subtitle={t('subscription.packsSubtitle')}
+            />
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t('subscription.packsTitle')}
+              style={{ gap: theme.spacing.sm }}
             >
-              <View style={[styles.priceRow, { gap: theme.spacing.sm }]}>
-                <Text role="display" weight="bold">{money(selectedPrice)}</Text>
-                <Text role="body" tone="muted" style={{ marginBottom: theme.spacing.xs }}>
-                  {plan === 'yearly' ? t('subscription.perYear') : t('subscription.perMonth')}
-                </Text>
-              </View>
+              {packs.map((plan) => (
+                <PlanCard
+                  key={plan.code}
+                  name={planName(plan)}
+                  price={money(plan.amountEgp)}
+                  popular={plan.popular}
+                  selected={selectedCode === plan.code}
+                  onSelect={() => setSelectedCode(plan.code)}
+                  lines={[
+                    // Only what the catalogue actually sent. A pack with no
+                    // `minutes` renders without the line rather than with a
+                    // guess.
+                    typeof plan.minutes === 'number'
+                      ? minuteCountLabel(plan.minutes, t) : null,
+                    typeof plan.pricePerMinuteEgp === 'number'
+                      ? t('subscription.perMinute', { amount: money(plan.pricePerMinuteEgp) }) : null,
+                    plan.neverExpires ? t('subscription.neverExpires') : null,
+                  ].filter(Boolean) as string[]}
+                />
+              ))}
+            </View>
+          </View>
+        </Reveal>
+      ) : null}
 
-              <Text role="bodySm" tone="secondary" style={{ marginTop: theme.spacing.xs }}>
-                {plan === 'yearly'
-                  ? t('subscription.equivalentMonthly', { amount: money(yearlyPrice / 12) })
-                  : t('subscription.billedMonthly')}
-              </Text>
+      {/* ------------------------- Subscriptions ------------------------- */}
+      {subs.length ? (
+        <Reveal index={4}>
+          <View style={{ marginTop: theme.spacing['2xl'] }}>
+            <SectionHeader
+              title={t('subscription.subsTitle')}
+              subtitle={t('subscription.subsSubtitle')}
+            />
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel={t('subscription.subsTitle')}
+              style={{ gap: theme.spacing.sm }}
+            >
+              {subs.map((plan) => (
+                <PlanCard
+                  key={plan.code}
+                  name={planName(plan)}
+                  price={money(plan.amountEgp)}
+                  badge={plan.savingPct ? t('subscription.saveBadge', { percent: plan.savingPct }) : undefined}
+                  selected={selectedCode === plan.code}
+                  onSelect={() => setSelectedCode(plan.code)}
+                  lines={[
+                    typeof plan.minutesPerMonth === 'number'
+                      ? t('subscription.minutesPerMonth', {
+                        label: minuteCountLabel(plan.minutesPerMonth, t),
+                      })
+                      : null,
+                    typeof plan.monthlyEquivalentEgp === 'number' && (plan.months ?? 1) > 1
+                      ? t('subscription.monthlyEquivalent', { amount: money(plan.monthlyEquivalentEgp) })
+                      : null,
+                    plan.rollsOver === false ? t('subscription.noRollover') : null,
+                    t('subscription.subPerks'),
+                  ].filter(Boolean) as string[]}
+                />
+              ))}
+            </View>
+          </View>
+        </Reveal>
+      ) : null}
 
-              {plan === 'yearly' && savingAmount > 0 ? (
-                <View style={[styles.rowCenter, { gap: theme.spacing.sm, marginTop: theme.spacing.md }]}>
-                  <Ionicons name="pricetag" size={theme.layout.icon.sm} color={theme.colors.success} />
-                  <Text role="bodySm" weight="bold" tone="success" flex>
-                    {t('subscription.savingAmount', { amount: money(savingAmount) })}
-                  </Text>
+      {/* --------------------- How minutes are counted -------------------- *
+       *
+       * Rendered only when the server has actually sent the flat fees. A
+       * pricing explainer with a blank in it is worse than no explainer.
+       * ------------------------------------------------------------------ */}
+      {costs ? (
+        <Reveal index={5}>
+          <View style={{ marginTop: theme.spacing['2xl'] }}>
+            <SectionHeader
+              title={t('subscription.costsTitle')}
+              subtitle={t('subscription.costsSubtitle')}
+            />
+            <Card variant="outlined" padding="lg" style={{ gap: theme.spacing.sm }}>
+              {[
+                { icon: 'timer-outline' as const, text: t('subscription.costMeeting') },
+                { icon: 'cloud-offline-outline' as const, text: t('subscription.costSkipped') },
+                {
+                  icon: 'help-circle-outline' as const,
+                  text: costs.minTurnSeconds > 0
+                    ? t('subscription.costTurnFloor', { label: durationLabel(costs.minTurnSeconds, t) })
+                    : `${t('subscription.rowFloor')}: ${t('subscription.cellNoFloor')}`,
+                },
+                {
+                  icon: 'create-outline' as const,
+                  text: costs.practiceAnswerSeconds > 0
+                    ? t('subscription.costPractice', { label: durationLabel(costs.practiceAnswerSeconds, t) })
+                    : `${t('subscription.rowPractice')}: ${t('subscription.costFree')}`,
+                },
+                {
+                  icon: 'document-text-outline' as const,
+                  text: costs.cvAnalysisSeconds > 0
+                    ? t('subscription.costCv', { label: durationLabel(costs.cvAnalysisSeconds, t) })
+                    : `${t('subscription.rowCv')}: ${t('subscription.costFree')}`,
+                },
+                { icon: 'gift-outline' as const, text: t('subscription.costEval') },
+              ].map((row) => (
+                <View key={row.text} style={[styles.costRow, { gap: theme.spacing.sm }]}>
+                  <Ionicons name={row.icon} size={theme.layout.icon.md} color={theme.colors.textMuted} />
+                  <Text role="bodySm" tone="secondary" flex>{row.text}</Text>
                 </View>
-              ) : null}
-            </MotiView>
-          </Card>
-        </View>
-      </Reveal>
+              ))}
+            </Card>
+          </View>
+        </Reveal>
+      ) : null}
 
       {/* --------------------------- Comparison --------------------------- */}
-      <Reveal index={4}>
-        <View style={{ marginTop: theme.spacing['2xl'] }}>
-          <SectionHeader
-            title={t('subscription.compareTitle')}
-            subtitle={t('subscription.compareSubtitle')}
-          />
+      {costs && balance ? (
+        <Reveal index={6}>
+          <View style={{ marginTop: theme.spacing['2xl'] }}>
+            <SectionHeader
+              title={t('subscription.compareTitle')}
+              subtitle={t('subscription.compareSubtitle')}
+            />
 
-          <Card variant="outlined" padding="none">
-            <View
-              style={[
-                styles.tableRow,
-                {
-                  borderBottomWidth: theme.layout.hairline,
-                  borderBottomColor: theme.colors.border,
-                  backgroundColor: theme.colors.surfaceAlt,
-                },
-              ]}
-            >
-              <View style={[styles.cellFeature, { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm }]}>
-                <Text role="micro" weight="bold" tone="muted">{t('subscription.colFeature')}</Text>
-              </View>
-              <View style={[styles.cell, { paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.sm }]}>
-                <Text role="micro" weight="bold" tone="muted" align="center">{t('subscription.colFree')}</Text>
-              </View>
+            <Card variant="outlined" padding="none">
               <View
                 style={[
-                  styles.cell,
+                  styles.tableRow,
                   {
-                    paddingHorizontal: theme.spacing.sm,
-                    paddingVertical: theme.spacing.sm,
-                    backgroundColor: theme.colors.accentMuted,
+                    borderBottomWidth: theme.layout.hairline,
+                    borderBottomColor: theme.colors.border,
+                    backgroundColor: theme.colors.surfaceAlt,
                   },
                 ]}
               >
-                <Text
-                  role="micro"
-                  weight="bold"
-                  align="center"
-                  tone="inherit"
-                  style={{ color: theme.colors.accentText }}
+                <View style={[styles.cellFeature, { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm }]}>
+                  <Text role="micro" weight="bold" tone="muted">{t('subscription.colFeature')}</Text>
+                </View>
+                <View style={[styles.cell, { paddingVertical: theme.spacing.sm }]}>
+                  <Text role="micro" weight="bold" tone="muted" align="center">{t('subscription.colFree')}</Text>
+                </View>
+                <View style={[styles.cell, { paddingVertical: theme.spacing.sm }]}>
+                  <Text role="micro" weight="bold" tone="muted" align="center">{t('subscription.colPack')}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.cell,
+                    { paddingVertical: theme.spacing.sm, backgroundColor: theme.colors.accentMuted },
+                  ]}
                 >
-                  {t('subscription.colPremium')}
-                </Text>
+                  <Text role="micro" weight="bold" align="center" tone="inherit" style={{ color: theme.colors.accentText }}>
+                    {t('subscription.colSub')}
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            {BENEFIT_KEYS.map((key, i) => (
-              <BenefitRow
-                key={key}
-                label={t(`subscription.benefits.${key}.label`)}
-                free={t(`subscription.benefits.${key}.free`)}
-                premium={t(`subscription.benefits.${key}.premium`)}
-                last={i === BENEFIT_KEYS.length - 1}
+              <CompareRow
+                label={t('subscription.rowMinutes')}
+                free={balance.trialSeconds > 0 ? durationLabel(balance.trialSeconds, t) : t('subscription.cellNone')}
+                pack={t('subscription.cellPerPack')}
+                sub={subs[0]?.minutesPerMonth
+                  ? t('subscription.cellPerMonth', {
+                    label: minuteCountLabel(subs[0].minutesPerMonth as number, t),
+                  })
+                  : t('subscription.cellIncluded')}
+                last={false}
               />
-            ))}
-          </Card>
-        </View>
-      </Reveal>
-
-      {/* -------------------------- Social proof -------------------------- */}
-      <Reveal index={5}>
-        <View style={{ marginTop: theme.spacing['2xl'] }}>
-          <SectionHeader title={t('subscription.proofTitle')} />
-
-          <Card variant="outlined" padding="md">
-            <View style={styles.statsRow}>
-              <StatTile value={t('subscription.proofRatingValue')} label={t('subscription.proofRatingLabel')} />
-              <View
-                style={[
-                  styles.statDivider,
-                  { width: theme.layout.hairline, backgroundColor: theme.colors.divider },
-                ]}
+              <CompareRow
+                label={t('subscription.rowExpiry')}
+                free={t('subscription.cellNever')}
+                pack={t('subscription.cellNever')}
+                sub={t('subscription.cellMonthly')}
+                last={false}
               />
-              <StatTile value={t('subscription.proofLearnersValue')} label={t('subscription.proofLearnersLabel')} />
-              <View
-                style={[
-                  styles.statDivider,
-                  { width: theme.layout.hairline, backgroundColor: theme.colors.divider },
-                ]}
+              <CompareRow
+                label={t('subscription.rowTracks')}
+                free={t('subscription.cellNone')}
+                pack={t('subscription.cellNone')}
+                sub={t('subscription.cellIncluded')}
+                last={false}
               />
-              <StatTile value={t('subscription.proofSessionsValue')} label={t('subscription.proofSessionsLabel')} />
-            </View>
-          </Card>
-
-          <Card variant="filled" padding="md" style={{ marginTop: theme.spacing.md }}>
-            <View style={[styles.rowCenter, { gap: theme.spacing.xxs, marginBottom: theme.spacing.sm }]}>
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Ionicons key={i} name="star" size={theme.layout.icon.xs} color={theme.colors.accent} />
-              ))}
-            </View>
-            <Text role="bodySm" weight="bold">{t('subscription.testimonialQuote')}</Text>
-            <Text role="caption" tone="muted" style={{ marginTop: theme.spacing.sm }}>
-              {t('subscription.testimonialAuthor')} · {t('subscription.testimonialRole')}
-            </Text>
-          </Card>
-        </View>
-      </Reveal>
+              <CompareRow
+                label={t('subscription.rowCv')}
+                free={durationLabel(costs.cvAnalysisSeconds, t)}
+                pack={durationLabel(costs.cvAnalysisSeconds, t)}
+                sub={t('subscription.costFree')}
+                last={false}
+              />
+              <CompareRow
+                label={t('subscription.rowPractice')}
+                free={durationLabel(costs.practiceAnswerSeconds, t)}
+                pack={durationLabel(costs.practiceAnswerSeconds, t)}
+                sub={t('subscription.costFree')}
+                last={false}
+              />
+              <CompareRow
+                label={t('subscription.rowFloor')}
+                free={durationLabel(costs.minTurnSeconds, t)}
+                pack={durationLabel(costs.minTurnSeconds, t)}
+                sub={t('subscription.cellNoFloor')}
+                last
+              />
+            </Card>
+          </View>
+        </Reveal>
+      ) : null}
 
       {/* ------------------------------- FAQ ------------------------------- */}
-      <Reveal index={6}>
+      <Reveal index={7}>
         <View style={{ marginTop: theme.spacing['2xl'] }}>
           <SectionHeader title={t('subscription.faqTitle')} />
           <Card variant="outlined" padding="none">
@@ -970,6 +1165,7 @@ export function SubscriptionScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
 
   hero: { overflow: 'hidden' },
@@ -979,19 +1175,11 @@ const styles = StyleSheet.create({
   heroTrust: { flexDirection: 'row', flexWrap: 'wrap' },
   heroTrustItem: { flexDirection: 'row', alignItems: 'center' },
 
-  segment: { flexDirection: 'row' },
-  segmentItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-
-  priceRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  costRow: { flexDirection: 'row', alignItems: 'flex-start' },
 
   tableRow: { flexDirection: 'row', alignItems: 'stretch' },
-  cellFeature: { flex: 1.5, justifyContent: 'center' },
+  cellFeature: { flex: 1.6, justifyContent: 'center' },
   cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-
-  statsRow: { flexDirection: 'row', alignItems: 'center' },
-  statTile: { flex: 1 },
-  // Width comes from `theme.layout.hairline` at the call site.
-  statDivider: { alignSelf: 'stretch' },
 
   faqHead: { flexDirection: 'row', alignItems: 'center' },
 

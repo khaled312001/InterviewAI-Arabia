@@ -23,6 +23,8 @@ export interface StatCardProps {
   value: number | string | undefined;
   format?: 'number' | 'money' | 'percent' | 'compact' | 'raw';
   currency?: 'EGP' | 'USD';
+  /** Money decimal places. Sub-cent AI spend rounds to a misleading 0.00 at 2. */
+  precision?: number;
   icon?: React.ReactNode;
   tone?: Tone;
   hint?: string;
@@ -52,6 +54,7 @@ export function StatCard({
   value,
   format = 'number',
   currency = 'EGP',
+  precision = 2,
   icon,
   tone = 'brand',
   hint,
@@ -78,7 +81,7 @@ export function StatCard({
       : typeof value === 'string'
         ? value
         : format === 'money'
-          ? formatMoney(shown ?? 0, currency, 2)
+          ? formatMoney(shown ?? 0, currency, precision)
           : format === 'percent'
             ? formatNumber(shown ?? 0, 'percent')
             : format === 'compact'

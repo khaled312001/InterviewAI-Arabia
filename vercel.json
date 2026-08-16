@@ -5,12 +5,13 @@
   "installCommand": "npm run install:all",
   "framework": null,
   "rewrites": [
+    { "source": "/api/(.*)",      "destination": "https://interview-ai-arabia-backend.vercel.app/api/$1" },
     { "source": "/admin",         "destination": "/admin/index.html" },
     { "source": "/admin/(.*)",    "destination": "/admin/index.html" },
     { "source": "/_expo/(.*)",    "destination": "/web/_expo/$1" },
     { "source": "/assets/(.*)",   "destination": "/web/assets/$1" },
     { "source": "/metadata.json", "destination": "/web/metadata.json" },
-    { "source": "/((?!admin/|_expo/|assets/|web/|favicon|robots|sitemap).*)", "destination": "/web/index.html" }
+    { "source": "/((?!api/|admin/|_expo/|assets/|web/|favicon|robots|sitemap).*)", "destination": "/web/index.html" }
   ],
   "headers": [
     { "source": "/_expo/(.*)",        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },

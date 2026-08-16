@@ -8,22 +8,41 @@ import { prisma } from '../db/prisma.js';
 import { requireUser } from '../middleware/auth.js';
 import { paymentLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
-import { PLANS, getPlan, planList, computeExpiry } from '../services/payments/plans.js';
+import {
+  PURCHASABLE_CODES, purchasablePlan, planList, computeExpiry, cycleSecondsFor,
+} from '../services/payments/plans.js';
 import * as easykash from '../services/payments/easykash.js';
+import { mockToken, mockTokenValid } from '../services/payments/mockToken.js';
 import { cfg } from '../services/secrets/store.js';
+import {
+  grantSeconds, clawbackSeconds, expireSubscriptionBucket, lockUser, CYCLE_MS, CFG,
+} from '../services/billing/minutes.js';
 
 const router = Router();
 
 /* -------------------------------------------------------------------------
  * GET /api/payments/config — what the paywall renders.
+ *
+ * Unauthenticated on purpose: the marketing site reads it too, so that the
+ * landing page and the checkout can never advertise different numbers.
  * ---------------------------------------------------------------------- */
 
 router.get('/config', asyncHandler(async (_req, res) => {
+  // The trial length belongs here even though it is not a plan: it is the
+  // headline figure on the pricing page ("the first 10 minutes are free") and
+  // it lives in app_settings, where an operator can change it — or zero it as
+  // the anti-farming kill switch — without a deploy. Publishing it is what
+  // stops the landing page from hardcoding a number that has since moved.
+  const trialSeconds = CFG.trial();
+
   res.json({
     provider: 'easykash',
     enabled: easykash.isConfigured() || env.EASYKASH_MOCK,
     mock: env.EASYKASH_MOCK,
     currency: 'EGP',
+    // Rounded DOWN, like every other minute figure shown to a user: promising
+    // less than the balance holds errs in the user's favour.
+    trial: { seconds: trialSeconds, minutes: Math.floor(trialSeconds / 60) },
     plans: planList(),
   });
 }));
@@ -38,14 +57,17 @@ router.get('/config', asyncHandler(async (_req, res) => {
  * ---------------------------------------------------------------------- */
 
 const checkoutSchema = z.object({
-  plan: z.enum(Object.keys(PLANS)),
+  // PURCHASABLE_CODES, not every code that resolves: retired plans (yearly)
+  // must be renderable in history and unbuyable everywhere else.
+  plan: z.enum(PURCHASABLE_CODES),
   // EasyKash requires a mobile number. Collected here if we don't have one.
   phone: z.string().min(8).max(20).optional(),
 });
 
 router.post('/checkout', requireUser, paymentLimiter, asyncHandler(async (req, res) => {
   const { plan: planCode, phone } = checkoutSchema.parse(req.body);
-  const plan = getPlan(planCode);
+  const plan = purchasablePlan(planCode);
+  if (!plan) throw new HttpError(400, 'هذه الباقة لم تعد متاحة / That plan is no longer available');
 
   if (!easykash.isConfigured() && !env.EASYKASH_MOCK) {
     throw new HttpError(503, 'الدفع غير مفعّل حاليًا. تواصل مع الدعم / Payments are not enabled yet');
@@ -96,7 +118,15 @@ router.post('/checkout', requireUser, paymentLimiter, asyncHandler(async (req, r
     res.status(201).json({
       reference,
       redirectUrl,
-      plan: { code: plan.code, amountEgp: plan.amountCents / 100, days: plan.days },
+      plan: {
+        code: plan.code,
+        kind: plan.kind,
+        amountEgp: plan.amountCents / 100,
+        // A pack has no `days` and a subscription has no `grantSeconds`;
+        // sending both as null-or-value keeps one client shape for both.
+        days: plan.days ?? null,
+        minutes: plan.kind === 'pack' ? plan.grantSeconds / 60 : plan.cycleSeconds / 60,
+      },
     });
   } catch (err) {
     await prisma.payment.update({
@@ -225,32 +255,142 @@ router.post('/webhook', asyncHandler(async (req, res) => {
     return ack({ handled: 'already_paid' });
   }
 
-  await activateSubscription({ payment, parsed, body });
+  const handled = await fulfil({ payment, parsed, body });
   await prisma.webhookEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
-  return ack({ handled: 'activated' });
+  return ack({ handled });
 }));
 
 /* ------------------------------------------------------------------ *
- * Activation / refund
+ * Fulfilment
  * ------------------------------------------------------------------ */
 
-async function activateSubscription({ payment, parsed, body }) {
-  const plan = getPlan(payment.planCode);
+/**
+ * Two product kinds, one payment path.
+ *
+ * `purchasablePlan()` — not `getPlan()` — so a replayed callback for a
+ * checkout of a retired plan finds nothing to activate rather than quietly
+ * resurrecting it.
+ */
+async function fulfil({ payment, parsed, body }) {
+  const plan = purchasablePlan(payment.planCode);
+  if (!plan) {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'failed',
+        failureReason: `plan_retired:${payment.planCode}`,
+        rawPayload: JSON.stringify(body).slice(0, 60000),
+      },
+    });
+    logger.warn('Paid callback for a non-purchasable plan', {
+      reference: payment.reference, planCode: payment.planCode,
+    });
+    return 'plan_retired';
+  }
+
+  if (plan.kind === 'pack') {
+    await grantPackMinutes({ payment, plan, parsed, body });
+    return 'pack_credited';
+  }
+  await activateSubscription({ payment, plan, parsed, body });
+  return 'activated';
+}
+
+/**
+ * Credit a time pack.
+ *
+ * Idempotent twice over, because a gateway WILL deliver the same success event
+ * more than once:
+ *   - `payment.status === 'paid'` short-circuits in the webhook, and
+ *   - `time_ledger.idempotency_key = 'payment:<id>'` is unique, and the ledger
+ *     row is written BEFORE the counter moves, so a replay that slips past the
+ *     first check aborts before crediting anything.
+ *
+ * Purchased seconds are PERPETUAL. They never expire, they stack without limit,
+ * and that is the pack's entire proposition for the occasional user.
+ */
+async function grantPackMinutes({ payment, plan, parsed, body }) {
   const now = new Date();
 
-  // Extend from the user's CURRENT expiry when it is still in the future, so
-  // renewing early adds time instead of destroying it.
-  const current = await prisma.subscription.findFirst({
-    where: { userId: payment.userId, status: 'active' },
-    orderBy: { expiresAt: 'desc' },
-  });
-  const expiresAt = computeExpiry({
-    currentExpiresAt: current?.expiresAt ?? null,
-    days: plan.days,
-    now,
+  // ONE transaction, because the two halves fail in opposite directions.
+  // Crediting the seconds and then marking the payment `paid` in a separate
+  // statement leaves a window where a worker recycle strands the pair: the
+  // customer HAS the minutes, but the Payment row is still `pending`, so
+  // GET /payments/status/:reference keeps reporting failure and the checkout
+  // screen tells them their 100 EGP did not go through. A gateway retry cannot
+  // heal it either — the WebhookEvent unique index short-circuits the replay
+  // before it reaches here — so the row would stay wrong until someone noticed
+  // it in the payments grid, with revenue under-counted by a real sale.
+  //
+  // The double-credit direction was already safe (`payment:<id>` is a unique
+  // ledger key); this closes the under-credit direction.
+  const result = await prisma.$transaction(async (tx) => {
+    const granted = await grantSeconds({
+      userId: payment.userId,
+      seconds: plan.grantSeconds,
+      kind: 'purchase',
+      bucket: 'perpetual',
+      paymentId: payment.id,
+      idempotencyKey: `payment:${payment.id}`,
+      note: `${plan.labelEn} (${plan.grantSeconds / 60} min)`,
+      tx,
+    });
+
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: 'paid',
+        paidAt: now,
+        method: parsed?.method ?? undefined,
+        providerTxnId: parsed?.providerTxnId ? String(parsed.providerTxnId) : payment.providerTxnId,
+        rawPayload: JSON.stringify(body).slice(0, 60000),
+      },
+    });
+
+    return granted;
   });
 
+  logger.info('Time pack credited', {
+    userId: payment.userId.toString(),
+    plan: plan.code,
+    reference: payment.reference,
+    seconds: plan.grantSeconds,
+    granted: result.granted,
+    duplicate: Boolean(result.duplicate),
+  });
+}
+
+async function activateSubscription({ payment, plan: known, parsed, body }) {
+  const plan = known ?? purchasablePlan(payment.planCode);
+  if (!plan) throw new HttpError(409, `Plan ${payment.planCode} is not purchasable`);
+  const now = new Date();
+
+  let activated = null;
+  let expiresAt = null;
+
   await prisma.$transaction(async (tx) => {
+    // The current expiry is read INSIDE the transaction, behind the same user
+    // row lock every other balance mutation takes. Reading it outside made
+    // computeExpiry lossy under concurrency: two genuine payments settling in
+    // the same second (two references, so two Payment rows — neither the
+    // WebhookEvent dedup nor the `status === 'paid'` guard sees them as
+    // duplicates) both read the same expiry, both compute the same extension,
+    // and the second upsert's `update: { expiresAt }` overwrites rather than
+    // extends. The customer pays for two months and receives one. computeExpiry
+    // exists precisely to stop a renewal destroying remaining time; serialising
+    // the read with the write is what makes that guarantee hold.
+    await lockUser(tx, payment.userId);
+
+    const current = await tx.subscription.findFirst({
+      where: { userId: payment.userId, status: 'active' },
+      orderBy: { expiresAt: 'desc' },
+    });
+    expiresAt = computeExpiry({
+      currentExpiresAt: current?.expiresAt ?? null,
+      days: plan.days,
+      now,
+    });
+
     const subscription = await tx.subscription.upsert({
       where: { providerRef: payment.reference },
       create: {
@@ -289,7 +429,27 @@ async function activateSubscription({ payment, parsed, body }) {
       where: { id: payment.userId },
       data: { plan: 'premium', premiumUntil: expiresAt },
     });
+
+    activated = subscription;
   });
+
+  // The first cycle's allowance, granted immediately so the subscriber has
+  // minutes the moment they pay rather than whenever the hourly job next runs.
+  // Cycle 0's idempotency key is the same one grantSubscriptionCycles() would
+  // compute, so the two can never both credit it.
+  if (activated) {
+    await grantSeconds({
+      userId: payment.userId,
+      seconds: cycleSecondsFor(plan.code),
+      kind: 'subscription_grant',
+      bucket: 'subscription',
+      subscriptionId: activated.id,
+      paymentId: payment.id,
+      idempotencyKey: `sub:${activated.id}:cycle:0`,
+      expiresAt: new Date(Math.min(now.getTime() + CYCLE_MS, expiresAt.getTime())),
+      note: `${plan.labelEn} cycle 0`,
+    });
+  }
 
   logger.info('Subscription activated', {
     userId: payment.userId.toString(),
@@ -302,6 +462,28 @@ async function activateSubscription({ payment, parsed, body }) {
 
 async function handleRefund(payment, body) {
   const now = new Date();
+  const plan = purchasablePlan(payment.planCode);
+  let covered = false;
+
+  // A refunded pack takes its UNSPENT minutes back and nothing more. The
+  // clamp is the whole point: minutes already spent are gone, and driving the
+  // balance negative would bill the user's next purchase for this one. It
+  // writes a negative ledger row rather than deleting the grant, so the audit
+  // trail that justified the refund survives the refund.
+  if (plan?.kind === 'pack') {
+    const result = await clawbackSeconds({
+      userId: payment.userId,
+      seconds: plan.grantSeconds,
+      kind: 'refund',
+      paymentId: payment.id,
+      idempotencyKey: `payment:${payment.id}:refund`,
+      note: `refund of ${plan.labelEn}`,
+    });
+    logger.info('Pack refund reversed minutes', {
+      reference: payment.reference, clawed: result.clawed, unrecovered: result.unrecovered,
+    });
+  }
+
   await prisma.$transaction(async (tx) => {
     await tx.payment.update({
       where: { id: payment.id },
@@ -333,7 +515,16 @@ async function handleRefund(payment, body) {
         ? { plan: 'premium', premiumUntil: stillCovered.expiresAt }
         : { plan: 'free', premiumUntil: null },
     });
+
+    covered = Boolean(stillCovered);
   });
+
+  // A refunded subscription's allowance goes with it. Left alone, the cycle
+  // seconds would stay spendable until their own timestamp passed — up to
+  // thirty days of minutes on a payment that was given back.
+  if (plan?.kind === 'subscription' && !covered) {
+    await expireSubscriptionBucket(payment.userId, `refund:${payment.reference}`);
+  }
 
   logger.info('Payment refunded', { reference: payment.reference });
 }
@@ -374,15 +565,43 @@ router.get('/status/:reference', requireUser, asyncHandler(async (req, res) => {
 }));
 
 /* -------------------------------------------------------------------------
- * Mock checkout — only mounted when EASYKASH_MOCK is on. Lets the whole
- * payment→activation flow be tested before credentials exist.
+ * Mock checkout — development only. Lets the whole payment→activation flow be
+ * tested before credentials exist.
+ *
+ * TWO LOCKS, because this path calls the real fulfilment code and credits real
+ * minutes:
+ *
+ * 1. env.js FORCES EASYKASH_MOCK OFF IN PRODUCTION, so this block cannot mount
+ *    on a live deploy no matter what the .env file says. The brief asks for
+ *    enabling payments to be a configuration change; that must not also mean
+ *    that enabling a free minute minter is one.
+ *
+ * 2. An HMAC over the reference (services/payments/mockToken.js), issued only
+ *    to the authenticated user whose checkout created it. `mock-complete`
+ *    cannot carry requireUser — it is a browser form POST with no Authorization
+ *    header — and a reference is not a secret: it is printed in the return
+ *    URL's query string. Before this, POSTing a reference somebody else's
+ *    browser had shown you completed their payment; POSTing your own in a loop
+ *    minted 3 hours of interview time every checkout, 8 checkouts per 10
+ *    minutes, for nothing.
  * ---------------------------------------------------------------------- */
 
-if (env.EASYKASH_MOCK) {
-  router.get('/mock-checkout', asyncHandler(async (req, res) => {
-    const reference = String(req.query.reference || '');
+if (env.EASYKASH_MOCK && !env.isProd) {
+  /** Refuses anything that did not come from a checkout this user created. */
+  const mockPaymentFor = async (reference, token) => {
+    if (!mockTokenValid(reference, token)) {
+      logger.warn('mock checkout rejected: bad or missing token', { reference });
+      throw new HttpError(403, 'Invalid mock checkout token');
+    }
     const payment = await prisma.payment.findUnique({ where: { reference } });
     if (!payment) throw new HttpError(404, 'Unknown reference');
+    return payment;
+  };
+
+  router.get('/mock-checkout', asyncHandler(async (req, res) => {
+    const reference = String(req.query.reference || '');
+    const token = String(req.query.t || '');
+    const payment = await mockPaymentFor(reference, token);
 
     res.type('html').send(`<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8">
@@ -400,19 +619,21 @@ if (env.EASYKASH_MOCK) {
 <p>الخطة: ${payment.planCode}<br><b>${(payment.amountCents / 100).toFixed(2)} ج.م</b></p>
 <form method="POST" action="/api/payments/mock-complete">
   <input type="hidden" name="reference" value="${reference}">
+  <input type="hidden" name="t" value="${mockToken(reference)}">
   <button class="ok" name="outcome" value="paid" type="submit">تأكيد الدفع بنجاح</button>
   <button class="no" name="outcome" value="failed" type="submit">محاكاة فشل الدفع</button>
 </form></div></body></html>`);
   }));
 
-  router.post('/mock-complete', asyncHandler(async (req, res) => {
+  router.post('/mock-complete', paymentLimiter, asyncHandler(async (req, res) => {
     const reference = String(req.body.reference || '');
     const outcome = String(req.body.outcome || 'paid');
-    const payment = await prisma.payment.findUnique({ where: { reference } });
-    if (!payment) throw new HttpError(404, 'Unknown reference');
+    const payment = await mockPaymentFor(reference, String(req.body.t || ''));
 
     if (outcome === 'paid' && payment.status !== 'paid') {
-      await activateSubscription({
+      // Same fulfilment branch as the real webhook, so the mock exercises the
+      // pack-crediting path too rather than only the subscription one.
+      await fulfil({
         payment,
         parsed: { method: 'mock', providerTxnId: `mock_${reference}` },
         body: { mock: true },

@@ -2,25 +2,9 @@ import axios from 'axios';
 import { useAuth } from '../store/auth';
 import { emitToast } from './toastBus';
 import { parseApiError } from './errors';
+import { API_BASE_URL } from './apiBase';
 
-// Frontend (this repo) and backend (InterviewAI-Arabia-Backend) deploy as
-// separate Vercel projects. By default we hit the backend's Vercel URL
-// from the absolute origin; same-origin /api stays available when the
-// admin SPA is served from the legacy single-domain Hostinger box.
-// Override via VITE_API_BASE_URL at build time.
-const BACKEND_VERCEL = 'https://interview-ai-arabia-backend.vercel.app/api';
-const SAME_ORIGIN_HOSTS = [
-  'interview.khaledahmed.net',
-  'intervie-ai-arabia.barmagly.tech',
-];
-const fallback =
-  typeof window !== 'undefined' && SAME_ORIGIN_HOSTS.includes(window.location?.hostname)
-    ? '/api'
-    : BACKEND_VERCEL;
-
-const baseURL = import.meta.env.VITE_API_BASE_URL || fallback;
-
-export const api = axios.create({ baseURL });
+export const api = axios.create({ baseURL: API_BASE_URL });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('admin_token');

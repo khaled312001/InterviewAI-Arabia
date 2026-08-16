@@ -173,6 +173,34 @@ export function sessionCountLabel(n: number, t: TFn) {
   return countLabel(n, t, 'units.sessions');
 }
 
+export function minuteCountLabel(n: number, t: TFn) {
+  return countLabel(n, t, 'units.minutes');
+}
+
+export function secondCountLabel(n: number, t: TFn) {
+  return countLabel(n, t, 'units.seconds');
+}
+
+/**
+ * A duration in words: "٧ دقائق و٢٢ ثانية" / "7 minutes and 22 seconds".
+ *
+ * Minutes are floored and the remainder is shown as seconds, so nothing is
+ * rounded up — the same rule the server bills by. Under a minute it reads as
+ * seconds alone; on an exact minute the seconds half is dropped rather than
+ * printed as "and 0 seconds".
+ */
+export function durationLabel(seconds: number | null | undefined, t: TFn): string {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  if (mins === 0) return secondCountLabel(secs, t);
+  if (secs === 0) return minuteCountLabel(mins, t);
+  return t('units.durationBoth', {
+    minutes: minuteCountLabel(mins, t),
+    seconds: secondCountLabel(secs, t),
+  });
+}
+
 /**
  * "March 2025" / "مارس ٢٠٢٥" for member-since lines.
  * Falls back to a plain ISO date if the JS engine ships without full ICU
@@ -188,6 +216,35 @@ export function formatMonthYear(
   const locale = language?.startsWith('ar') ? 'ar-EG' : 'en-US';
   try {
     return date.toLocaleDateString(locale, { year: 'numeric', month: 'long' });
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
+}
+
+/**
+ * The balance headline: minutes once there is at least one, seconds below that.
+ *
+ * "بدون دقائق" for a user who still has 40 seconds is both wrong and the exact
+ * moment they are most likely to complain, so the unit changes rather than the
+ * number rounding to zero.
+ */
+export function balanceLabel(seconds: number | null | undefined, t: TFn): string {
+  const total = Math.max(0, Math.floor(Number(seconds) || 0));
+  return total < 60 ? secondCountLabel(total, t) : minuteCountLabel(Math.floor(total / 60), t);
+}
+
+/** "12 March 2025" / "١٢ مارس ٢٠٢٥" — for a subscription-allowance expiry. */
+export function formatShortDate(
+  value: string | number | Date | null | undefined,
+  language: string,
+): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  try {
+    return date.toLocaleDateString(language?.startsWith('ar') ? 'ar-EG' : 'en-GB', {
+      year: 'numeric', month: 'long', day: 'numeric',
+    });
   } catch {
     return date.toISOString().slice(0, 10);
   }

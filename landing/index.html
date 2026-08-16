@@ -77,6 +77,15 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" media="print" onload="this.media='all'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap"></noscript>
 
+<!-- Structured data is the one place on this page a crawler reads before our
+     fetch has answered, so these offers MIRROR
+     backend/src/services/payments/plans.js by hand — the no-JS fallback.
+     syncOffers() at the bottom of this file then REWRITES them from
+     /api/payments/config, so a script-executing crawler sees the live
+     catalogue and this block cannot quietly become a second, stale price list.
+     The trial offer deliberately states no duration: `free_trial_seconds` is an
+     app_settings row an operator changes without a deploy, and a number that
+     can move without touching this file has no business being typed into it. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -112,9 +121,12 @@
         "تتبّع التقدّم عبر الوقت"
       ],
       "offers": [
-        { "@type": "Offer", "name": "المجاني", "price": "0", "priceCurrency": "EGP", "description": "٥ أسئلة يومياً" },
-        { "@type": "Offer", "name": "المميّز الشهري", "price": "150", "priceCurrency": "EGP" },
-        { "@type": "Offer", "name": "المميّز السنوي", "price": "1200", "priceCurrency": "EGP" }
+        { "@type": "Offer", "name": "تجربة مجانية", "price": "0", "priceCurrency": "EGP", "description": "رصيد مجاني من وقت المقابلات عند إنشاء الحساب، مرة واحدة لكل حساب" },
+        { "@type": "Offer", "name": "باقة ٢٠ دقيقة", "price": "40", "priceCurrency": "EGP", "description": "٢٠ دقيقة رصيد مقابلات لا تنتهي صلاحيته" },
+        { "@type": "Offer", "name": "باقة ٦٠ دقيقة", "price": "100", "priceCurrency": "EGP", "description": "٦٠ دقيقة رصيد مقابلات لا تنتهي صلاحيته" },
+        { "@type": "Offer", "name": "باقة ٣ ساعات", "price": "250", "priceCurrency": "EGP", "description": "١٨٠ دقيقة رصيد مقابلات لا تنتهي صلاحيته" },
+        { "@type": "Offer", "name": "اشتراك شهري", "price": "150", "priceCurrency": "EGP", "description": "٣٠٠ دقيقة كل ٣٠ يوماً مع المجالات المميّزة وتحليل السيرة الذاتية" },
+        { "@type": "Offer", "name": "اشتراك ربع سنوي", "price": "399", "priceCurrency": "EGP", "description": "٣٠٠ دقيقة كل ٣٠ يوماً لمدة ثلاثة أشهر" }
       ]
     },
     {
@@ -131,7 +143,9 @@
       "@type": "FAQPage",
       "mainEntity": [
         {"@type":"Question","name":"هل التطبيق بالعربية فعلاً؟","acceptedAnswer":{"@type":"Answer","text":"نعم. الأسئلة والتقييم والنصائح كلها بالعربية الفصحى المبسطة، والمحاوِر يفهم اللهجات العامية ولا يخصم عليك بسببها."}},
-        {"@type":"Question","name":"هل أحتاج بطاقة ائتمان للتجربة؟","acceptedAnswer":{"@type":"Answer","text":"لا. تبدأ مجاناً بـ ٥ أسئلة يومياً بدون أي بيانات دفع."}},
+        {"@type":"Question","name":"هل أحتاج بطاقة ائتمان للتجربة؟","acceptedAnswer":{"@type":"Answer","text":"لا. أول ١٠ دقائق من وقت المقابلات مجانية على حسابك الجديد، بدون إدخال أي بيانات دفع."}},
+        {"@type":"Question","name":"هل تنتهي صلاحية الدقائق التي أشتريها؟","acceptedAnswer":{"@type":"Answer","text":"دقائق الباقات لا تنتهي صلاحيتها ولا تُخصم يومياً — رصيد تستخدمه وقت ما تحب، ويتجمع كلما اشتريت باقة جديدة. أما دقائق الاشتراك الشهري فهي مخصّصة لدورة الثلاثين يوماً ولا تُرحَّل إلى الدورة التالية."}},
+        {"@type":"Question","name":"كيف تُحسب دقائق المقابلة؟","acceptedAnswer":{"@type":"Answer","text":"بالثانية، وعلى وقت المقابلة الفعلي فقط. لو انقطع الاتصال أو خرجت من التطبيق يتوقف العدّاد ولا تُحسب تلك الفترة، وتقييم المقابلة في النهاية لا يُخصم منه شيء."}},
         {"@type":"Question","name":"كيف يتم التقييم؟","acceptedAnswer":{"@type":"Answer","text":"كل إجابة تُقيَّم على أربعة محاور: الصلة بالسؤال، التحديد والأدلة، البنية، والعمق المهني — مع درجة من ١٠ وسبب واضح لكل نقطة."}},
         {"@type":"Question","name":"هل بياناتي وسيرتي الذاتية آمنة؟","acceptedAnswer":{"@type":"Answer","text":"سيرتك تُستخدم فقط لتوليد أسئلة مقابلتك ولا تُشارك مع أي طرف ثالث، ويمكنك حذف حسابك وكل بياناته في أي وقت."}},
         {"@type":"Question","name":"ما طرق الدفع المتاحة؟","acceptedAnswer":{"@type":"Answer","text":"بطاقات الائتمان والخصم، فوري، والمحافظ الإلكترونية عبر بوابة EasyKash المصرية."}},
@@ -311,7 +325,9 @@ html[lang="en"] [data-l="en"]{display:revert}
    of the wordmark goes, and the pills tighten — enough to keep the sticky
    header to two rows at 360px instead of three. */
 /* Scoped through .hdr-tools so these beat the .toggle.pill-sm base rules,
-   which are declared further down the sheet with the pricing switcher. */
+   which are declared further down the sheet, next to the plan cards. The
+   .toggle component now has exactly two users — language and theme; the
+   pricing switcher it was first written for went with the yearly plan. */
 @media (max-width:520px){
   .hdr-tools .btn-ghost{display:none}
   .brand .brand-alt{display:none}
@@ -534,7 +550,9 @@ html[lang="en"] .step::before{content:counter(s, decimal)}
 .feat-wide .ico{background:rgba(255,255,255,.18);color:#fff}
 
 /* ── Pricing ────────────────────────────────────────────────────────── */
-.price-toggle{display:flex;justify-content:center;margin-bottom:var(--sp-8)}
+/* The .toggle component below is shared with the header switchers; it is no
+   longer used here (the monthly/yearly switch was removed with the yearly
+   plan) and must not be deleted with it. */
 .toggle{display:inline-flex;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-pill);padding:5px;gap:4px}
 .toggle button{border:0;background:transparent;font-family:inherit;font-size:14.5px;font-weight:700;
   color:var(--text-2);padding:9px 20px;border-radius:var(--r-pill);cursor:pointer;transition:all .18s}
@@ -548,7 +566,10 @@ html[lang="en"] .step::before{content:counter(s, decimal)}
    darker green in both themes. */
 .save-pill{background:var(--pill-green);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);margin-inline-start:6px}
 
-.plans{display:grid;grid-template-columns:repeat(2,minmax(0,380px));gap:var(--sp-6);justify-content:center;align-items:stretch}
+/* Three cards now — trial, time pack, subscription. justify-content:center
+   keeps the leftover card centred when the grid drops to two columns. */
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,340px));gap:var(--sp-6);justify-content:center;align-items:stretch}
+@media (max-width:1080px){.plans{grid-template-columns:repeat(2,minmax(0,360px))}}
 @media (max-width:800px){.plans{grid-template-columns:1fr;max-width:420px;margin-inline:auto}}
 .plan{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
   padding:var(--sp-8);display:flex;flex-direction:column;position:relative}
@@ -567,6 +588,34 @@ html[lang="en"] .step::before{content:counter(s, decimal)}
 .plan li b{color:var(--text);font-weight:700}
 .plan li .tick{flex:0 0 auto;margin-top:2px}
 .muted-x{color:var(--muted-ink);flex:0 0 auto;margin-top:2px}
+/* Every figure on this section is written by script from /api/payments/config
+   and starts as an em dash. Tabular numerals stop the cards from twitching
+   when the fetch lands. */
+.p-num,[data-mins]{font-variant-numeric:tabular-nums}
+/* The script hides a card whose plan left the catalogue by setting [hidden].
+   The UA rule alone loses to .plan{display:flex}, hence the !important. */
+[hidden]{display:none !important}
+.plan .foot{color:var(--text-3);font-size:13.5px;text-align:center;margin-top:var(--sp-3)}
+
+/* Top-ups: the same currency as the featured pack, in three sizes. A row of
+   thin cards rather than three more plan columns — they are one decision
+   ("how much time?"), not three plans. */
+.topups{margin-top:var(--sp-10);background:var(--surface-alt);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:var(--sp-8);max-width:1080px;margin-inline:auto}
+.topups h3{font-size:18px;text-align:center;margin-bottom:var(--sp-2)}
+.topups .topups-lede{color:var(--text-3);font-size:14.5px;text-align:center;margin-bottom:var(--sp-6)}
+.topup-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4)}
+@media (max-width:700px){.topup-row{grid-template-columns:1fr}}
+.topup{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:var(--sp-5);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
+.topup.is-popular{border-color:var(--primary)}
+.topup .mins{font-weight:800;font-size:16px}
+.topup .rate{display:block;color:var(--text-3);font-size:12.5px;font-weight:600;margin-top:2px}
+.topup .price{font-weight:900;font-size:22px;white-space:nowrap}
+.topup .price small{font-size:13px;font-weight:700;color:var(--text-3)}
+/* Shown only when the config fetch fails — the prices stay em dashes rather
+   than falling back to a number that may no longer be what checkout charges. */
+.price-error{text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-5)}
 
 /* ── FAQ ────────────────────────────────────────────────────────────── */
 .faq{max-width:760px;margin-inline:auto;display:grid;gap:var(--sp-3)}
@@ -742,7 +791,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <span data-l="en">The first Arabic AI interview coach</span>
       </span>
       <h1>
-        <span data-l="ar">تدرّب على المقابلة<br><span class="grad">قبل ما تدخلها فعلاً</span></span>
+        <span data-l="ar">تدرّب على المقابلة<br><span class="grad">قبل أن تدخلها فعلاً</span></span>
         <span data-l="en">Practise the interview<br><span class="grad">before you walk into it</span></span>
       </h1>
       <p class="lede">
@@ -760,15 +809,15 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
           <span data-l="ar">بدون بطاقة ائتمان</span><span data-l="en">No credit card</span></span>
         <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
-          <span data-l="ar">٥ أسئلة يومياً مجاناً</span><span data-l="en">5 free questions a day</span></span>
+          <span data-l="ar">وقت تجريبي مجاني</span><span data-l="en">Free trial time</span></span>
         <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
           <span data-l="ar">يفهم اللهجة المصرية</span><span data-l="en">Understands Egyptian dialect</span></span>
       </div>
     </div>
 
     <div class="shot-hero">
-      <img src="/shots/app-home.png" alt="لقطة من تطبيق ثقتي تعرض الرصيد اليومي ومجالات التدريب"
-           data-alt-en="The Thiqty app showing your daily allowance and practice tracks"
+      <img src="/shots/app-home.png" alt="لقطة من تطبيق ثقتي تعرض رصيد الدقائق ومجالات التدريب"
+           data-alt-en="The Thiqty app showing your minute balance and practice tracks"
            width="720" height="1558" fetchpriority="high" decoding="async">
     </div>
   </div>
@@ -902,9 +951,9 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="kicker"><span data-l="ar">من داخل التطبيق</span><span data-l="en">Inside the app</span></div>
-      <h2><span data-l="ar">مش صور تسويقية — ده التطبيق نفسه</span><span data-l="en">Not marketing renders — this is the app</span></h2>
+      <h2><span data-l="ar">ليست صوراً تسويقية — هذا هو التطبيق نفسه</span><span data-l="en">Not marketing renders — this is the app</span></h2>
       <p>
-        <span data-l="ar">كل لقطة هنا مأخوذة مباشرة من النسخة الشغالة اللي هتستخدمها، من أول ما تفتح المقابلة لحد ما تستلم تقييمك.</span>
+        <span data-l="ar">كل لقطة هنا مأخوذة مباشرة من النسخة التي ستستخدمها، من لحظة فتح المقابلة حتى استلام تقييمك.</span>
         <span data-l="en">Every shot here is taken straight from the build you will use, from opening the interview to collecting your score.</span>
       </p>
     </div>
@@ -922,7 +971,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <img src="/shots/setup-details.png" alt="شاشة إعداد المقابلة: اسم الشركة والمسمى الوظيفي ورفع السيرة الذاتية — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Interview setup: company, job title and CV upload — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
         <h3><span class="step-no">2</span><span data-l="ar">عرّف الوظيفة</span><span data-l="en">Describe the job</span></h3>
         <p>
-          <span data-l="ar">اسم الشركة والمسمى الوظيفي، ووصف الإعلان لو حابب — وتقدر ترفع سيرتك الذاتية (PDF أو نص) فيقرأها المحاور ويسألك في خبرتك أنت بالذات. كل تفصيلة بتقرّب الأسئلة من الواقع.</span>
+          <span data-l="ar">اسم الشركة والمسمى الوظيفي، ووصف الإعلان إن توفّر — ويمكنك رفع سيرتك الذاتية (PDF أو نص) فيقرأها المحاور ويسألك عن خبرتك أنت بالذات. كل تفصيلة تُقرّب الأسئلة من الواقع.</span>
           <span data-l="en">Company and job title, plus the ad itself if you have it — and you can upload your CV (PDF or text), so the interviewer reads it and asks about your own experience. Every detail pulls the questions closer to the real thing.</span>
         </p>
       </figure>
@@ -930,15 +979,15 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <img src="/shots/meeting-lobby.png" alt="ادخل الغرفة — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Enter the room — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
         <h3><span class="step-no">3</span><span data-l="ar">ادخل الغرفة</span><span data-l="en">Enter the room</span></h3>
         <p>
-          <span data-l="ar">تشيك على الكاميرا والمايك قبل ما تبدأ، زي أي مقابلة فيديو حقيقية.</span>
+          <span data-l="ar">تفقّد الكاميرا والميكروفون قبل أن تبدأ، كما في أي مقابلة فيديو حقيقية.</span>
           <span data-l="en">Check your camera and mic before you start, like any real video interview.</span>
         </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/meeting-live.png" alt="المقابلة بتبدأ — لقطة حقيقية من تطبيق ثقتي" data-alt-en="The interview begins — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">4</span><span data-l="ar">المقابلة بتبدأ</span><span data-l="en">The interview begins</span></h3>
+        <img src="/shots/meeting-live.png" alt="المقابلة تبدأ — لقطة حقيقية من تطبيق ثقتي" data-alt-en="The interview begins — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">4</span><span data-l="ar">المقابلة تبدأ</span><span data-l="en">The interview begins</span></h3>
         <p>
-          <span data-l="ar">المحاورة بتتكلم بصوت طبيعي، وكلامها بيظهر نص، وبترد على إجاباتك مش على سكريبت جاهز.</span>
+          <span data-l="ar">تتحدّث المحاوِرة بصوت طبيعي، ويظهر كلامها نصاً، وتردّ على إجاباتك لا على نصٍّ جاهز.</span>
           <span data-l="en">She speaks in a natural voice, her words appear as text, and she responds to your answers — not to a script.</span>
         </p>
       </figure>
@@ -946,7 +995,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <img src="/shots/meeting-recording.png" alt="سجّل الجلسة — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Record the session — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
         <h3><span class="step-no">5</span><span data-l="ar">سجّل الجلسة</span><span data-l="en">Record the session</span></h3>
         <p>
-          <span data-l="ar">صوت وصورة، عشان تراجع أداءك بنفسك بعدين وتشوف بتتكلم إزاي فعلاً.</span>
+          <span data-l="ar">صوت وصورة، لتراجع أداءك بنفسك لاحقاً وترى كيف تتحدّث فعلاً.</span>
           <span data-l="en">Audio and video, so you can review your own performance later and see how you really come across.</span>
         </p>
       </figure>
@@ -954,7 +1003,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <img src="/shots/meeting-tips.png" alt="نصائح لحظية — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Live tips — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
         <h3><span class="step-no">6</span><span data-l="ar">نصائح لحظية</span><span data-l="en">Live tips</span></h3>
         <p>
-          <span data-l="ar">إرشادات سريعة وأنت في الجلسة من غير ما تقطع تركيزك.</span>
+          <span data-l="ar">إرشادات سريعة أثناء الجلسة دون أن تقطع تركيزك.</span>
           <span data-l="en">Quick prompts mid-session that never break your concentration.</span>
         </p>
       </figure>
@@ -962,7 +1011,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <img src="/shots/meeting-end.png" alt="أنهِ واحفظ — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Finish and save — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
         <h3><span class="step-no">7</span><span data-l="ar">أنهِ واحفظ</span><span data-l="en">Finish and save</span></h3>
         <p>
-          <span data-l="ar">التطبيق بيفكّرك تحفظ التسجيل قبل ما تقفل، عشان مجهودك ما يضيعش.</span>
+          <span data-l="ar">يذكّرك التطبيق بحفظ التسجيل قبل الإغلاق، حتى لا يضيع مجهودك.</span>
           <span data-l="en">The app reminds you to save the recording before you close it, so the work you just did is not lost.</span>
         </p>
       </figure>
@@ -970,7 +1019,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <img src="/shots/session-summary.png" alt="استلم تقييمك — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Collect your evaluation — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
         <h3><span class="step-no">8</span><span data-l="ar">استلم تقييمك</span><span data-l="en">Collect your evaluation</span></h3>
         <p>
-          <span data-l="ar">درجة لكل إجابة، ونقاط قوتك، وإيه اللي محتاج يتحسّن — مش مجرد رقم.</span>
+          <span data-l="ar">درجة لكل إجابة، ونقاط قوتك، وما يحتاج إلى تحسين — لا مجرد رقم.</span>
           <span data-l="en">A score for every answer, your strengths, and what needs work — not just a number.</span>
         </p>
       </figure>
@@ -979,7 +1028,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
     <div class="sec-head reveal shots-sub">
       <h2><span data-l="ar">وباقي التطبيق</span><span data-l="en">And the rest of the app</span></h2>
       <p>
-        <span data-l="ar">كل حاجة في مكانها: مجالك، وسجلك، وتقدّمك.</span>
+        <span data-l="ar">كل شيء في مكانه: مجالك، وسجلّك، وتقدّمك.</span>
         <span data-l="en">Everything in its place: your track, your history, your progress.</span>
       </p>
     </div>
@@ -991,11 +1040,11 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         <p><span data-l="ar">حساب مجاني بدون بطاقة ائتمان.</span><span data-l="en">A free account, no credit card.</span></p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/app-home.png" alt="مجالك ورصيدك — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Your track and your allowance — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span data-l="ar">مجالك ورصيدك</span><span data-l="en">Your track and your allowance</span></h3>
+        <img src="/shots/app-home.png" alt="مجالك ورصيد دقائقك — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Your track and your minute balance — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">مجالك ورصيد دقائقك</span><span data-l="en">Your track and your minute balance</span></h3>
         <p>
-          <span data-l="ar">سبعة مجالات وظيفية، ورصيدك اليومي واضح قدامك.</span>
-          <span data-l="en">Seven career tracks, with your daily allowance in plain sight.</span>
+          <span data-l="ar">سبعة مجالات وظيفية، ورصيد دقائقك واضح أمامك.</span>
+          <span data-l="en">Seven career tracks, with your minute balance in plain sight.</span>
         </p>
       </figure>
       <figure class="shot reveal">
@@ -1015,11 +1064,19 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
         </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/premium.png" alt="اشترك وقت ما تحتاج — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Upgrade when you need it — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span data-l="ar">اشترك وقت ما تحتاج</span><span data-l="en">Upgrade when you need it</span></h3>
+        <img src="/shots/premium.png" alt="باقات الدقائق والاشتراك الشهري — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Minute packs and the monthly subscription — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">اشترِ وقتاً، لا وعوداً</span><span data-l="en">Buy time, not promises</span></h3>
         <p>
-          <span data-l="ar">ابدأ مجاني، وارقّي لما تلاقي إنه بيفرق معاك.</span>
-          <span data-l="en">Start free, and upgrade once you can feel the difference.</span>
+          <span data-l="ar">سعر كل دقيقة مكتوب أمامك قبل الشراء، والباقات لا تنتهي صلاحيتها.</span>
+          <span data-l="en">The price per minute is stated before you buy, and packs never expire.</span>
+        </p>
+      </figure>
+      <figure class="shot reveal">
+        <img src="/shots/ledger.png" alt="كشف حساب الدقائق: كل إضافة وكل خصم بالثانية — لقطة حقيقية من تطبيق ثقتي" data-alt-en="The minute statement: every credit and debit to the second — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">تعرف أين ذهبت دقائقك</span><span data-l="en">Know where your minutes went</span></h3>
+        <p>
+          <span data-l="ar">كشف حساب بالدقيقة والثانية لكل إضافة وكل خصم، والرصيد بعد كل حركة — فلا تحتاج أن تصدّقنا على كلمتنا.</span>
+          <span data-l="en">A statement to the second for every credit and debit, with the balance after each one — so you never have to take our word for it.</span>
         </p>
       </figure>
     </div>
@@ -1031,57 +1088,131 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="kicker"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></div>
-      <h2><span data-l="ar">ابدأ مجاناً. ادفع فقط لو نفعك</span><span data-l="en">Start free. Pay only if it works</span></h2>
-      <p>
-        <span data-l="ar">أقل من تكلفة فنجان قهوة في الأسبوع — مقابل وظيفة قد تغيّر حياتك.</span>
-        <span data-l="en">Less than a cup of coffee a week — for a job that can change your life.</span>
+      <h2><span data-l="ar">ادفع مقابل الوقت الذي تتدرّب فيه فقط</span><span data-l="en">Pay for the time you actually train</span></h2>
+      <p data-plan="trial">
+        <span data-l="ar">أول <span data-mins="trial">—</span> على حسابنا. بعدها تشتري رصيد دقائق تستخدمه متى شئت — الرصيد لا تنتهي صلاحيته ولا يُخصم يومياً.</span>
+        <span data-l="en">Your first <span data-mins="trial">—</span> are on us. After that you buy a balance of interview minutes and spend it whenever you like — it never expires and nothing resets daily.</span>
       </p>
     </div>
 
-    <div class="price-toggle">
-      <div class="toggle" role="group" aria-label="اختيار مدة الاشتراك" data-aria-en="Choose a billing period">
-        <button type="button" id="tgl-m" aria-pressed="false"><span data-l="ar">شهري</span><span data-l="en">Monthly</span></button>
-        <button type="button" id="tgl-y" aria-pressed="true"><span data-l="ar">سنوي</span><span data-l="en">Yearly</span><span class="save-pill">وفّر ٣٣٪</span></button>
-      </div>
-    </div>
-
+    <!-- Every figure below is written by renderPricing() from
+         /api/payments/config, so this page can never quote a price the
+         checkout will not honour. The markup ships em dashes, never numbers:
+         a card whose plan code is absent from the catalogue is hidden
+         outright (that is what retires a plan here), and a fetch that fails
+         leaves dashes plus the note at the foot rather than a stale figure.
+         [data-num] takes a formatted number, [data-mins] a whole phrase
+         ("١٠ دقائق" / "10 minutes"), both in the language of the [data-l]
+         wrapper they sit in — so the hidden translation stays correct too. -->
     <div class="plans">
-      <div class="plan reveal">
-        <h3><span data-l="ar">المجاني</span><span data-l="en">Free</span></h3>
+      <div class="plan reveal" data-plan="trial">
+        <h3><span data-l="ar">التجربة المجانية</span><span data-l="en">Free trial</span></h3>
         <div class="amt"><span data-l="ar">٠ <small>ج.م</small></span><span data-l="en">0 <small>EGP</small></span></div>
-        <p class="sub"><span data-l="ar">للتجربة والبدء</span><span data-l="en">To try it and get going</span></p>
+        <p class="sub"><span data-l="ar">بدون بطاقة، وبدون اشتراك</span><span data-l="en">No card, no subscription</span></p>
         <ul>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>٥ أسئلة</b> يومياً</span><span data-l="en"><b>5 questions</b> a day</span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تقييم كامل بالذكاء الاصطناعي</span><span data-l="en">The full AI evaluation</span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">٥ مجالات وظيفية</span><span data-l="en">5 career tracks</span></li>
-          <li><span class="muted-x"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></span><span data-l="ar">المقابلة المباشرة بالفيديو</span><span data-l="en">The live video interview</span></li>
-          <li><span class="muted-x"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></span><span data-l="ar">تحليل السيرة الذاتية</span><span data-l="en">CV analysis</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b><span data-mins="trial">—</span></b> من وقت المقابلات، مرة واحدة لكل حساب</span><span data-l="en"><b><span data-mins="trial">—</span></b> of interview time, once per account</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>المقابلة المباشرة</b> بالصوت والفيديو</span><span data-l="en"><b>The live interview</b> with voice and video</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">التقييم الكامل بعد كل مقابلة — بدون خصم من رصيدك</span><span data-l="en">The full evaluation after every interview — never charged</span></li>
+          <li><span class="muted-x"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></span><span data-l="ar">المجالات الوظيفية المميّزة</span><span data-l="en">Premium career tracks</span></li>
         </ul>
         <a class="btn btn-ghost" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
       </div>
 
-      <div class="plan featured reveal">
+      <div class="plan featured reveal" data-plan="pack_60m">
         <span class="plan-badge"><span data-l="ar">الأكثر اختياراً</span><span data-l="en">Most popular</span></span>
-        <h3><span data-l="ar">المميّز</span><span data-l="en">Premium</span></h3>
-        <!-- JS-owned: renderPrice() rewrites these three nodes, so they must
-             never contain [data-l] spans — textContent would delete them. -->
-        <div class="amt"><span id="price-amt">٩٩</span> <small><span id="price-cur">ج.م</span> / <span id="price-per">شهرياً</span></small></div>
-        <p class="sub" id="price-sub">تُدفع سنوياً ١١٩٩ ج.م — وفّر ٣٣٪</p>
+        <h3><span data-l="ar">باقة وقت</span><span data-l="en">Time pack</span></h3>
+        <div class="amt"><span class="p-num" data-num="pack_60m.egp">—</span> <small><span data-l="ar">ج.م</span><span data-l="en">EGP</span></small></div>
+        <p class="sub">
+          <span data-l="ar"><span data-mins="pack_60m">—</span> رصيد مقابلات · <span class="p-num" data-num="pack_60m.rate">—</span> ج.م للدقيقة</span>
+          <span data-l="en"><span data-mins="pack_60m">—</span> of interview credit · <span class="p-num" data-num="pack_60m.rate">—</span> EGP a minute</span>
+        </p>
         <ul>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>أسئلة غير محدودة</b></span><span data-l="en"><b>Unlimited questions</b></span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>المقابلة المباشرة</b> بالصوت والفيديو</span><span data-l="en"><b>The live interview</b> with voice and video</span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تحليل السيرة الذاتية وأسئلة مخصّصة</span><span data-l="en">CV analysis and questions tailored to it</span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">كل المجالات الوظيفية</span><span data-l="en">Every career track</span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تقارير تفصيلية وتتبّع التقدّم</span><span data-l="en">Detailed reports and progress tracking</span></li>
-          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">دعم ذو أولوية</span><span data-l="en">Priority support</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b><span data-mins="pack_60m">—</span></b> تُضاف لرصيدك فوراً</span><span data-l="en"><b><span data-mins="pack_60m">—</span></b> added to your balance immediately</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>لا تنتهي صلاحيته</b> ولا يُخصم منه شيء يومياً</span><span data-l="en"><b>Never expires</b>, and nothing resets daily</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">اشحن وقت ما تحتاج — الرصيد يتجمّع</span><span data-l="en">Top up whenever you want — balances stack</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تحليل السيرة الذاتية وأسئلة مبنية عليها، من نفس الرصيد</span><span data-l="en">CV analysis and questions built from it, out of the same balance</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تُحتسب الثواني فعلياً — ولا نحسب عليك وقت انقطاع الاتصال</span><span data-l="en">Billed by the second — and the meter stops when your connection does</span></li>
         </ul>
-        <a class="btn btn-primary" href="/app?upgrade=1"><span data-l="ar">اشترك الآن</span><span data-l="en">Subscribe now</span></a>
+        <a class="btn btn-primary" href="/app?upgrade=1"><span data-l="ar">اشترِ رصيد</span><span data-l="en">Buy minutes</span></a>
+      </div>
+
+      <div class="plan reveal" data-plan="monthly">
+        <h3><span data-l="ar">الاشتراك الشهري</span><span data-l="en">Monthly subscription</span></h3>
+        <div class="amt"><span class="p-num" data-num="monthly.egp">—</span> <small><span data-l="ar">ج.م / شهرياً</span><span data-l="en">EGP / month</span></small></div>
+        <p class="sub">
+          <span data-l="ar"><span data-mins="monthly">—</span> كل <span class="p-num" data-num="monthly.days">—</span> يوماً · <span class="p-num" data-num="monthly.rate">—</span> ج.م للدقيقة</span>
+          <span data-l="en"><span data-mins="monthly">—</span> every <span class="p-num" data-num="monthly.days">—</span> days · <span class="p-num" data-num="monthly.rate">—</span> EGP a minute</span>
+        </p>
+        <ul>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b><span data-mins="monthly">—</span></b> في كل دورة اشتراك</span><span data-l="en"><b><span data-mins="monthly">—</span></b> in every billing cycle</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>كل المجالات الوظيفية</b>، بما فيها المميّزة</span><span data-l="en"><b>Every career track</b>, premium ones included</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تحليل السيرة الذاتية بدون خصم من رصيدك</span><span data-l="en">CV analysis with nothing taken off your balance</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تدريب الأسئلة المنفردة بدون خصم</span><span data-l="en">Single-question practice, also free</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">رصيد باقاتك يظل كما هو بجانب اشتراكك</span><span data-l="en">Any pack minutes you own sit untouched alongside it</span></li>
+          <li><span class="muted-x"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></span><span data-l="ar">دقائق الاشتراك لا تُرحَّل إلى الدورة التالية</span><span data-l="en">Subscription minutes do not roll over to the next cycle</span></li>
+        </ul>
+        <a class="btn btn-ghost" href="/app?upgrade=1"><span data-l="ar">اشترك الآن</span><span data-l="en">Subscribe now</span></a>
+        <p class="foot" data-plan="quarterly">
+          <span data-l="ar">أو <span class="p-num" data-num="quarterly.egp">—</span> ج.م كل <span class="p-num" data-num="quarterly.months">—</span> شهور <span class="save-pill">وفّر <span class="p-num" data-num="quarterly.savingPct">—</span>٪</span></span>
+          <span data-l="en">or <span class="p-num" data-num="quarterly.egp">—</span> EGP every <span class="p-num" data-num="quarterly.months">—</span> months <span class="save-pill">save <span class="p-num" data-num="quarterly.savingPct">—</span>%</span></span>
+        </p>
       </div>
     </div>
 
-    <p style="text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-6)">
-      <span data-l="ar">الدفع بالبطاقة أو فوري أو المحفظة الإلكترونية عبر EasyKash · يمكنك الإلغاء في أي وقت</span>
-      <span data-l="en">Pay by card, Fawry or e-wallet through EasyKash · cancel any time</span>
+    <div class="topups reveal">
+      <h3><span data-l="ar">اشحن وقت ما تحتاج</span><span data-l="en">Top up any time</span></h3>
+      <p class="topups-lede">
+        <span data-l="ar">الباقات تُضاف لرصيدك وتتجمّع، ولا تنتهي صلاحية أي منها.</span>
+        <span data-l="en">Every pack adds to the same balance, they stack, and none of them expires.</span>
+      </p>
+      <div class="topup-row">
+        <div class="topup" data-plan="pack_20m">
+          <span>
+            <span class="mins" data-mins="pack_20m">—</span>
+            <span class="rate">
+              <span data-l="ar"><span class="p-num" data-num="pack_20m.rate">—</span> ج.م للدقيقة</span>
+              <span data-l="en"><span class="p-num" data-num="pack_20m.rate">—</span> EGP a minute</span>
+            </span>
+          </span>
+          <span class="price"><span class="p-num" data-num="pack_20m.egp">—</span> <small><span data-l="ar">ج.م</span><span data-l="en">EGP</span></small></span>
+        </div>
+        <div class="topup is-popular" data-plan="pack_60m">
+          <span>
+            <span class="mins" data-mins="pack_60m">—</span>
+            <span class="rate">
+              <span data-l="ar"><span class="p-num" data-num="pack_60m.rate">—</span> ج.م للدقيقة</span>
+              <span data-l="en"><span class="p-num" data-num="pack_60m.rate">—</span> EGP a minute</span>
+            </span>
+          </span>
+          <span class="price"><span class="p-num" data-num="pack_60m.egp">—</span> <small><span data-l="ar">ج.م</span><span data-l="en">EGP</span></small></span>
+        </div>
+        <div class="topup" data-plan="pack_180m">
+          <span>
+            <span class="mins" data-mins="pack_180m">—</span>
+            <span class="rate">
+              <span data-l="ar"><span class="p-num" data-num="pack_180m.rate">—</span> ج.م للدقيقة</span>
+              <span data-l="en"><span class="p-num" data-num="pack_180m.rate">—</span> EGP a minute</span>
+            </span>
+          </span>
+          <span class="price"><span class="p-num" data-num="pack_180m.egp">—</span> <small><span data-l="ar">ج.م</span><span data-l="en">EGP</span></small></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Which of these two lines is shown comes from config.enabled, because
+         EasyKash is not switched on yet and promising a checkout that answers
+         503 is worse than saying so. -->
+    <p id="pay-methods" hidden style="text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-6)">
+      <span data-l="ar">الدفع بفودافون كاش أو إنستاباي أو البطاقة أو فوري عبر EasyKash · يمكنك إلغاء الاشتراك في أي وقت</span>
+      <span data-l="en">Pay by Vodafone Cash, InstaPay, card or Fawry through EasyKash · cancel the subscription any time</span>
+    </p>
+    <p id="pay-pending" hidden style="text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-6)">
+      <span data-l="ar">الدفع الإلكتروني قيد التفعيل حالياً. التجربة المجانية تعمل من الآن، ولشحن رصيدك <a href="mailto:support@khaledahmed.net">تواصل معنا</a>.</span>
+      <span data-l="en">Online payment is still being switched on. The free trial works today — to top your balance up, <a href="mailto:support@khaledahmed.net">get in touch</a>.</span>
+    </p>
+    <p class="price-error" id="price-error" hidden>
+      <span data-l="ar">تعذّر تحميل الأسعار الآن. الأسعار المحدّثة تظهر داخل التطبيق.</span>
+      <span data-l="en">Prices could not be loaded right now. The live prices are in the app.</span>
     </p>
   </div>
 </section>
@@ -1101,11 +1232,25 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
           <span data-l="en">Arabic first. The questions, the scoring and the advice are written in simplified Modern Standard Arabic, and the interviewer understands Egyptian, Gulf and Levantine colloquial without ever docking you for it — you are judged on substance alone.</span>
         </p>
       </details>
-      <details>
+      <details data-plan="trial">
         <summary><span data-l="ar">هل أحتاج بطاقة ائتمان للتجربة؟</span><span data-l="en">Do I need a credit card to try it?</span></summary>
         <p>
-          <span data-l="ar">لا. تنشئ حساباً وتبدأ فوراً بـ ٥ أسئلة يومياً مجاناً، بدون إدخال أي بيانات دفع.</span>
-          <span data-l="en">No. Create an account and start immediately with 5 free questions a day, without entering any payment details.</span>
+          <span data-l="ar">لا. تنشئ حساباً وتبدأ فوراً، وأول <span data-mins="trial">—</span> من وقت المقابلات مجانية على حسابك، بدون إدخال أي بيانات دفع.</span>
+          <span data-l="en">No. Create an account and start immediately — the first <span data-mins="trial">—</span> of interview time are free on your account, with no payment details.</span>
+        </p>
+      </details>
+      <details>
+        <summary><span data-l="ar">هل تنتهي صلاحية الدقائق؟</span><span data-l="en">Do my minutes expire?</span></summary>
+        <p>
+          <span data-l="ar">دقائق الباقات لا تنتهي صلاحيتها ولا يُخصم منها شيء يومياً — رصيد تستخدمه وقت ما تحب، ويتجمّع كلما اشتريت باقة جديدة. أما دقائق الاشتراك الشهري فهي مخصّصة لدورة الاشتراك ولا تُرحَّل إلى الدورة التالية، ولذلك يُخصم من رصيد الاشتراك أولاً قبل رصيد باقاتك.</span>
+          <span data-l="en">Pack minutes never expire and nothing is deducted daily — they are a balance you spend whenever you like, and buying another pack adds to it. Subscription minutes belong to their billing cycle and do not roll over, which is why we always spend the subscription allowance before touching the minutes you paid cash for.</span>
+        </p>
+      </details>
+      <details>
+        <summary><span data-l="ar">كيف تُحسب الدقائق أثناء المقابلة؟</span><span data-l="en">How is interview time counted?</span></summary>
+        <p>
+          <span data-l="ar">بالثانية، وعلى وقت المقابلة الفعلي فقط. لو انقطع الاتصال أو خرجت من التطبيق يتوقف العدّاد ولا نحسب عليك تلك الفترة. تقييم المقابلة في النهاية لا يُخصم منه شيء.</span>
+          <span data-l="en">By the second, and only for real interview time. If your connection drops or you leave the app the meter stops and that stretch is not billed. The evaluation at the end is never charged.</span>
         </p>
       </details>
       <details>
@@ -1291,57 +1436,153 @@ var refreshNums = function(){};
 })();
 
 // ── Pricing ───────────────────────────────────────────────────────────
-// Prices are fetched from the API so this page can never disagree with what
-// the checkout actually charges. The plan object now holds numbers only —
-// every word around them comes from PLAN_TEXT and follows the language.
-var PLAN_TEXT = {
-  ar: {
-    cur: 'ج.م', per: 'شهرياً', perYear: 'سنوياً',
-    monthlySub: 'يُجدَّد شهرياً · ألغِ في أي وقت',
-    // The headline is the amount actually charged; the anchor price is what
-    // makes the saving legible.
-    yearlySub: function(was, pct){ return 'بدلاً من ' + fmt(was) + ' ج.م — وفّر ' + fmt(pct) + '٪'; },
-    save: function(pct){ return 'وفّر ' + fmt(pct) + '٪'; }
-  },
-  en: {
-    cur: 'EGP', per: 'month', perYear: 'year',
-    monthlySub: 'Renews monthly · cancel any time',
-    yearlySub: function(was, pct){ return 'Instead of ' + fmt(was) + ' EGP — save ' + fmt(pct) + '%'; },
-    save: function(pct){ return 'Save ' + fmt(pct) + '%'; }
-  }
-};
-// `was` is twelve monthly renewals — the number a customer can check.
-  var plans = { monthly: { amount: 150 }, yearly: { amount: 1200, was: 1800, savingPct: 33 } };
-var activePlan = 'yearly';
-var elAmt = document.getElementById('price-amt');
-var elCur = document.getElementById('price-cur');
-var elPer = document.getElementById('price-per');
-var elSub = document.getElementById('price-sub');
-var tglM = document.getElementById('tgl-m');
-var tglY = document.getElementById('tgl-y');
-function renderPrice(key){
-  if (key) activePlan = key;
-  var L = PLAN_TEXT[currentLang()], p = plans[activePlan];
-  elAmt.textContent = fmt(p.amount);
-  elCur.textContent = L.cur;
-  elPer.textContent = activePlan === 'yearly' ? L.perYear : L.per;
-  elSub.textContent = activePlan === 'yearly' ? L.yearlySub(p.was, p.savingPct) : L.monthlySub;
-  var pill = document.querySelector('.save-pill');
-  if (pill) pill.textContent = L.save(plans.yearly.savingPct);
-  tglM.setAttribute('aria-pressed', String(activePlan === 'monthly'));
-  tglY.setAttribute('aria-pressed', String(activePlan === 'yearly'));
+// Every figure in the pricing section is written from /api/payments/config,
+// so this page cannot quote a price the checkout will not honour. There is
+// deliberately NO hardcoded fallback: the markup ships em dashes, and if the
+// fetch fails they stay put and #price-error says so. A stale price is worse
+// than a missing one — and it is how the retired yearly plan would creep back.
+//
+// Two fillers, both language-aware per NODE rather than per page, because the
+// hidden translation is real DOM that a language switch must find correct:
+//   [data-num="pack_60m.egp"] → "١٠٠" / "100"
+//   [data-mins="pack_60m"]    → "٦٠ دقيقة" / "60 minutes"
+var PRICING = null;                                             // null until the API answers
+var numEls  = [].slice.call(document.querySelectorAll('[data-num]'));
+var minsEls = [].slice.call(document.querySelectorAll('[data-mins]'));
+
+// The language of the [data-l] wrapper a node sits in; the page language for
+// nodes that are not translated (the top-up tiles carry one copy only).
+function nodeLang(el){
+  var w = el.closest ? el.closest('[data-l]') : null;
+  var l = w && w.getAttribute('data-l');
+  return l === 'en' ? 'en' : (l === 'ar' ? 'ar' : currentLang());
 }
-tglM.addEventListener('click', function(){ renderPrice('monthly'); });
-tglY.addEventListener('click', function(){ renderPrice('yearly'); });
+function fmtIn(lang, n){
+  if (lang === 'en') { try { return Number(n).toLocaleString('en-US'); } catch (e) { return String(n); } }
+  return String(n).replace(/[0-9]/g, function(d){ return AR_DIGITS[d]; });
+}
+// Arabic counts its unit word off the number: ٢ → دقيقتان, ٣–١٠ → دقائق,
+// ١١+ → دقيقة. Worth the five lines: free_trial_seconds is an admin setting,
+// so "١٥ دقائق" is one edit away from being printed.
+function minutesPhrase(lang, mins){
+  if (lang === 'en') return fmtIn('en', mins) + (mins === 1 ? ' minute' : ' minutes');
+  if (mins === 1) return 'دقيقة واحدة';
+  if (mins === 2) return 'دقيقتان';
+  if (mins >= 3 && mins <= 10) return fmtIn('ar', mins) + ' دقائق';
+  return fmtIn('ar', mins) + ' دقيقة';
+}
+
+/**
+ * Rewrite the structured-data offers from the same response the page renders.
+ *
+ * The JSON-LD block in <head> is the one thing here a crawler reads and our
+ * fetch does not write, so it was a SECOND source of truth for the prices: it
+ * agreed with the catalogue on the day it was typed and had no way of noticing
+ * afterwards. The trial line was the sharpest edge — "أول ١٠ دقائق" is an
+ * app_settings row precisely so an operator CAN change it without a deploy,
+ * which is exactly how Google ends up indexing an offer the checkout will not
+ * honour.
+ *
+ * Any crawler that executes scripts (Googlebot does) therefore sees the live
+ * catalogue. The static block stays as the no-JS fallback, but its trial offer
+ * no longer states a duration it cannot know.
+ */
+function syncOffers(cfg){
+  try {
+    var node = document.querySelector('script[type="application/ld+json"]');
+    if (!node) return;
+    var data = JSON.parse(node.textContent);
+    var graph = data['@graph'] || [];
+    var product = null;
+    for (var i = 0; i < graph.length; i++) {
+      if (graph[i] && graph[i].offers) { product = graph[i]; break; }
+    }
+    if (!product) return;
+
+    var offers = [];
+    if (cfg.trial && cfg.trial.minutes > 0) {
+      offers.push({
+        '@type': 'Offer', name: 'تجربة مجانية', price: '0', priceCurrency: 'EGP',
+        description: 'أول ' + minutesPhrase('ar', cfg.trial.minutes) + ' من وقت المقابلات مجاناً',
+      });
+    }
+    cfg.plans.forEach(function(p){
+      offers.push({
+        '@type': 'Offer',
+        name: p.labelAr,
+        price: String(p.amountEgp),
+        priceCurrency: cfg.currency || 'EGP',
+        description: p.kind === 'pack'
+          ? minutesPhrase('ar', p.minutes) + ' رصيد مقابلات لا تنتهي صلاحيته'
+          : minutesPhrase('ar', p.minutesPerMonth) + ' كل ٣٠ يوماً',
+        availability: cfg.enabled
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/PreOrder',
+      });
+    });
+
+    product.offers = offers;
+    node.textContent = JSON.stringify(data);
+  } catch (e) { /* structured data is a bonus; never break the page for it */ }
+}
+
+function renderPricing(){
+  if (!PRICING) return;
+  numEls.forEach(function(el){
+    var v = PRICING.num[el.getAttribute('data-num')];
+    if (v != null) el.textContent = fmtIn(nodeLang(el), v);
+  });
+  minsEls.forEach(function(el){
+    var v = PRICING.mins[el.getAttribute('data-mins')];
+    if (v != null) el.textContent = minutesPhrase(nodeLang(el), v);
+  });
+}
 
 fetch('/api/payments/config').then(function(r){ return r.ok ? r.json() : null; }).then(function(cfg){
-  if (!cfg || !cfg.plans) return;
-  var m = cfg.plans.find(function(p){ return p.code === 'monthly'; });
-  var y = cfg.plans.find(function(p){ return p.code === 'yearly'; });
-  if (m) plans.monthly = { amount: m.amountEgp };
-  if (y) plans.yearly = { amount: y.monthlyEquivalentEgp, total: y.amountEgp, savingPct: y.savingPct };
-  renderPrice();
-}).catch(function(){ /* keep the static defaults */ });
+  if (!cfg || !Array.isArray(cfg.plans) || !cfg.plans.length) throw new Error('no catalogue');
+  var num = {}, mins = {}, known = {};
+
+  // The trial is an app_settings row, not a plan: it is the one number here an
+  // operator can change — or zero, as the anti-farming kill switch — without a
+  // deploy. Read it, never assume it.
+  if (cfg.trial && cfg.trial.minutes > 0) { mins.trial = cfg.trial.minutes; known.trial = true; }
+
+  cfg.plans.forEach(function(p){
+    known[p.code] = true;
+    num[p.code + '.egp'] = p.amountEgp;
+    if (p.pricePerMinuteEgp != null) num[p.code + '.rate'] = p.pricePerMinuteEgp;
+    if (p.kind === 'pack') {
+      mins[p.code] = p.minutes;
+    } else {
+      // A subscription's headline is its per-cycle allowance, not the total
+      // over its term — the total is what "unlimited" used to hide.
+      mins[p.code] = p.minutesPerMonth;
+      num[p.code + '.days'] = p.days;
+      num[p.code + '.months'] = p.months;
+      num[p.code + '.savingPct'] = p.savingPct;
+    }
+  });
+  PRICING = { num: num, mins: mins };
+
+  // Anything keyed to a plan the catalogue no longer sells is removed, not
+  // left showing dashes. This is what makes retiring a plan — yearly, today —
+  // a catalogue edit rather than an HTML edit, and it covers the trial copy in
+  // the hero and the FAQ if the trial is ever switched off.
+  [].slice.call(document.querySelectorAll('[data-plan]')).forEach(function(el){
+    el.hidden = !known[el.getAttribute('data-plan')];
+  });
+
+  // EasyKash is not switched on yet. Promising a checkout that answers 503 is
+  // worse than saying so, so the note follows the server's own flag.
+  document.getElementById('pay-methods').hidden = !cfg.enabled;
+  document.getElementById('pay-pending').hidden = !!cfg.enabled;
+  renderPricing();
+  syncOffers(cfg);
+}).catch(function(){
+  // Dashes stay. The section still explains the model; only the figures are
+  // missing, and the app is one tap away.
+  document.getElementById('price-error').hidden = false;
+});
 
 // ── Theme ─────────────────────────────────────────────────────────────
 // Three states: system (no attribute), forced light, forced dark. The head
@@ -1407,7 +1648,7 @@ function applyLang(lang, persist){
   ariaEls.forEach(function(el){ el.setAttribute('aria-label', lang === 'en' ? el.dataset.ariaEn : el.__ar); });
   // Text owned by script.
   refreshNums();
-  renderPrice();
+  renderPricing();
   if (persist){ try { localStorage.setItem('thiqty-lang', lang); } catch (e) {} }
 }
 langBtns.forEach(function(b){

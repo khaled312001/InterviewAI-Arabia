@@ -5,6 +5,8 @@ import { formatNumber, type NumFormat } from '../../lib/format';
 export interface NumProps {
   value: number | null | undefined;
   format?: NumFormat;
+  /** Fraction digits for format='decimal'. */
+  digits?: number;
   emptyLabel?: string;
   variant?: TypographyProps['variant'];
   color?: TypographyProps['color'];
@@ -16,6 +18,7 @@ export interface NumProps {
 export function Num({
   value,
   format = 'int',
+  digits = 1,
   emptyLabel = '—',
   variant = 'inherit',
   color,
@@ -29,7 +32,7 @@ export function Num({
       color={color}
       className={isEmpty ? undefined : 'ltr-island tabular'}
     >
-      {isEmpty ? emptyLabel : formatNumber(value, format)}
+      {isEmpty ? emptyLabel : formatNumber(value, format, digits)}
     </Typography>
   );
 }

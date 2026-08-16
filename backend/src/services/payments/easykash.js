@@ -31,7 +31,9 @@
 import crypto from 'node:crypto';
 import { env } from '../../config/env.js';
 import { cfg } from '../secrets/store.js';
+import { checkOutboundUrl } from '../secrets/registry.js';
 import { logger } from '../../utils/logger.js';
+import { mockToken } from './mockToken.js';
 
 const TIMEOUT_MS = 20_000;
 
@@ -67,11 +69,11 @@ export async function createPayment({
   if (env.EASYKASH_MOCK) {
     logger.warn('EasyKash MOCK mode — no real payment will be taken', { reference });
     const base = env.APP_URL.replace(/\/$/, '');
-    return {
-      redirectUrl: `${base}/api/payments/mock-checkout?reference=${encodeURIComponent(reference)}`,
-      providerRef: `mock_${reference}`,
-      raw: { mock: true },
-    };
+    // The token is what makes the mock page a capability rather than a public
+    // minting endpoint keyed on a reference anyone can read. See mockToken.js.
+    const url = `${base}/api/payments/mock-checkout?reference=${encodeURIComponent(reference)}`
+      + `&t=${mockToken(reference)}`;
+    return { redirectUrl: url, providerRef: `mock_${reference}`, raw: { mock: true } };
   }
 
   if (!isConfigured()) {
@@ -81,6 +83,24 @@ export async function createPayment({
   }
 
   const url = `${String(cfg('EASYKASH_BASE_URL')).replace(/\/$/, '')}${cfg('EASYKASH_PAY_PATH')}`;
+
+  // The request below carries EASYKASH_API_KEY in the clear as the
+  // Authorization header, so the destination is re-verified here and not only
+  // where the setting was written. Validation at the write endpoint protects
+  // rows written through it; this protects the key itself, including against
+  // rows that predate the pin or were inserted straight into MySQL. Refusing
+  // to send is the only safe outcome — a "wrong" host is indistinguishable
+  // from a host chosen to collect the key.
+  const destination = checkOutboundUrl('EASYKASH_BASE_URL', url);
+  if (!destination.ok) {
+    logger.error('EasyKash checkout blocked: refusing to send the API key off-host', {
+      reason: destination.reason,
+      reference,
+    });
+    const err = new Error('EasyKash endpoint is not an allowed host');
+    err.code = 'GATEWAY_NOT_CONFIGURED';
+    throw err;
+  }
 
   const body = {
     // EasyKash expects a decimal amount in EGP (not minor units) on Direct Pay.

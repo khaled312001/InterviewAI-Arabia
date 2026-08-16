@@ -52,8 +52,10 @@ import { useTranslation } from 'react-i18next';
 import { api, API_BASE } from '../api/client';
 import { secureStorage } from '../storage/secureStorage';
 import { useAuth } from '../store/auth';
+import { useBalance, formatClock } from '../store/balance';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
 import { Screen, Text, Button, Card, Badge, ScoreRing } from '../components';
+import { balanceLabel, durationLabel } from './mainShared';
 import {
   capabilities, useCamera, useInterviewerVoice, useLevelMeter,
   useSessionRecorder, useSpeechRecognizer,
@@ -170,6 +172,42 @@ interface Evaluation {
   advice?: string;
 }
 
+/**
+ * The meter, exactly as the server reports it.
+ *
+ * Every field is server-computed and the screen only displays it. The client
+ * keeps its own `elapsed` timer for the call chrome, but that number has never
+ * been — and must never become — an input to what the user is charged.
+ */
+interface Billing {
+  meetingId: string;
+  /** What can still be spent in THIS interview. Drives the countdown. */
+  remainingSeconds: number;
+  remainingMinutes: number;
+  /** Charged so far for this interview. */
+  billedSeconds: number;
+  /** Wall-clock deliberately NOT charged — a drop, a lock screen, a kill. */
+  skippedSeconds: number;
+  /** How often to heartbeat. Server-tunable, so never a constant here. */
+  tickSeconds: number;
+  lowWaterSeconds: number;
+  warn: boolean;
+  exhausted: boolean;
+}
+
+/** The receipt shown after the interview, from `POST /meeting/finish`. */
+interface Receipt {
+  billedSeconds: number;
+  skippedSeconds: number;
+  remainingSeconds: number;
+}
+
+/** Why `/meeting/start` refused, in the server's own numbers. */
+interface StartBlocked {
+  requiredSeconds: number;
+  balanceSeconds: number;
+}
+
 function pad2(n: number) {
   return String(n).padStart(2, '0');
 }
@@ -192,17 +230,31 @@ function apiErrorMessage(err: any, fallback: string): string {
  * PREMIUM_REQUIRED. Falls back to the HTTP status when an older build of the
  * server is still deployed and has no `code` in the body.
  */
-type ApiErrorKind = 'quota' | 'premium' | 'ai' | 'unknown';
+type ApiErrorKind = 'quota' | 'premium' | 'ai' | 'expired' | 'unknown';
 
 function apiErrorKind(err: any): ApiErrorKind {
   const code = err?.response?.data?.code;
   if (code === 'QUOTA_EXCEEDED') return 'quota';
   if (code === 'PREMIUM_REQUIRED') return 'premium';
   if (code === 'AI_UNAVAILABLE') return 'ai';
+  // The sweeper settled this meeting while the app was away. Not an error the
+  // user caused, and the only sane response is to close out into the
+  // evaluation for what did happen.
+  if (code === 'MEETING_EXPIRED') return 'expired';
   const status = err?.response?.status;
   if (status === 402) return 'quota';
+  if (status === 409) return 'expired';
   if (status === 503 || status === 502) return 'ai';
   return 'unknown';
+}
+
+/** `details.balanceSeconds` / `details.requiredSeconds` off a 402 body. */
+function quotaDetails(err: any): StartBlocked {
+  const d = err?.response?.data?.details ?? {};
+  return {
+    requiredSeconds: Number(d.requiredSeconds) || 0,
+    balanceSeconds: Number(d.balanceSeconds) || 0,
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -349,6 +401,82 @@ function ControlButton({
       >
         {label}
       </Text>
+    </View>
+  );
+}
+
+/**
+ * A persistent notice on the stage, with one way out.
+ *
+ * Deliberately NOT the transient `notice` toast: a balance warning that
+ * vanishes after 5.5 seconds is a warning the candidate will miss while they
+ * are mid-sentence. The same lesson the mic-lost banner already learned.
+ */
+function StageBanner({
+  icon, tone, title, body, actionLabel, onAction,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  tone: 'warn' | 'danger';
+  title: string;
+  body: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  const theme = useAppTheme();
+  const warn = tone === 'warn';
+
+  return (
+    <View
+      style={[
+        styles.row,
+        {
+          width: '100%',
+          maxWidth: theme.layout.maxContentWidth,
+          gap: theme.spacing.sm,
+          alignItems: 'flex-start',
+          padding: theme.spacing.md,
+          borderRadius: theme.radii.md,
+          borderWidth: theme.layout.hairline,
+          backgroundColor: warn ? STAGE.warnSoft : STAGE.dangerSoft,
+          borderColor: warn ? STAGE.border : STAGE.dangerBorder,
+        },
+      ]}
+    >
+      <Ionicons
+        name={icon}
+        size={theme.layout.icon.md}
+        color={warn ? STAGE.warnInk : STAGE.dangerInk}
+      />
+      <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+        <Text role="bodySm" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
+          {title}
+        </Text>
+        <Text role="caption" tone="inherit" style={{ color: STAGE.inkMuted }}>
+          {body}
+        </Text>
+      </View>
+      <Pressable
+        onPress={onAction}
+        accessibilityRole="button"
+        accessibilityLabel={actionLabel}
+        hitSlop={theme.spacing.xs}
+        style={({ pressed }) => [
+          styles.center,
+          {
+            height: theme.layout.control.sm,
+            paddingHorizontal: theme.spacing.md,
+            borderRadius: theme.radii.pill,
+            backgroundColor: STAGE.chromeSoft,
+            borderWidth: theme.layout.hairline,
+            borderColor: STAGE.border,
+            opacity: pressed ? 0.75 : 1,
+          },
+        ]}
+      >
+        <Text role="micro" weight="bold" tone="inherit" style={{ color: STAGE.ink }} numberOfLines={1}>
+          {actionLabel}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -668,6 +796,8 @@ export function MeetingScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const dir = useDirection();
   const userName = useAuth((s) => s.user?.name);
+  const refreshBalance = useBalance((s) => s.refresh);
+  const setAvailableSeconds = useBalance((s) => s.setAvailableSeconds);
 
   const params = route?.params ?? {};
   const categoryId = params.categoryId;
@@ -702,6 +832,20 @@ export function MeetingScreen({ route, navigation }: any) {
   const micOnRef = useRef(true);
 
   const turnsRef = useRef<Turn[]>([]);
+  /** The server's billing clock for this call. Threaded through every /turn,
+   *  every tick and /finish, so the meter and the conversation stay the same
+   *  interview even if the app is backgrounded and resumed. */
+  const meetingIdRef = useRef<string | null>(null);
+  /** True once the meeting has been settled — by /finish or by /end. Guards
+   *  against settling twice when the screen unmounts moments later. */
+  const clockClosedRef = useRef(false);
+  /**
+   * The last balance the server reported and when it arrived. The countdown
+   * between heartbeats is interpolated from this pair rather than counted
+   * independently, so the display can drift by at most one tick and always
+   * snaps back to the server's number.
+   */
+  const billingAtRef = useRef<{ remaining: number; at: number } | null>(null);
   const startedAtRef = useRef(Date.now());
   const tipCounterRef = useRef(0);
   const stateRef = useRef<MeetingState>('preparing');
@@ -742,7 +886,34 @@ export function MeetingScreen({ route, navigation }: any) {
   const [evalError, setEvalError] = useState<string | null>(null);
   const [evalErrorKind, setEvalErrorKind] = useState<ApiErrorKind>('unknown');
 
+  /** Mirrors `meetingIdRef` as state, purely so the heartbeat effect starts
+   *  when a meeting id arrives late — the legacy path where /turn opens the
+   *  meeting because /start never ran. */
+  const [meetingId, setMeetingId] = useState<string | null>(null);
+  const [billing, setBilling] = useState<Billing | null>(null);
+  const [startBlocked, setStartBlocked] = useState<StartBlocked | null>(null);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+
   useEffect(() => { stateRef.current = meetingState; }, [meetingState]);
+
+  /**
+   * Take the server's meter reading.
+   *
+   * Called from /start, every tick and every turn — the three responses that
+   * carry a `billing` block. It also nudges the app-wide balance so Home is
+   * already right when the user lands back on it.
+   */
+  const rememberMeeting = useCallback((id: string | null) => {
+    meetingIdRef.current = id;
+    setMeetingId(id);
+  }, []);
+
+  const applyBilling = useCallback((next?: Billing | null) => {
+    if (!next) return;
+    billingAtRef.current = { remaining: next.remainingSeconds, at: Date.now() };
+    setBilling(next);
+    setAvailableSeconds(next.remainingSeconds);
+  }, [setAvailableSeconds]);
 
   /* -------------------- notices -------------------- */
 
@@ -776,7 +947,13 @@ export function MeetingScreen({ route, navigation }: any) {
    */
   useEffect(() => {
     endedRef.current = false;
-    return () => { teardownRef.current({ saveRecording: saveOnExitRef.current }); };
+    return () => {
+      teardownRef.current({ saveRecording: saveOnExitRef.current });
+      // Leaving mid-call (Back, a deep link, a tab switch on web) must not
+      // leave the meter running. `closeClock` is a no-op once /finish has
+      // settled, so the ordinary path is unaffected.
+      void closeClockRef.current();
+    };
   }, []);
 
   /* -------------------- media -------------------- *
@@ -1031,12 +1208,51 @@ export function MeetingScreen({ route, navigation }: any) {
     showNotice(t(MEDIA_COPY.sttUnsupported), 'danger');
   }, [sttOk, showNotice, t]);
 
-  // Elapsed timer only runs while the interview is actually running.
+  // Elapsed timer only runs while the interview is actually running. It also
+  // paces the countdown re-render, which is why it stays at one second.
   useEffect(() => {
     if (meetingState !== 'active' && meetingState !== 'closing') return undefined;
     const id = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 1000);
     return () => clearInterval(id);
   }, [meetingState]);
+
+  /* -------------------- the billing heartbeat -------------------- *
+   *
+   * The clock the user is charged by. It carries no AI and no payload: it just
+   * tells the server "I am still here", and the server bills the wall-clock
+   * between two heartbeats. A gap larger than the server's tolerance is billed
+   * at ZERO rather than clamped — so a dead network, a locked phone or a
+   * backgrounded app costs nothing, and the seconds show up on the receipt as
+   * time we did not charge for.
+   *
+   * That also means a failed tick needs no recovery here: the seconds land on
+   * the next one, and the server decides whether they were real.
+   * ------------------------------------------------------------------ */
+  const tickSeconds = billing?.tickSeconds;
+  useEffect(() => {
+    if (meetingState !== 'active' && meetingState !== 'closing') return undefined;
+    if (!meetingId) return undefined;
+
+    // The interval the SERVER asked for (`meeting_tick_seconds`, tunable
+    // without a deploy), with a floor so a bad value cannot hammer the endpoint
+    // into its rate limit — a 429'd tick is a gap, and a gap is billed at zero.
+    // The 15 is only a fallback for a response that carried no billing block;
+    // it is a timer, never a number shown to anyone.
+    const period = Math.max(5, tickSeconds ?? 15) * 1000;
+    const id = setInterval(async () => {
+      if (endedRef.current) return;
+      try {
+        const { data } = await api.post(`/meeting/${meetingId}/tick`);
+        applyBilling(data?.billing);
+      } catch (err) {
+        if (apiErrorKind(err) === 'expired') {
+          showNotice(t('meeting.expired'), 'danger');
+          concludeRef.current({ saveRecording: true });
+        }
+      }
+    }, period);
+    return () => clearInterval(id);
+  }, [meetingId, meetingState, tickSeconds, applyBilling, showNotice, t]);
 
   /* -------------------- conversation -------------------- */
 
@@ -1048,8 +1264,16 @@ export function MeetingScreen({ route, navigation }: any) {
     try {
       const { data } = await api.post('/meeting/turn', {
         categoryId, history, userMessage, language, context,
+        // Omitted only if /start never succeeded. The server then binds the
+        // turn to whatever live meeting this account already has, and opens a
+        // balance-checked one if there is none — so the interview survives a
+        // failed /start, and omitting the field is never the cheaper path.
+        ...(meetingIdRef.current ? { meetingId: meetingIdRef.current } : null),
       });
       if (endedRef.current) { setThinking(false); return true; }
+
+      if (data?.meetingId) rememberMeeting(String(data.meetingId));
+      applyBilling(data?.billing);
 
       const reply: string = data?.reply ?? '';
       pushTurn({ role: 'assistant', content: reply, at: Date.now() });
@@ -1074,10 +1298,41 @@ export function MeetingScreen({ route, navigation }: any) {
       return true;
     } catch (err: any) {
       setThinking(false);
-      if (!endedRef.current) showNotice(apiErrorMessage(err, t('meeting.turnFailed')), 'danger');
+      if (endedRef.current) return false;
+
+      const kind = apiErrorKind(err);
+
+      // The meeting was settled underneath us (the app was away long enough
+      // for the sweeper to close it). Nothing is recoverable in this call, but
+      // the conversation so far is still worth evaluating — and /finish is
+      // free and never refused.
+      if (kind === 'expired') {
+        showNotice(t('meeting.expired'), 'danger');
+        concludeRef.current({ saveRecording: true });
+        return false;
+      }
+
+      // Out of minutes. The server has already served its goodwill closing
+      // turn by the time it returns this, so the interview is over: end into
+      // the evaluation rather than leaving the user on a stalled stage. With
+      // no turns at all there is nothing to evaluate, so the pre-call wall is
+      // shown instead.
+      if (kind === 'quota') {
+        if (turnsRef.current.length === 0) {
+          setStartBlocked(quotaDetails(err));
+          setMeetingState('preparing');
+          return false;
+        }
+        showNotice(apiErrorMessage(err, t('meeting.quotaBody')), 'danger');
+        concludeRef.current({ saveRecording: true });
+        return false;
+      }
+
+      showNotice(apiErrorMessage(err, t('meeting.turnFailed')), 'danger');
       return false;
     }
-  }, [categoryId, context, language, pushTurn, scheduleListen, showNotice, speak, t]);
+  }, [applyBilling, categoryId, context, language, pushTurn, rememberMeeting,
+    scheduleListen, showNotice, speak, t]);
 
   const sendUserMessage = useCallback((text: string) => {
     // History is snapshotted *before* the new line is appended: the server
@@ -1094,6 +1349,45 @@ export function MeetingScreen({ route, navigation }: any) {
     if (startingRef.current || stateRef.current !== 'preparing') return;
     if (!camera.ready) { showNotice(t(MEDIA_COPY.deniedBody), 'danger'); return; }
     startingRef.current = true;
+    setStartBlocked(null);
+
+    /**
+     * Open the billing clock BEFORE the first model call.
+     *
+     * Two things happen here that cannot happen anywhere else: a new account's
+     * free trial is granted (lazily, on first use), and the server refuses an
+     * interview it cannot fund. Refusing up front is the kinder failure — a
+     * call that dies eight seconds in is worse than one that never opened, and
+     * this one explains itself with the server's own numbers.
+     */
+    try {
+      const { data } = await api.post('/meeting/start', {
+        categoryId,
+        client: capabilities.platform,
+        // The id THIS screen is already holding, if any — the server resumes
+        // only a meeting the client can name. Presenting nothing means "a new
+        // interview", and the server then settles and closes anything else
+        // still live on the account: one live meeting per user is what stops
+        // two tabs from spending one wall-clock between them.
+        ...(meetingIdRef.current ? { resumeMeetingId: meetingIdRef.current } : null),
+      });
+      rememberMeeting(data?.meetingId ? String(data.meetingId) : null);
+      clockClosedRef.current = false;
+      applyBilling(data?.billing);
+    } catch (err: any) {
+      if (apiErrorKind(err) === 'quota') {
+        // The one refusal that must stop the call before it opens.
+        setStartBlocked(quotaDetails(err));
+        startingRef.current = false;
+        return;
+      }
+      // Anything else (offline, 5xx) must NOT block the interview: /turn opens
+      // a metered meeting when it receives no id — with the same balance check
+      // this call just failed to reach — so the interview still goes ahead.
+      rememberMeeting(null);
+      showNotice(apiErrorMessage(err, t('meeting.turnFailed')), 'danger');
+    }
+
     startedAtRef.current = Date.now();
     setElapsed(0);
     setMeetingState('active');
@@ -1104,14 +1398,44 @@ export function MeetingScreen({ route, navigation }: any) {
     const ok = await runTurn([], '');
     startingRef.current = false;
     if (!ok && !endedRef.current) setMeetingState('preparing');
-  }, [camera.ready, recognizer.supported, runTurn, showNotice, t]);
+  }, [applyBilling, camera.ready, categoryId, recognizer.supported, rememberMeeting,
+    runTurn, showNotice, t]);
 
   /* -------------------- ending -------------------- */
+
+  /**
+   * Settle the meeting without an evaluation.
+   *
+   * Used when the call produced too little to evaluate, so `/finish` will never
+   * be called and the meeting would otherwise sit `live` — holding minutes the
+   * user cannot spend — until the sweeper reaches it. Best-effort: the sweeper
+   * is the backstop, so a failure here is not worth telling anyone about.
+   */
+  const closeClock = useCallback(async () => {
+    // The REF, not the state: this runs from an unmount destructor, where a
+    // stale closure over state would settle the wrong meeting or none at all.
+    const id = meetingIdRef.current;
+    if (!id || clockClosedRef.current) return;
+    clockClosedRef.current = true;
+    try {
+      await api.post(`/meeting/${id}/end`);
+    } catch {
+      /* the server's sweeper settles it within the abandon window */
+    }
+    refreshBalance().catch(() => {});
+  }, [refreshBalance]);
+
+  const closeClockRef = useRef(closeClock);
+  useEffect(() => { closeClockRef.current = closeClock; });
 
   const requestEvaluation = useCallback(async () => {
     if (evaluatingRef.current) return;
     const history = historySnapshot();
-    if (history.length < 2) { setEvalPhase('none'); return; }
+    if (history.length < 2) {
+      setEvalPhase('none');
+      void closeClock();
+      return;
+    }
 
     evaluatingRef.current = true;
     setEvalPhase('loading');
@@ -1120,9 +1444,17 @@ export function MeetingScreen({ route, navigation }: any) {
     try {
       const { data } = await api.post('/meeting/finish', {
         categoryId, history, language, context,
+        ...(meetingIdRef.current ? { meetingId: meetingIdRef.current } : null),
       });
+      // /finish settles the meeting itself, so the clock is closed even though
+      // this screen never called /end.
+      clockClosedRef.current = true;
       setEvaluation(data?.evaluation ?? null);
       setEvalPhase(data?.evaluation ? 'ready' : 'none');
+      // The receipt. `skippedSeconds` is the whole trust argument for billing
+      // by time, printed on the user's own bill.
+      setReceipt(data?.billing ?? null);
+      refreshBalance().catch(() => {});
     } catch (err: any) {
       setEvalErrorKind(apiErrorKind(err));
       setEvalError(apiErrorMessage(err, t('meeting.evalFailedBody')));
@@ -1130,11 +1462,23 @@ export function MeetingScreen({ route, navigation }: any) {
     } finally {
       evaluatingRef.current = false;
     }
-  }, [categoryId, context, historySnapshot, language, t]);
+  }, [categoryId, closeClock, context, historySnapshot, language, refreshBalance, t]);
 
   const leaveScreen = useCallback(() => {
     if (navigation?.canGoBack?.()) navigation.goBack();
     else navigation?.navigate?.('Main');
+  }, [navigation]);
+
+  /**
+   * Buy minutes without hanging up.
+   *
+   * This is a stack PUSH, so the meeting screen stays mounted: the camera, the
+   * recognizer and the heartbeat all keep running behind the store, and a
+   * top-up that completes simply raises the balance the next tick reads. Ending
+   * the call to sell someone something is how you lose both.
+   */
+  const goBuyMinutes = useCallback(() => {
+    navigation?.navigate?.('Subscription');
   }, [navigation]);
 
   /**
@@ -1154,7 +1498,13 @@ export function MeetingScreen({ route, navigation }: any) {
     saveOnExitRef.current = opts.saveRecording;
     teardownRef.current({ saveRecording: opts.saveRecording });
 
-    if (!hadTurns) { leaveScreen(); return; }
+    if (!hadTurns) {
+      // Nothing to evaluate, so no /finish is coming — settle the clock here
+      // or the reservation sits out the whole abandon window.
+      void closeClockRef.current();
+      leaveScreen();
+      return;
+    }
 
     setMeetingState('ended');
     void requestEvaluation();
@@ -1237,6 +1587,28 @@ export function MeetingScreen({ route, navigation }: any) {
     return { label: t('meeting.stateLive'), color: STAGE.live };
   }, [meetingState, t]);
 
+  /* -------------------- the countdown -------------------- *
+   *
+   * Interpolated between heartbeats from the last reading the SERVER sent,
+   * never counted independently: the display can only walk down from the
+   * server's number until the next tick corrects it. `elapsed` re-renders this
+   * every second while the call is live.
+   * ------------------------------------------------------------------ */
+  const lastReading = billingAtRef.current;
+  const remainingSeconds = !lastReading
+    ? null
+    : meetingState === 'active' || meetingState === 'closing'
+      ? Math.max(0, lastReading.remaining - Math.floor((Date.now() - lastReading.at) / 1000))
+      : lastReading.remaining;
+
+  // The chip shows what is left, not what has passed: during a metered call the
+  // remaining balance is the number the candidate needs. Elapsed time is on the
+  // receipt afterwards, from the server's own count.
+  const clockLabel = remainingSeconds !== null
+    ? t('meeting.remaining', { clock: formatClock(remainingSeconds) })
+    : formatDuration(elapsed);
+  const lowOnTime = !!billing && (billing.warn || billing.exhausted);
+
   /* ================================================================ *
    * Render — no camera or microphone
    * ================================================================ */
@@ -1311,9 +1683,13 @@ export function MeetingScreen({ route, navigation }: any) {
         evaluation={evaluation}
         error={evalError}
         errorKind={evalErrorKind}
-        onUpgrade={() => navigation.navigate('Subscription')}
+        onUpgrade={goBuyMinutes}
         categoryName={categoryName}
+        // The wall-clock the candidate sat through. What they were CHARGED is a
+        // different number and comes from the receipt below — conflating them
+        // is exactly the confusion the receipt exists to prevent.
         durationLabel={formatDuration(elapsed)}
+        receipt={receipt}
         onRetry={() => { void requestEvaluation(); }}
         onHome={leaveScreen}
       />
@@ -1413,8 +1789,10 @@ export function MeetingScreen({ route, navigation }: any) {
 
         <View style={{ alignItems: 'flex-end', gap: theme.spacing.xs }}>
           <StatusChip
-            label={`${stateChip.label} · ${formatDuration(elapsed)}`}
-            dotColor={stateChip.color}
+            label={`${stateChip.label} · ${clockLabel}`}
+            dotColor={lowOnTime ? STAGE.warn : stateChip.color}
+            ink={lowOnTime ? STAGE.warnInk : STAGE.ink}
+            bg={lowOnTime ? STAGE.warnSoft : STAGE.chrome}
             pulse={meetingState === 'active'}
           />
           {recording ? (
@@ -1558,6 +1936,37 @@ export function MeetingScreen({ route, navigation }: any) {
             </MotiView>
           ) : null}
         </AnimatePresence>
+
+        {/* ---- the meter, when it has something to say ---- */}
+        {startBlocked && meetingState === 'preparing' ? (
+          <StageBanner
+            icon="alert-circle"
+            tone="danger"
+            title={t('meeting.startBlockedTitle')}
+            body={t('meeting.startBlockedBody', {
+              required: durationLabel(startBlocked.requiredSeconds, t),
+              balance: balanceLabel(startBlocked.balanceSeconds, t),
+            })}
+            actionLabel={t('meeting.startBlockedCta')}
+            onAction={goBuyMinutes}
+          />
+        ) : null}
+
+        {billing && (meetingState === 'active' || meetingState === 'closing')
+          && (billing.exhausted || billing.warn) ? (
+            <StageBanner
+              icon={billing.exhausted ? 'hourglass' : 'time-outline'}
+              tone="warn"
+              title={t(billing.exhausted ? 'meeting.outTitle' : 'meeting.warnTitle')}
+              body={billing.exhausted
+                ? t(hrGender === 'male' ? 'meeting.outBodyM' : 'meeting.outBodyF')
+                : t('meeting.warnBody', {
+                  label: balanceLabel(remainingSeconds ?? billing.remainingSeconds, t),
+                })}
+              actionLabel={t('meeting.buyMore')}
+              onAction={goBuyMinutes}
+            />
+          ) : null}
 
         {meetingState === 'preparing' ? (
           <View style={{ width: '100%', maxWidth: theme.layout.maxContentWidth, gap: theme.spacing.sm, alignItems: 'center' }}>
@@ -1982,7 +2391,8 @@ export function MeetingScreen({ route, navigation }: any) {
  * ------------------------------------------------------------------ */
 
 function ResultView({
-  phase, evaluation, error, errorKind = 'unknown', categoryName, durationLabel, onRetry, onHome, onUpgrade,
+  phase, evaluation, error, errorKind = 'unknown', categoryName,
+  durationLabel: wallClockLabel, receipt, onRetry, onHome, onUpgrade,
 }: {
   phase: EvalPhase;
   evaluation: Evaluation | null;
@@ -1990,7 +2400,10 @@ function ResultView({
   errorKind?: ApiErrorKind;
   onUpgrade?: () => void;
   categoryName?: string;
+  /** Wall-clock spent on the call, from the client's own display timer. */
   durationLabel: string;
+  /** What was actually charged, from the server. Null for a legacy meeting. */
+  receipt: Receipt | null;
   onRetry: () => void;
   onHome: () => void;
 }) {
@@ -2076,9 +2489,35 @@ function ResultView({
         <Badge label={t('meeting.resultKicker')} tone="success" icon="checkmark-circle" />
         <Text role="h1" weight="bold">{t('meeting.resultTitle')}</Text>
         <Text role="bodySm" tone="muted">
-          {[categoryName, durationLabel].filter(Boolean).join(' · ')}
+          {[categoryName, wallClockLabel].filter(Boolean).join(' · ')}
         </Text>
       </View>
+
+      {/* ---------------------------- the receipt ----------------------------
+          The charged duration, the seconds we deliberately did NOT charge, and
+          what is left. The middle line is the entire trust argument for billing
+          by time: it tells the candidate, on their own bill, that the meter
+          stopped when the interview did. */}
+      {receipt ? (
+        <Card variant="outlined" padding="lg" style={{ gap: theme.spacing.xs }}>
+          <View style={[styles.row, { gap: theme.spacing.sm }]}>
+            <Ionicons name="receipt-outline" size={theme.layout.icon.md} color={theme.colors.textMuted} />
+            <Text role="h4" weight="bold">{t('meeting.receiptTitle')}</Text>
+          </View>
+          <Text role="bodySm">
+            {t('meeting.receiptBilled', { label: durationLabel(receipt.billedSeconds, t) })}
+          </Text>
+          {receipt.skippedSeconds > 0 ? (
+            <Text role="bodySm" tone="success">
+              {t('meeting.receiptSkipped', { label: durationLabel(receipt.skippedSeconds, t) })}
+            </Text>
+          ) : null}
+          <Text role="bodySm" tone="secondary">
+            {t('meeting.receiptRemaining', { label: balanceLabel(receipt.remainingSeconds, t) })}
+          </Text>
+          <Text role="caption" tone="muted">{t('meeting.receiptFreeEval')}</Text>
+        </Card>
+      ) : null}
 
       <Card padding="lg" style={{ alignItems: 'center', gap: theme.spacing.md }}>
         <ScoreRing score={score} size={theme.layout.avatar.xl + theme.spacing['3xl']} label={t('meeting.overallScore')} />

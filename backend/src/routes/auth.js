@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { prisma } from '../db/prisma.js';
 import { env } from '../config/env.js';
-import { authLimiter } from '../middleware/rateLimit.js';
+import { authLimiter, registerLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import { signUserToken, signUserRefreshToken } from '../middleware/auth.js';
 
@@ -43,7 +43,11 @@ function toPublicUser(u) {
   };
 }
 
-router.post('/register', authLimiter, asyncHandler(async (req, res) => {
+// BOTH limiters, and they do different jobs: authLimiter skips successful
+// requests (right for guessing, useless against sign-up farming), while
+// registerLimiter counts every one. Each free account is worth ten minutes of
+// model time, so creating them cannot be free and unlimited.
+router.post('/register', registerLimiter, authLimiter, asyncHandler(async (req, res) => {
   const body = registerSchema.parse(req.body);
   const existing = await prisma.user.findUnique({ where: { email: body.email } });
   if (existing) throw new HttpError(409, 'البريد الإلكتروني مستخدم بالفعل / Email already registered');

@@ -1,30 +1,50 @@
 /**
- * Daily quota + premium entitlement.
+ * RETIRED: the daily question quota.
  *
- * Both were previously re-implemented per route with subtly different rules,
- * and both were exploitable:
+ * The product no longer meters questions per day. It meters TIME: a ten-minute
+ * free trial, purchased packs that never expire, and a subscription allowance
+ * that does. The implementation moved to services/billing/minutes.js and
+ * services/billing/meetings.js.
  *
- * 1. RACE. `sessions.js` read the counter, compared it, called the AI, and
- *    only then incremented. Ten concurrent requests all read "4 used" and all
- *    passed the check, so a free user could spend ten AI calls against a
- *    five-call limit. The consume below is a single atomic conditional UPDATE.
+ * This file survives one release as a compatibility shim, for one reason:
+ * ROLLBACK. Migration 002 is additive and deliberately leaves
+ * `users.daily_questions_used` and `users.last_reset_date` in place, so the
+ * previous backend can be redeployed in ninety seconds if this one misbehaves.
+ * Deleting the module — and the columns — before that window closes is how a
+ * bad deploy becomes an outage. Migration 003 drops both, and this file goes
+ * with them.
  *
- * 2. UNMETERED FEATURES. The whole /api/meeting surface — the most expensive
- *    calls in the product — consumed no quota at all.
+ * What is still LIVE here:
+ *   - `hasPremium` — re-exported from billing/minutes.js, which is now its home
+ *     (the charging paths need it, and importing it back out of this module
+ *     would make the two circular). Every existing importer keeps working.
+ *   - `cairoToday` — routes/admin.js still uses it for Cairo-day reporting.
  *
- * 3. TIMEZONE. The reset boundary used server-local midnight (UTC in prod),
- *    which is 2am Cairo. Users lost their allowance mid-evening. The day is
- *    now computed in Africa/Cairo.
+ * What is DEAD here: consumeQuota, requireQuota, refundQuota, quotaSnapshot and
+ * QUOTA_COST. They now translate "units" into seconds against the minute
+ * balance so that nothing breaks mid-refactor, but no route should call them —
+ * routes charge seconds explicitly, because a "unit" was never a real thing and
+ * pretending otherwise is what let /meeting run unmetered for a whole release.
  */
 
 import { prisma } from '../db/prisma.js';
-import { env } from '../config/env.js';
-import { freeDailyLimit } from './appSettings.js';
 import { HttpError } from '../utils/asyncHandler.js';
+import {
+  hasPremium, chargeFlat, refundFlat, balanceSnapshot, loadBalanceUser,
+  CFG, toMinutes,
+} from './billing/minutes.js';
+
+export { hasPremium };
 
 const APP_TZ = 'Africa/Cairo';
 
-/** Today's date in the app's timezone, as a UTC-midnight Date for a DATE column. */
+/**
+ * Today's date in the app's timezone, as a UTC-midnight Date for a DATE column.
+ *
+ * Still used by the admin dashboard: the product's day boundary is Africa/Cairo
+ * (server-local midnight is 2am Cairo), so "today's signups" must be counted
+ * against the day the users actually experienced.
+ */
 export function cairoToday(now = new Date()) {
   // en-CA renders as YYYY-MM-DD, which is directly parseable.
   const ymd = new Intl.DateTimeFormat('en-CA', {
@@ -34,127 +54,81 @@ export function cairoToday(now = new Date()) {
 }
 
 /**
- * True when the user currently holds premium access.
+ * DEPRECATED. Cost in quota units per feature, translated to seconds.
  *
- * Reads the denormalised `premiumUntil` rather than joining subscriptions, so
- * this is cheap enough to call on every request. `plan` alone is not trusted:
- * if the expiry sweep fails to run (it did not run at all on the serverless
- * deploy), `plan` stays 'premium' forever and one payment buys lifetime access.
+ * Kept only so an unconverted caller still charges something sane instead of
+ * charging nothing.
  */
-export function hasPremium(user, now = new Date()) {
-  if (!user) return false;
-  return user.plan === 'premium' && !!user.premiumUntil && user.premiumUntil > now;
-}
-
-/**
- * Atomically consume `cost` units of today's allowance.
- *
- * The reset and the decrement happen in ONE statement, so there is no window
- * between checking and spending. Premium users match the first branch of the
- * WHERE and are never blocked.
- *
- * @returns {Promise<{allowed: boolean, used: number, limit: number|null, remaining: number|null}>}
- */
-export async function consumeQuota(userId, cost = 1) {
-  const today = cairoToday();
-  const limit = freeDailyLimit();
-  const now = new Date();
-
-  // One UPDATE that simultaneously: rolls the counter over if the stored reset
-  // date is stale, and increments — but only if the resulting value stays
-  // within the allowance (or the user is premium).
-  const updated = await prisma.$executeRaw`
-    UPDATE users
-       SET daily_questions_used =
-             CASE WHEN last_reset_date IS NULL OR last_reset_date < ${today}
-                  THEN ${cost}
-                  ELSE daily_questions_used + ${cost} END,
-           last_reset_date = ${today}
-     WHERE id = ${userId}
-       AND is_disabled = 0
-       AND (
-             (plan = 'premium' AND premium_until IS NOT NULL AND premium_until > ${now})
-             OR (CASE WHEN last_reset_date IS NULL OR last_reset_date < ${today}
-                      THEN 0 ELSE daily_questions_used END) + ${cost} <= ${limit}
-           )
-  `;
-
-  if (updated === 0) {
-    // Either over the limit, disabled, or gone. Read back to say which.
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { plan: true, premiumUntil: true, dailyQuestionsUsed: true, lastResetDate: true, isDisabled: true },
-    });
-    if (!user) throw new HttpError(404, 'User not found');
-    if (user.isDisabled) throw new HttpError(403, 'This account is suspended', undefined, 'ACCOUNT_DISABLED');
-
-    const staleReset = !user.lastResetDate || user.lastResetDate < today;
-    const used = staleReset ? 0 : user.dailyQuestionsUsed;
-    return { allowed: false, used, limit, remaining: Math.max(0, limit - used) };
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { plan: true, premiumUntil: true, dailyQuestionsUsed: true },
-  });
-  const premium = hasPremium(user);
-
-  return {
-    allowed: true,
-    used: user.dailyQuestionsUsed,
-    limit: premium ? null : limit,
-    remaining: premium ? null : Math.max(0, limit - user.dailyQuestionsUsed),
-  };
-}
-
-/**
- * Give back quota that was consumed for work that then failed.
- *
- * Charging a user for an AI call that errored is the kind of detail that
- * generates support tickets and refund requests, so every route that consumes
- * up-front must refund on failure.
- */
-export async function refundQuota(userId, cost = 1) {
-  await prisma.$executeRaw`
-    UPDATE users
-       SET daily_questions_used = GREATEST(0, daily_questions_used - ${cost})
-     WHERE id = ${userId}
-  `;
-}
-
-/** Throwing wrapper for routes that just need the gate. */
-export async function requireQuota(userId, cost = 1) {
-  const q = await consumeQuota(userId, cost);
-  if (!q.allowed) {
-    throw new HttpError(
-      402,
-      'Daily free limit reached',
-      { used: q.used, limit: q.limit, remaining: 0 },
-      'QUOTA_EXCEEDED',
-    );
-  }
-  return q;
-}
-
-/** Read-only snapshot for /user/me and the home screen. */
-export async function quotaSnapshot(user) {
-  const today = cairoToday();
-  const premium = hasPremium(user);
-  const stale = !user.lastResetDate || user.lastResetDate < today;
-  const used = stale ? 0 : user.dailyQuestionsUsed;
-  return {
-    plan: premium ? 'premium' : 'free',
-    premiumUntil: user.premiumUntil ?? null,
-    used,
-    limit: premium ? null : freeDailyLimit(),
-    remaining: premium ? null : Math.max(0, freeDailyLimit() - used),
-  };
-}
-
-/** Cost in quota units per feature. Meetings are far more expensive than one answer. */
 export const QUOTA_COST = {
   answer: 1,
   meetingTurn: 1,
   meetingPrepare: 2,
   meetingFinish: 2,
 };
+
+const unitsToSeconds = (cost) => Math.max(0, Math.round(Number(cost) || 0)) * CFG.practiceAnswer();
+
+/** DEPRECATED shim — charges `cost` units' worth of seconds. */
+export async function consumeQuota(userId, cost = 1) {
+  const seconds = unitsToSeconds(cost);
+  try {
+    const receipt = await chargeFlat({ userId, seconds, note: 'legacy_quota_shim' });
+    const user = await loadBalanceUser(userId);
+    const snap = await balanceSnapshot(user);
+    return { allowed: true, used: 0, limit: null, remaining: snap.minutesRemaining, receipt };
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 402) {
+      return { allowed: false, used: 0, limit: null, remaining: 0 };
+    }
+    throw err;
+  }
+}
+
+/** DEPRECATED shim. */
+export async function refundQuota(userId, cost = 1) {
+  const seconds = unitsToSeconds(cost);
+  await refundFlat({ userId, subUsed: 0, perpUsed: seconds }, 'legacy_quota_shim');
+}
+
+/** DEPRECATED shim — throwing wrapper. */
+export async function requireQuota(userId, cost = 1) {
+  const q = await consumeQuota(userId, cost);
+  if (!q.allowed) {
+    throw new HttpError(
+      402,
+      'لم يتبقَّ رصيد من دقائق المقابلات / You have run out of interview minutes',
+      { reason: 'insufficient_minutes', requiredSeconds: unitsToSeconds(cost) },
+      'QUOTA_EXCEEDED',
+    );
+  }
+  return q;
+}
+
+/**
+ * Read-only snapshot, in BOTH vocabularies.
+ *
+ * Old clients (the cached /app bundle and the installed Play build) read
+ * `used`/`limit`/`remaining`; new clients read the second half. `limit: null`
+ * is what the old client renders as "unmetered", which is the least-wrong thing
+ * an old client can be told about a balance it has no UI for.
+ */
+export async function quotaSnapshot(user) {
+  const full = user?.balanceSeconds === undefined ? await loadBalanceUser(user.id) : user;
+  const snap = await balanceSnapshot(full);
+  return {
+    plan: snap.plan,
+    premiumUntil: snap.premiumUntil,
+    used: 0,
+    limit: null,
+    remaining: null,
+    ...snap,
+    minutesRemaining: toMinutes(snap.availableSeconds),
+  };
+}
+
+/** Escape hatch for a caller that only has an id. */
+export async function quotaSnapshotFor(userId) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new HttpError(404, 'User not found');
+  return quotaSnapshot(user);
+}

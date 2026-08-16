@@ -2,7 +2,7 @@ export const LOCALE = 'ar-EG';
 /** The product's day boundary (backend/src/services/quota.js). */
 export const TIMEZONE = 'Africa/Cairo';
 
-export type NumFormat = 'int' | 'compact' | 'percent' | 'bytes' | 'ms';
+export type NumFormat = 'int' | 'decimal' | 'compact' | 'percent' | 'bytes' | 'ms';
 
 const cache = new Map<string, Intl.NumberFormat>();
 function nf(options: Intl.NumberFormatOptions): Intl.NumberFormat {
@@ -15,8 +15,12 @@ function nf(options: Intl.NumberFormatOptions): Intl.NumberFormat {
   return f;
 }
 
-export function formatNumber(value: number, format: NumFormat = 'int'): string {
+/** `digits` applies to 'decimal' only — scores and averages that would lie if
+ *  rounded to a whole number. */
+export function formatNumber(value: number, format: NumFormat = 'int', digits = 1): string {
   switch (format) {
+    case 'decimal':
+      return nf({ minimumFractionDigits: 0, maximumFractionDigits: digits }).format(value);
     case 'compact':
       return nf({ notation: 'compact', maximumFractionDigits: 1 }).format(value);
     case 'percent':
@@ -39,6 +43,107 @@ export function formatNumber(value: number, format: NumFormat = 'int'): string {
     default:
       return nf({ maximumFractionDigits: 0 }).format(value);
   }
+}
+
+export interface CountForms {
+  /** Used alone, without a numeral: "سؤال واحد". */
+  one: string;
+  /** Used alone, without a numeral: "سؤالان". */
+  two: string;
+  /** 3–10, with the numeral: "٥ أسئلة". */
+  few: string;
+  /** 0 and 11+, with the numeral: "١١ سؤالًا". */
+  many: string;
+}
+
+/**
+ * Arabic number agreement, for the counts that appear inside a sentence —
+ * confirmation titles and bulk-result toasts. Arabic does not pluralise like
+ * English: 1 and 2 have their own forms and take no numeral, 3–10 take the
+ * plural, and 11+ take the singular accusative. `${n} سؤالًا` is wrong for every
+ * n between 3 and 10, which is most of them.
+ *
+ * Grid cells and stat tiles keep using <Num>; this is for prose.
+ */
+export function countAr(n: number, forms: CountForms): string {
+  if (n === 1) return forms.one;
+  if (n === 2) return forms.two;
+  const noun = n >= 3 && n <= 10 ? forms.few : forms.many;
+  return `${formatNumber(n)} ${noun}`;
+}
+
+/** The two nouns this admin counts in prose often enough to name once. */
+export const QUESTION_FORMS: CountForms = {
+  one: 'سؤالًا واحدًا',
+  two: 'سؤالين',
+  few: 'أسئلة',
+  many: 'سؤالًا',
+};
+
+export const MINUTE_FORMS: CountForms = {
+  one: 'دقيقة واحدة',
+  two: 'دقيقتان',
+  few: 'دقائق',
+  many: 'دقيقة',
+};
+
+export const SECOND_FORMS: CountForms = {
+  one: 'ثانية واحدة',
+  two: 'ثانيتان',
+  few: 'ثوانٍ',
+  many: 'ثانية',
+};
+
+/* ------------------------------- durations -------------------------------
+ * The minute balance is stored, charged and returned in whole SECONDS
+ * (backend/src/services/billing/minutes.js). Minutes exist only for reading,
+ * so every conversion happens here and none of it happens in a component.
+ */
+
+/**
+ * Seconds → whole minutes, ALWAYS ROUNDED DOWN.
+ *
+ * Matches `toMinutes()` in services/billing/minutes.js, and the direction
+ * matters: understating a balance by under a minute errs in the customer's
+ * favour, while rounding 3m50s up to "4 minutes" produces "it said four and cut
+ * me off at three". Support reads the same number the app shows the user.
+ */
+export function secondsToMinutes(seconds: number): number {
+  return Math.floor(Math.max(0, seconds) / 60);
+}
+
+/**
+ * Seconds → `m:ss` (or `h:mm:ss`). The ledger's unit.
+ *
+ * The statement is where a charge gets reconciled against an interview, so it
+ * shows the seconds the balance was actually moved by — a ledger rounded to
+ * minutes cannot be added up and checked against the balance it produced.
+ */
+export function formatClock(totalSeconds: number): string {
+  const total = Math.max(0, Math.round(totalSeconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => nf({ minimumIntegerDigits: 2, useGrouping: false }).format(n);
+  const plain = (n: number) => nf({ useGrouping: false }).format(n);
+  return h > 0 ? `${plain(h)}:${pad(m)}:${pad(s)}` : `${plain(m)}:${pad(s)}`;
+}
+
+/**
+ * Seconds → Arabic prose: «٧ دقائق و٢٢ ثانية».
+ *
+ * For sentences and receipts, where `7:22` reads as a time of day. Seconds are
+ * dropped once the figure passes an hour — nobody reconciles a two-hour balance
+ * to the second, and the extra component just makes the sentence unreadable.
+ */
+export function formatDurationAr(totalSeconds: number): string {
+  const total = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+
+  if (minutes === 0) return countAr(seconds, SECOND_FORMS);
+  if (seconds === 0 || minutes >= 60) return countAr(minutes, MINUTE_FORMS);
+  return `${countAr(minutes, MINUTE_FORMS)} و${countAr(seconds, SECOND_FORMS)}`;
 }
 
 export function formatMoney(major: number, currency: string, precision: number): string {

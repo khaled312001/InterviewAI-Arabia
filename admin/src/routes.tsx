@@ -58,7 +58,7 @@ export function AppRoutes() {
         <Route path="/categories" element={guard(ALL, <CategoriesPage />)} />
 
         <Route path="/subscriptions" element={guard(['super_admin'], <SubscriptionsPage />)} />
-        <Route path="/payments" element={flagged('payments', guard(['super_admin'], <PaymentsPage />))} />
+        <Route path="/payments" element={guard(['super_admin'], <PaymentsPage />)} />
 
         <Route path="/ai-usage" element={guard(ALL, <AIUsagePage />)} />
         <Route path="/reports" element={guard(['super_admin', 'moderator'], <ReportsPage />)} />
@@ -66,14 +66,16 @@ export function AppRoutes() {
         <Route path="/settings" element={guard(ALL, <SettingsPage />)} />
         <Route
           path="/integrations/payments"
-          element={flagged('integrations', guard(['super_admin'], <PaymentsIntegrationPage />))}
+          element={guard(['super_admin'], <PaymentsIntegrationPage />)}
         />
         <Route
           path="/integrations/ai"
-          element={flagged('integrations', guard(['super_admin'], <AiIntegrationPage />))}
+          element={guard(['super_admin'], <AiIntegrationPage />)}
         />
         <Route path="/admins" element={guard(['super_admin'], <AdminsPage />)} />
-        <Route path="/audit" element={flagged('audit', guard(['super_admin'], <AuditLogPage />))} />
+        {/* No longer flagged: GET /admin/audit exists and middleware/auditLog.js
+            writes a row for every successful admin mutation. */}
+        <Route path="/audit" element={guard(['super_admin'], <AuditLogPage />)} />
 
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/404" element={<NotFoundPage />} />

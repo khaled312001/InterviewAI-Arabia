@@ -55,11 +55,20 @@ export function requireAdmin(...allowedRoles) {
       if (!token) throw new HttpError(401, 'Authentication required');
       const payload = jwt.verify(token, env.JWT_SECRET);
       if (payload.type !== 'admin') throw new HttpError(403, 'Admin access required');
-      if (allowedRoles.length && !allowedRoles.includes(payload.role)) {
-        throw new HttpError(403, 'Insufficient role');
-      }
+
+      // Authorisation reads the DB row, never `payload.role`. The token carries
+      // whatever role it was minted with, so checking the claim meant a demoted
+      // super_admin kept full authority — including the credential writes under
+      // /admin/integrations — until the token expired. Worse, it was invisible:
+      // GET /admin/auth/me returns the *current* role, so the admin app hid
+      // every super_admin control while the API still honoured the old one, and
+      // the operator believed the demotion had landed. Deactivation was already
+      // enforced from the DB; role now is too, so both take effect immediately.
       const admin = await prisma.adminUser.findUnique({ where: { id: BigInt(payload.sub) } });
       if (!admin || !admin.isActive) throw new HttpError(403, 'Admin deactivated');
+      if (allowedRoles.length && !allowedRoles.includes(admin.role)) {
+        throw new HttpError(403, 'Insufficient role');
+      }
       req.admin = admin;
       next();
     } catch (err) {

@@ -27,8 +27,9 @@ import { useTranslation } from 'react-i18next';
 import { api, API_BASE } from '../api/client';
 import { secureStorage } from '../storage/secureStorage';
 import { Screen, Text, Button, Card, Input } from '../components';
+import { useBalance } from '../store/balance';
 import { useAppTheme } from '../theme/useTheme';
-import { categoryName } from './mainShared';
+import { categoryName, durationLabel } from './mainShared';
 import { PERSONA, personaAvatarUrl } from './interviewerPersona';
 import type { InterviewerGender } from './interviewerPersona';
 import type { SpeechLang } from '../speech/webSpeech';
@@ -76,10 +77,25 @@ export function MeetingSetupScreen({ route, navigation }: any) {
   const [analyzing, setAnalyzing] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  /** Set by a 402 from /meeting/prepare — the CV analysis could not be paid
+   *  for. The interview itself is still startable without a CV. */
+  const [outOfMinutes, setOutOfMinutes] = useState(false);
+
+  const balance = useBalance((s) => s.balance);
+  const refreshBalance = useBalance((s) => s.refresh);
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data.categories)).catch(() => {});
-  }, []);
+    refreshBalance().catch(() => {});
+  }, [refreshBalance]);
+
+  /** What analysing a CV costs, in the server's own number. */
+  const cvCost = balance?.costs?.cvAnalysisSeconds ?? null;
+  const cvCostHint = cvCost === null
+    ? null
+    : cvCost === 0
+      ? t('meetingSetup.cvCostFree')
+      : t('meetingSetup.cvCost', { label: durationLabel(cvCost, t) });
 
   const selectedCategory = useMemo(
     () => categories.find((c) => c.id === categoryId) || null,
@@ -141,6 +157,7 @@ export function MeetingSetupScreen({ route, navigation }: any) {
     setAnalyzing(true);
     setFormError(null);
     setCvError(null);
+    setOutOfMinutes(false);
 
     // Held outside the try so the catch can prefer the server's own wording
     // (quota, premium, unsupported CV) over the generic localised fallback,
@@ -171,6 +188,9 @@ export function MeetingSetupScreen({ route, navigation }: any) {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         serverMessage = typeof body?.error === 'string' ? body.error : null;
+        // 402 here is the CV-analysis charge, not the interview: say so, and
+        // offer the way out instead of a dead "try again".
+        if (res.status === 402 && body?.code === 'QUOTA_EXCEEDED') setOutOfMinutes(true);
         throw new Error('prepare-failed');
       }
       const data = await res.json();
@@ -462,9 +482,26 @@ export function MeetingSetupScreen({ route, navigation }: any) {
         </Pressable>
 
         {cvError ? <Notice tone="warning" text={cvError} /> : null}
+
+        {/* The CV analysis is a flat charge, so it is stated before the file is
+            picked rather than discovered on the bill. The number is the
+            server's; when it is zero (subscribers) the sentence changes rather
+            than printing "0 seconds". */}
+        {cvCostHint ? (
+          <Text role="micro" tone="muted">{cvCostHint}</Text>
+        ) : null}
       </Card>
 
       {formError ? <Notice tone="danger" text={formError} /> : null}
+
+      {outOfMinutes ? (
+        <Button
+          title={t('meeting.quotaCta')}
+          variant="accent"
+          onPress={() => navigation.navigate('Subscription')}
+          iconLeft={<Ionicons name="time" size={theme.layout.icon.md} color={theme.colors.onAccent} />}
+        />
+      ) : null}
 
       <Button
         title={analyzing ? t('meetingSetup.ctaLoading') : t('meetingSetup.cta')}

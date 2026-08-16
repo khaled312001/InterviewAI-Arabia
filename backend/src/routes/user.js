@@ -7,6 +7,10 @@ import { prisma } from '../db/prisma.js';
 import { query, queryOne } from '../db/mysql.js';
 import { requireUser } from '../middleware/auth.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
+import {
+  balanceSnapshot, loadBalanceUser, ledgerFor, ensureTrialGranted, CFG,
+} from '../services/billing/minutes.js';
+import { ensureCurrentCycle } from '../services/billing/cycles.js';
 
 const router = Router();
 
@@ -24,6 +28,14 @@ function toPublicUser(u) {
     name: u.name,
     language: u.language,
     plan: u.plan,
+    premiumUntil: u.premiumUntil ?? null,
+    // The balance, in both units: seconds are exact and drive the client's
+    // countdown, minutes are floored for display. Floored, never rounded —
+    // overstating produces "it said 5 minutes and cut me off at 4".
+    balanceSeconds: u.balanceSeconds ?? 0,
+    minutesRemaining: Math.floor(Math.max(0, u.balanceSeconds ?? 0) / 60),
+    // DEPRECATED, still emitted for one release so an old client that reads
+    // them keeps rendering. Nothing writes them any more.
     dailyQuestionsUsed: u.dailyQuestionsUsed,
     lastResetDate: u.lastResetDate,
     createdAt: u.createdAt,
@@ -97,6 +109,24 @@ router.delete('/me', requireUser, asyncHandler(async (req, res) => {
     prisma.session.deleteMany({ where: { userId: id } }),   // cascades to answers
     prisma.refreshToken.deleteMany({ where: { userId: id } }),
     prisma.passwordReset.deleteMany({ where: { userId: id } }),
+    // CANCEL THE SUBSCRIPTION, don't just clear the mirror.
+    //
+    // services/maintenance.js:reconcilePremiumMirror() derives plan and
+    // premium_until FROM the subscription rows — deliberately, because the
+    // mirror is the entitlement and the rows are the ledger that explains it.
+    // Clearing the mirror while leaving an active row with a future expiry was
+    // therefore not a deletion but a race: within the hour the reconcile job
+    // wrote plan='premium' back onto the tombstone, and for the rest of the
+    // term the deleted account counted as a premium user in analytics, showed
+    // up in the admin's premium filter, and kept being credited cycle minutes.
+    // Cancelling is also the only thing that tells the operator a paying
+    // customer churned. The row itself survives: it is the explanation for
+    // money already taken, which is exactly what the rest of this handler is
+    // careful to keep.
+    prisma.subscription.updateMany({
+      where: { userId: id, status: { in: ['active', 'pending'] } },
+      data: { status: 'cancelled', cancelledAt: new Date(), autoRenew: false },
+    }),
     prisma.user.update({
       where: { id },
       data: {
@@ -114,6 +144,80 @@ router.delete('/me', requireUser, asyncHandler(async (req, res) => {
   ]);
 
   res.json({ deleted: true });
+}));
+
+/* -------------------------------------------------------------------------
+ * GET /api/user/balance — "you have 43 minutes left"
+ *
+ * Also the FIRST place the free trial is granted, because the home screen calls
+ * this on mount. Granting lazily here rather than at registration keeps the
+ * trial size tunable without a backfill, keeps dormant registrations off the
+ * books as a liability, and attaches the grant to a request that carries the
+ * install header we claim against. The user-visible effect is identical: a new
+ * account sees "رصيدك: ١٠ دقائق" before it taps anything.
+ * ---------------------------------------------------------------------- */
+
+router.get('/balance', requireUser, asyncHandler(async (req, res) => {
+  const trial = await ensureTrialGranted(req.userId, {
+    installId: req.get('x-install-id') || null,
+  });
+
+  // A subscriber's next cycle is credited by an hourly job, and between the
+  // instant the old cycle expired and that job running they read zero. The home
+  // screen calls this on mount, so crediting it here is what makes the gap
+  // invisible — and it uses the job's own idempotency key, so the two can never
+  // both credit the same cycle. No-op for everyone else.
+  await ensureCurrentCycle(req.userId, new Date(), await loadBalanceUser(req.userId));
+
+  const balance = await balanceSnapshot(await loadBalanceUser(req.userId));
+
+  res.json({
+    ...balance,
+    // Flat fees are stated, never hidden. The client renders them on the
+    // pricing screen next to the per-minute rate.
+    costs: {
+      practiceAnswerSeconds: balance.plan === 'premium' ? 0 : CFG.practiceAnswer(),
+      cvAnalysisSeconds: balance.plan === 'premium' ? 0 : CFG.cvPrepare(),
+      // A subscriber's floor is one heartbeat rather than nothing — see the
+      // note on advanceMeeting(): a turn that costs nothing can be issued in
+      // parallel for nothing. It never binds on a real exchange.
+      minTurnSeconds: balance.plan === 'premium'
+        ? Math.min(CFG.minTurn(), CFG.tick())
+        : CFG.minTurn(),
+      minStartSeconds: CFG.minStart(),
+    },
+    trialJustGranted: Boolean(trial.granted),
+    trialSeconds: CFG.trial(),
+  });
+}));
+
+/* -------------------------------------------------------------------------
+ * GET /api/user/ledger — the statement.
+ *
+ * Every grant and every interview, with dates and a running balance. This is
+ * what turns "where did my minutes go?" from a support ticket into a screen.
+ * ---------------------------------------------------------------------- */
+
+const ledgerQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  before: z.coerce.string().regex(/^\d+$/).optional(),
+});
+
+router.get('/ledger', requireUser, asyncHandler(async (req, res) => {
+  const { limit, before } = ledgerQuery.parse(req.query);
+  const entries = await ledgerFor(req.userId, {
+    limit,
+    before: before ? BigInt(before) : undefined,
+  });
+  const balance = await balanceSnapshot(await loadBalanceUser(req.userId));
+
+  res.json({
+    entries,
+    balance,
+    // Keyset pagination: the ledger is append-only and unbounded, and OFFSET
+    // paging over an append-only table shifts rows under the reader.
+    nextBefore: entries.length === limit ? entries[entries.length - 1].id : null,
+  });
 }));
 
 router.get('/stats', requireUser, asyncHandler(async (req, res) => {

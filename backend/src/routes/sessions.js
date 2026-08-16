@@ -7,7 +7,9 @@ import { requireUser } from '../middleware/auth.js';
 import { aiLimiter } from '../middleware/rateLimit.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import { evaluateAnswer, AiUnavailableError } from '../services/ai/index.js';
-import { requireQuota, refundQuota, hasPremium, quotaSnapshot, QUOTA_COST } from '../services/quota.js';
+import {
+  CFG, hasPremium, chargeFlat, refundFlat, balanceSnapshot, loadBalanceUser,
+} from '../services/billing/minutes.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -50,6 +52,12 @@ router.post('/start', requireUser, asyncHandler(async (req, res) => {
     data: { userId: req.userId, categoryId, kind: 'practice' },
   });
 
+  // `quota` keeps its name and gains the balance fields. Old clients read
+  // `limit`/`remaining` and see an unmetered tier, which is the least-wrong
+  // thing to tell a build with no UI for a balance; new clients read
+  // `availableSeconds` / `minutesRemaining`.
+  const snap = await balanceSnapshot(user);
+
   res.status(201).json({
     sessionId: session.id.toString(),
     category,
@@ -59,7 +67,8 @@ router.post('/start', requireUser, asyncHandler(async (req, res) => {
       questionEn: firstQuestion.questionEn,
       difficulty: firstQuestion.difficulty,
     },
-    quota: await quotaSnapshot(user),
+    quota: { used: 0, limit: null, remaining: null, ...snap },
+    answerCostSeconds: hasPremium(user) ? 0 : CFG.practiceAnswer(),
   });
 }));
 
@@ -68,12 +77,22 @@ router.post('/start', requireUser, asyncHandler(async (req, res) => {
  *
  * Order of operations matters and is deliberate:
  *   1. authorise the session
- *   2. consume quota ATOMICALLY (before spending money at the AI provider)
+ *   2. charge ATOMICALLY (before spending money at the AI provider)
  *   3. call the model
- *   4. on failure → refund the quota and return 503; persist nothing
+ *   4. on failure → refund the seconds and return 503; persist nothing
  *
  * The old code called the model first, swallowed any error into a stub scored
- * 6/10, persisted that as a real grade, and still charged the user's quota.
+ * 6/10, persisted that as a real grade, and still charged the user.
+ *
+ * WHY A PRACTICE ANSWER COSTS SECONDS AT ALL. This route used to be metered by
+ * the daily question count that the minute balance replaced, and something had
+ * to take its place or the free tier became unlimited Claude calls for every
+ * registered account — not survivable. A flat charge from the same balance
+ * keeps one currency and one mental model: your time buys AI coaching, in an
+ * interview or in practice. The ten-minute trial covers twenty practice
+ * answers, against five a day before: more generous on day one, less over a
+ * fortnight. Subscribers pay nothing. Tunable at
+ * `app_settings.practice_answer_seconds` with no deploy.
  * ---------------------------------------------------------------------- */
 
 router.post('/:id/answer', requireUser, aiLimiter, asyncHandler(async (req, res) => {
@@ -106,8 +125,13 @@ router.post('/:id/answer', requireUser, aiLimiter, asyncHandler(async (req, res)
   const language = body.language || 'ar';
   const questionText = language === 'ar' ? question.questionAr : question.questionEn;
 
-  // 2. Atomic consume — no window between checking and spending.
-  const quota = await requireQuota(req.userId, QUOTA_COST.answer);
+  // 2. Atomic charge — the user row is locked for the whole read-decide-write,
+  //    so there is no window between checking the balance and spending it.
+  const receipt = await chargeFlat({
+    userId: req.userId,
+    seconds: CFG.practiceAnswer(),
+    note: 'practice_answer',
+  });
 
   // 3. Model call.
   let evaluation;
@@ -120,7 +144,7 @@ router.post('/:id/answer', requireUser, aiLimiter, asyncHandler(async (req, res)
     });
   } catch (err) {
     // 4. Refund and fail loudly. Never invent a score.
-    await refundQuota(req.userId, QUOTA_COST.answer);
+    await refundFlat(receipt, 'answer_evaluation_failed');
     if (err instanceof AiUnavailableError) {
       logger.error('Answer evaluation failed', { sessionId: req.params.id, message: err.message });
       throw new HttpError(503, 'Evaluation is temporarily unavailable; this question was not counted', undefined, 'AI_UNAVAILABLE');
@@ -168,6 +192,8 @@ router.post('/:id/answer', requireUser, aiLimiter, asyncHandler(async (req, res)
      LIMIT 1
   `.then((rows) => rows[0] ?? null);
 
+  const balance = await balanceSnapshot(await loadBalanceUser(req.userId));
+
   res.json({
     answerId: answer.id.toString(),
     feedback: result,
@@ -180,7 +206,12 @@ router.post('/:id/answer', requireUser, aiLimiter, asyncHandler(async (req, res)
           difficulty: nextQuestion.difficulty,
         }
       : null,
-    quotaRemaining: quota.remaining,
+    // Old clients read `quotaRemaining` as a count of questions; giving them
+    // minutes would render "43 questions left". null reads as unmetered, which
+    // is the honest thing to tell a build that cannot show a balance.
+    quotaRemaining: null,
+    chargedSeconds: receipt.charged,
+    balance,
   });
 }));
 

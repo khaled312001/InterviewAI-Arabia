@@ -8,7 +8,8 @@ export type Tone = 'neutral' | 'brand' | 'gold' | 'success' | 'warning' | 'error
 
 export type StatusKind =
   | 'plan' | 'subscription' | 'role' | 'active' | 'reportStatus' | 'aiResult' | 'source' | 'env'
-  | 'difficulty' | 'payment' | 'paymentProvider' | 'planCode' | 'sessionKind' | 'custom';
+  | 'difficulty' | 'payment' | 'paymentProvider' | 'planCode' | 'sessionKind' | 'sessionStatus'
+  | 'categoryAccess' | 'custom';
 
 export interface StatusChipProps {
   kind: StatusKind;
@@ -51,6 +52,12 @@ const MAPS: Record<Exclude<StatusKind, 'custom'>, Record<string, Entry>> = {
     practice: { label: 'تدريب', tone: 'neutral' },
     meeting: { label: 'مقابلة', tone: 'brand' },
   },
+  // A session is complete once `ended_at` is set; an abandoned run keeps its
+  // partial score and must not read as a finished attempt.
+  sessionStatus: {
+    true: { label: 'مكتملة', tone: 'success' },
+    false: { label: 'غير مكتملة', tone: 'neutral' },
+  },
   reportStatus: {
     true: { label: 'تمت المعالجة', tone: 'success' },
     false: { label: 'قيد المراجعة', tone: 'warning' },
@@ -68,11 +75,20 @@ const MAPS: Record<Exclude<StatusKind, 'custom'>, Record<string, Entry>> = {
     db: { label: 'قاعدة البيانات', tone: 'brand' },
     env: { label: 'ملف البيئة', tone: 'neutral' },
     unset: { label: 'غير مضبوط', tone: 'warning' },
+    // A stored credential the server cannot decrypt. Distinct from `unset` on
+    // purpose: the two need opposite responses, and collapsing them would let a
+    // broken row read as "nothing configured here".
+    error: { label: 'تعذّرت قراءتها', tone: 'error' },
   },
   env: {
     production: { label: 'إنتاج', tone: 'success' },
     staging: { label: 'تجريبي', tone: 'warning' },
     development: { label: 'تطوير', tone: 'neutral' },
+  },
+  // Category.isPremium — whether the section is behind the paywall.
+  categoryAccess: {
+    true: { label: 'مميز', tone: 'gold' },
+    false: { label: 'مجاني', tone: 'neutral' },
   },
   // Question.difficulty (schema.prisma enum Difficulty).
   difficulty: {
@@ -97,12 +113,33 @@ const MAPS: Record<Exclude<StatusKind, 'custom'>, Record<string, Entry>> = {
     google_play: { label: 'Google Play', tone: 'neutral' },
     manual: { label: 'يدوي', tone: 'warning' },
   },
-  // Keys of backend/src/services/payments/plans.js — labels copied from its
-  // labelAr so the admin and the mobile paywall cannot drift.
+  /**
+   * Keys of backend/src/services/payments/plans.js — labels copied from its
+   * `labelAr` so the admin and the mobile paywall cannot drift.
+   *
+   * This map is the FALLBACK, for rows the live catalogue cannot describe:
+   * retired codes, the manual-grant marker, and legacy Google-Play codes. Pages
+   * that have loaded GET /payments/config pass `label` from it instead, so a
+   * price-list change reaches the panel without a deploy of this file.
+   *
+   * `yearly` and `yearly_legacy` are retired, not deleted. Migration 002
+   * renamed the surviving seed rows to `yearly_legacy`; both must still render
+   * a name on a receipt, and both must read as something nobody can buy — hence
+   * the neutral tone and the explicit «متوقف», where `yearly` used to be the
+   * gold headline plan.
+   */
   planCode: {
+    pack_20m: { label: 'باقة ٢٠ دقيقة', tone: 'info' },
+    pack_60m: { label: 'باقة ٦٠ دقيقة', tone: 'brand' },
+    pack_180m: { label: 'باقة ٣ ساعات', tone: 'info' },
     monthly: { label: 'شهري', tone: 'neutral' },
     quarterly: { label: 'ربع سنوي', tone: 'info' },
-    yearly: { label: 'سنوي', tone: 'gold' },
+    yearly: { label: 'سنوي (متوقف)', tone: 'neutral' },
+    yearly_legacy: { label: 'سنوي (متوقف)', tone: 'neutral' },
+    // Written by POST /admin/users/:id/minutes on a hand-made credit. Not a
+    // product: it marks a Payment row that documents minutes sold off-platform.
+    manual_minutes: { label: 'دقائق يدوية', tone: 'gold' },
+    manual: { label: 'يدوي', tone: 'gold' },
   },
 };
 

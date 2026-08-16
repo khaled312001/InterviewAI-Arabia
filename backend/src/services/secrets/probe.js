@@ -11,7 +11,7 @@
  */
 
 import { cfg, peekValue } from './store.js';
-import { credentialDef } from './registry.js';
+import { checkOutboundUrl, credentialDef } from './registry.js';
 import { logger } from '../../utils/logger.js';
 
 const TIMEOUT_MS = 10_000;
@@ -68,6 +68,12 @@ const PROBES = {
   async EASYKASH_API_KEY() {
     const base = String(cfg('EASYKASH_BASE_URL') || '').replace(/\/$/, '');
     if (!base) return { ok: false, verified: false, code: 'no_base_url', status: null };
+    // Same pin the checkout path enforces. Without it this endpoint is a
+    // super_admin-driven "make the server request any host" primitive, and it
+    // would report an off-list base as healthy.
+    if (!checkOutboundUrl('EASYKASH_BASE_URL', base).ok) {
+      return { ok: false, verified: false, code: 'base_url_not_allowed', status: null };
+    }
     try {
       const res = await fetchWithTimeout(base, { method: 'GET' });
       return { ok: res.status < 500, verified: false, code: 'reachable_only', status: res.status };

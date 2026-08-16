@@ -128,13 +128,30 @@ export const env = {
 };
 
 /**
+ * THE MOCK GATEWAY CANNOT RUN IN PRODUCTION. Not "should not" — cannot.
+ *
+ * Mock mode mounts an endpoint that credits real minutes against a real user
+ * for a reference and nothing else, and it is reachable whenever this flag is
+ * truthy. Turning payments on is meant to be a configuration change, which
+ * means one wrong line in a .env file — or a staging deploy pointed at the
+ * production database — was all that stood between that minter and live
+ * customers. A warning in a log nobody reads is not a control; refusing to
+ * honour the flag is.
+ *
+ * Left as a hard override rather than a boot failure so that discovering the
+ * misconfiguration does not take the whole API down with it: real payments,
+ * and every other route, keep working.
+ */
+if (env.isProd && env.EASYKASH_MOCK) {
+  console.error('[SECURITY] EASYKASH_MOCK is set in production and has been IGNORED — the mock checkout mints minutes for free and is disabled outside development.');
+  env.EASYKASH_MOCK = false;
+}
+
+/**
  * Loud warnings for configurations that are legal but dangerous. These do not
  * stop the boot, but they are the things that quietly lose money.
  */
 if (env.isProd) {
-  if (env.EASYKASH_MOCK) {
-    console.error('[SECURITY] EASYKASH_MOCK is enabled in production — payments are simulated and grant premium for free.');
-  }
   if (env.EASYKASH_ENABLED && !env.EASYKASH_WEBHOOK_SECRET) {
     console.error('[SECURITY] EasyKash is enabled without EASYKASH_WEBHOOK_SECRET — callbacks cannot be verified and will be rejected.');
   }

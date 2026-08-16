@@ -137,7 +137,12 @@ export function auditAdminMutations() {
       res.json = originalJson; // never re-enter
       const ok = res.statusCode >= 200 && res.statusCode < 300;
       const adminId = req.admin?.id;
-      if (!ok || !adminId) return originalJson(payload);
+      // Handlers that write their own row inside a transaction set this. The
+      // derived row would be a strictly worse duplicate: the credential routes
+      // carry the key in the path, so describeRequest() yields
+      // `integrations.EASYKASH_API_KEY` with a null entity id and no record of
+      // what actually changed.
+      if (!ok || !adminId || req.skipAutoAudit) return originalJson(payload);
 
       const { action, entityType, entityId } = describeRequest(req.method, req.path);
       withTimeout(

@@ -526,7 +526,8 @@ tbody td:first-child{color:var(--text);font-weight:700}
             <tr><td>كلمة المرور</td><td>التحقّق من هويتك عند الدخول.</td><td><strong>لا تُخزَّن كلمة المرور نصّاً على الإطلاق.</strong> نخزّن بصمة bcrypt بمعامل كلفة ١٢ فقط. لا تُسجَّل في أي سجلّ ولا تُرسَل لأي جهة.</td></tr>
             <tr><td>لغة الواجهة</td><td>اختيار العربية أو الإنجليزية للواجهة ولتوجيهات الذكاء الاصطناعي.</td><td>قيمة واحدة: <code>ar</code> أو <code>en</code>.</td></tr>
             <tr><td>رقم الهاتف المحمول</td><td>تشترطه بوابة الدفع المصرية ضمن بيانات الفوترة.</td><td><strong>لا يُطلَب عند التسجيل.</strong> يُطلَب فقط إذا بدأت عملية شراء، ويُحفَظ حتى لا يُطلب منك مرة أخرى.</td></tr>
-            <tr><td>رصيدك اليومي وحالة اشتراكك</td><td>تطبيق حد الأسئلة المجانية اليومي، ومعرفة ما إذا كنت مشتركاً.</td><td>مشتقّة تلقائياً. الرصيد اليومي يُصفَّر عند منتصف الليل بتوقيت القاهرة.</td></tr>
+            <tr><td>رصيد دقائقك وسجلّ استهلاكه وحالة اشتراكك</td><td>خصم وقت المقابلة من رصيدك، ومنع بدء مقابلة بلا رصيد، ومعرفة ما إذا كنت مشتركاً.</td><td>يُقاس وقت المقابلة على خوادمنا بالثواني ولا يُؤخذ من جهازك. نحتفظ بقيد لكل عملية إضافة أو خصم (تاريخها، ومقدارها، وسببها) لأنه سجلّ مالي يثبت ما دفعته وما استهلكته. الدقائق المشتراة لا تنتهي صلاحيتها ولا تُصفَّر يومياً.</td></tr>
+            <tr><td>بصمة مُعرِّف التثبيت</td><td>منع الحصول على التجربة المجانية أكثر من مرة من نفس التثبيت.</td><td>رقم عشوائي يولّده التطبيق نفسه عند أول تشغيل — ليس مُعرِّف جهاز ولا مُعرِّف إعلانات، ولا يراه أي تطبيق آخر. نخزّن <strong>بصمته المشفَّرة (SHA-256) فقط</strong>، ولا يمكن استرجاع الرقم منها. يزول بحذف التطبيق أو مسح بيانات المتصفّح.</td></tr>
           </tbody>
         </table>
       </div>
@@ -554,7 +555,8 @@ tbody td:first-child{color:var(--text);font-weight:700}
             <tr><td>Password</td><td>Verifying your identity at login.</td><td><strong>Your password is never stored in plaintext.</strong> We keep only a bcrypt hash at cost factor 12. It is never logged and never sent anywhere.</td></tr>
             <tr><td>Interface language</td><td>Choosing Arabic or English for the UI and for the AI prompts.</td><td>A single value: <code>ar</code> or <code>en</code>.</td></tr>
             <tr><td>Mobile phone number</td><td>Required by the Egyptian payment gateway as part of the billing payload.</td><td><strong>Not asked for at registration.</strong> Requested only if you start a purchase, then kept so you are not asked again.</td></tr>
-            <tr><td>Daily quota and subscription state</td><td>Enforcing the free daily question limit and knowing whether you are a subscriber.</td><td>Derived automatically. The daily counter resets at midnight, Cairo time.</td></tr>
+            <tr><td>Minute balance, its consumption history, and subscription state</td><td>Deducting interview time from your balance, preventing an interview from starting with no balance, and knowing whether you are a subscriber.</td><td>Interview time is metered on our servers in seconds; it is not taken from your device. We keep one entry per credit and debit (when, how much, and why), because it is a financial record of what you paid for and what you consumed. Purchased minutes never expire and are not reset daily.</td></tr>
+            <tr><td>A hash of the install identifier</td><td>Stopping the free trial from being claimed more than once from the same install.</td><td>A random value the app generates for itself on first launch — not a device identifier, not an advertising identifier, and not visible to any other app. We store <strong>only its SHA-256 hash</strong>, from which the value cannot be recovered. It is gone when you uninstall the app or clear your browser storage.</td></tr>
           </tbody>
         </table>
       </div>
@@ -695,70 +697,91 @@ tbody td:first-child{color:var(--text);font-weight:700}
 
     <div data-l="ar">
       <p>
-        المقابلة المباشرة بالصوت والفيديو تعمل حالياً <strong>في متصفح الويب فقط</strong>. في تطبيق
-        أندرويد تظهر رسالة توضّح أن الميزة غير متاحة بعد على الهاتف، ولا يستخدم التطبيق الكاميرا ولا
-        الميكروفون على الإطلاق.
+        المقابلة المباشرة بالصوت والفيديو تعمل الآن <strong>على تطبيق أندرويد وعلى متصفح الويب معاً</strong>.
+        في الحالتين لا تُستخدَم الكاميرا ولا الميكروفون إلا بعد موافقتك الصريحة، وأثناء المقابلة فقط،
+        ويُغلَقان فور إنهائها.
       </p>
       <div class="callout good">
         <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> لا يوجد رفع للصوت أو الفيديو</div>
         <p>
-          التسجيل المرئي والصوتي للمقابلة يُجمَّع داخل متصفحك ويُعرَض عليك لتحفظه على جهازك إن أردت.
+          تسجيل المقابلة يُجمَّع على جهازك أنت — داخل المتصفح في نسخة الويب، وعلى ذاكرة الهاتف في
+          تطبيق أندرويد — ويبقى ملكك وحدك.
           <strong>لا يوجد في خوادمنا أي واجهة تستقبل ملفات صوت أو فيديو أصلاً</strong> — الواجهة
           الوحيدة التي تستقبل ملفاً في المنظومة كلها هي واجهة رفع السيرة الذاتية، وهي لا تقبل إلا
-          PDF أو TXT أو MD. تُغلَق الكاميرا والميكروفون فور إنهاء المقابلة.
+          PDF أو TXT أو MD. لا يغادر جهازك من المقابلة سوى <strong>نصّ إجابتك</strong>.
         </p>
       </div>
       <div class="callout warn">
-        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> لكن المتصفح نفسه يرسل صوتك</div>
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> لكن خدمة التعرّف على الكلام قد ترسل صوتك</div>
         <p>
-          تحويل كلامك إلى نص يتم عبر خدمة التعرّف على الكلام المدمجة في متصفحك، لا عبر خوادمنا. في
-          متصفح Chrome تحديداً، <strong>يرسل المتصفح صوت الميكروفون إلى خوادم Google</strong> لتحويله
-          إلى نص. لا تصلنا هذه التسجيلات الصوتية أبداً — لا يصلنا إلا النص الناتج — لكن استخدامها
-          يخضع لسياسة خصوصية شركة المتصفح لا لسياستنا. وبالمثل، بعض الأصوات «الطبيعية» التي ينطق بها
-          المحاوِر تُجلَب من خوادم Microsoft عند أول استخدام.
+          تحويل كلامك إلى نص لا يتم على خوادمنا، بل عبر خدمة التعرّف على الكلام الموجودة في المنصّة
+          التي تستخدمها:
+        </p>
+        <ul>
+          <li><strong>على الويب:</strong> خدمة التعرّف المدمجة في متصفحك. في متصفح Chrome تحديداً،
+            <strong>يرسل المتصفح صوت الميكروفون إلى خوادم Google</strong> لتحويله إلى نص.</li>
+          <li><strong>على أندرويد:</strong> خدمة التعرّف على الكلام المثبَّتة على جهازك — وهي في
+            الغالب خدمة Google. بحسب إعدادات جهازك، قد تعالَج على الجهاز نفسه أو
+            <strong>تُرسَل إلى خوادم Google</strong>.</li>
+        </ul>
+        <p>
+          لا تصلنا هذه التسجيلات الصوتية أبداً — لا يصلنا إلا النص الناتج — لكن استخدامها يخضع لسياسة
+          خصوصية مزوّد تلك الخدمة لا لسياستنا. وبالمثل، بعض الأصوات «الطبيعية» التي ينطق بها المحاوِر
+          تُجلَب من خوادم Microsoft عند أول استخدام.
         </p>
         <p>إن أردت تجنّب ذلك تماماً، استخدم الكتابة بدل الصوت في وضع التدريب.</p>
       </div>
       <p>
-        <strong>ملاحظة عن أذونات أندرويد:</strong> يطلب تطبيق أندرويد أذونات الكاميرا والميكروفون ضمن
-        بيان التطبيق، لكن النسخة الحالية <strong>لا تستخدمها فعلياً</strong> لأن المقابلة المباشرة
-        محصورة في الويب. سنُزيلها أو نُفعّل الميزة المقابلة لها في تحديث لاحق.
+        <strong>ملاحظة عن أذونات أندرويد:</strong> يطلب التطبيق إذن الكاميرا والميكروفون
+        <strong>لأنه يستخدمهما فعلاً</strong> في المقابلة المباشرة، ولا يطلبهما عند فتح التطبيق بل عند
+        دخولك غرفة المقابلة. التطبيق <strong>لا يطلب إذن الوصول إلى صورك أو مقاطع الفيديو على جهازك</strong>،
+        ولا يقرأ معرض الوسائط؛ حفظ تسجيل مقابلتك يتم بإضافة الملف الذي أنشأه التطبيق نفسه فقط.
       </p>
     </div>
 
     <div data-l="en">
       <p>
-        The live audio/video interview currently runs <strong>in a web browser only</strong>. In the
-        Android app a message explains that the feature is not yet available on mobile, and the app
-        does not use the camera or the microphone at all.
+        The live audio/video interview now runs <strong>on the Android app and in the web browser
+        alike</strong>. On both, the camera and microphone are used only after your explicit consent,
+        only for the duration of the interview, and are released the moment it ends.
       </p>
       <div class="callout good">
         <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg> There is no audio or video upload</div>
         <p>
-          The interview recording is assembled inside your browser and offered to you to save on your
-          own device. <strong>Our servers expose no endpoint that accepts audio or video files at
-          all</strong> — the only file-upload endpoint in the entire system is the CV upload, which
-          accepts nothing but PDF, TXT or MD. The camera and microphone are released the moment the
-          interview ends.
+          The interview recording is assembled on your own device — inside the browser on the web, in
+          the phone's storage on Android — and remains yours alone. <strong>Our servers expose no
+          endpoint that accepts audio or video files at all</strong> — the only file-upload endpoint in
+          the entire system is the CV upload, which accepts nothing but PDF, TXT or MD. The only thing
+          that leaves your device from an interview is the <strong>text of your answer</strong>.
         </p>
       </div>
       <div class="callout warn">
-        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> But the browser itself sends your voice</div>
+        <div class="ct"><svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg> But the speech-recognition service may send your voice</div>
         <p>
-          Converting your speech to text is done by the speech-recognition service built into your
-          browser, not by our servers. In Chrome specifically, <strong>the browser streams your
-          microphone audio to Google's servers</strong> for transcription. That audio never reaches
-          us — only the resulting text does — but its use is governed by your browser vendor's privacy
-          policy, not ours. Likewise, some of the "natural" voices the interviewer speaks with fetch
-          their audio from Microsoft on first use.
+          Converting your speech to text is not done on our servers, but by the speech-recognition
+          service belonging to the platform you are using:
+        </p>
+        <ul>
+          <li><strong>On the web:</strong> the service built into your browser. In Chrome specifically,
+            <strong>the browser streams your microphone audio to Google's servers</strong> for
+            transcription.</li>
+          <li><strong>On Android:</strong> the recognition service installed on your device, which is
+            usually Google's. Depending on your device settings, it may be processed on the device
+            itself or <strong>sent to Google's servers</strong>.</li>
+        </ul>
+        <p>
+          That audio never reaches us — only the resulting text does — but its use is governed by that
+          provider's privacy policy, not ours. Likewise, some of the "natural" voices the interviewer
+          speaks with fetch their audio from Microsoft on first use.
         </p>
         <p>If you want to avoid this entirely, use typed practice rather than the voice interview.</p>
       </div>
       <p>
-        <strong>A note on Android permissions:</strong> the Android app declares camera and microphone
-        permissions in its manifest, but the current release <strong>does not actually use them</strong>,
-        because the live interview is web-only. We will either remove them or ship the corresponding
-        feature in a future update.
+        <strong>A note on Android permissions:</strong> the app requests camera and microphone
+        permission <strong>because it genuinely uses them</strong> for the live interview, and it asks
+        not at launch but when you enter the interview room. The app <strong>does not request access to
+        the photos or videos on your device</strong> and does not read your media library; saving your
+        interview recording only adds the file the app itself created.
       </p>
     </div>
   </section>
@@ -868,7 +891,15 @@ tbody td:first-child{color:var(--text);font-weight:700}
         <li><strong>لا نبيع بياناتك ولا نؤجّرها ولا نتاجر بها</strong> مع أي جهة، بأي صورة.</li>
         <li><strong>لا نستخدم بياناتك في الإعلانات</strong>، ولا نعرض إعلانات في التطبيق أصلاً.</li>
         <li><strong>لا يوجد في التطبيق أي أداة تتبّع أو تحليلات من طرف ثالث.</strong> لا Firebase، ولا Google Analytics، ولا Facebook SDK، ولا Sentry، ولا أي أداة إسناد إعلاني. تحقّقنا من ذلك بفحص كل حزم التطبيق والخادم ولوحة الإدارة والموقع.</li>
-        <li><strong>لا نجمع مُعرِّف الإعلانات</strong> (Advertising ID) ولا مُعرِّفات الأجهزة.</li>
+        <li><strong>لا نجمع مُعرِّف الإعلانات</strong> (Advertising ID)، ولا المُعرِّف الفريد لجهازك (IMEI أو Android ID أو ما يماثلهما)، ولا أي مُعرِّف تفرضه المنصّة ويشاركه معنا تطبيقٌ آخر.</li>
+        <li>
+          <strong>الاستثناء الوحيد، ونذكره صراحةً:</strong> يولّد التطبيق عند أول تشغيل رقماً عشوائياً
+          خاصاً به يسمّى <b>مُعرِّف التثبيت</b>، ويرسله مع طلباتك. غرضه واحد: منع الحصول على التجربة
+          المجانية أكثر من مرة من نفس التثبيت. لا نخزّنه كما هو — نحفظ <strong>بصمته المشفَّرة
+          (SHA-256)</strong> فقط، فلا يمكن استرجاع الرقم منها. لا يأتي من نظام التشغيل، ولا يشاركه
+          أي تطبيق آخر، ولا يُستخدم في إعلان ولا تحليلات ولا تتبّع عبر المواقع. يبقى بعد تسجيل
+          الخروج، ويزول نهائياً بحذف التطبيق أو مسح بيانات المتصفّح.
+        </li>
         <li><strong>لا نصل إلى جهات اتصالك ولا رسائلك ولا صورك ولا موقعك الجغرافي.</strong> التطبيق لا يطلب هذه الأذونات إطلاقاً.</li>
         <li><strong>لا نستخدم إجاباتك لتدريب نماذج ذكاء اصطناعي خاصة بنا.</strong> نحن لا ندرّب نماذج.</li>
       </ul>
@@ -885,7 +916,16 @@ tbody td:first-child{color:var(--text);font-weight:700}
         <li><strong>We do not sell, rent or trade your data</strong> to anyone, in any form.</li>
         <li><strong>We do not use your data for advertising</strong>, and the app shows no advertising at all.</li>
         <li><strong>The app contains no third-party tracking or analytics SDK.</strong> No Firebase, no Google Analytics, no Facebook SDK, no Sentry, no attribution tooling. We verified this across the mobile app, the backend, the admin panel and this website.</li>
-        <li><strong>We do not collect an Advertising ID</strong> or any device identifier.</li>
+        <li><strong>We do not collect an Advertising ID</strong>, a hardware identifier (IMEI, Android ID or equivalent), or any platform-issued identifier that another app on your device also sees.</li>
+        <li>
+          <strong>The one exception, stated plainly:</strong> on first launch the app generates its own
+          random <b>install identifier</b> and sends it with your requests. It has exactly one purpose:
+          stopping the free trial from being claimed more than once from the same install. We never
+          store it as sent — only its <strong>SHA-256 hash</strong>, from which the value cannot be
+          recovered. It does not come from the operating system, no other app can see it, and it is
+          never used for advertising, analytics or cross-site tracking. It survives signing out, and it
+          is gone for good when you uninstall the app or clear your browser storage.
+        </li>
         <li><strong>We do not access your contacts, messages, photos or location.</strong> The app never requests those permissions.</li>
         <li><strong>We do not use your answers to train any AI model of our own.</strong> We do not train models.</li>
       </ul>

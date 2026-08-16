@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
+import { useBalance } from '../store/balance';
 import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import { accentForCategory, scoreTone } from '../theme/tokens';
 import {
@@ -15,18 +16,10 @@ import {
   SkeletonTile, SkeletonRow,
 } from '../components';
 import {
-  categoryIcon, categoryName, sessionAverage, sessionKind, sessionMeta,
+  balanceLabel, categoryIcon, categoryName, durationLabel, formatShortDate,
+  sessionAverage, sessionKind, sessionMeta,
   type CategoryLike, type SessionLike,
 } from './mainShared';
-
-/**
- * Free-plan daily allowance.
- *
- * Business rule, not a design token. It is duplicated from the server's
- * FREE_DAILY_QUESTION_LIMIT because `GET /user/me` returns the *used* count
- * but never the limit — see the API-gap note in the report.
- */
-const FREE_DAILY_QUESTIONS = 5;
 
 const RECENT_LIMIT = 5;
 
@@ -125,6 +118,13 @@ export function HomeScreen({ navigation }: any) {
 
   const user = useAuth((s) => s.user);
   const refreshMe = useAuth((s) => s.refreshMe);
+  // The balance is the first thing this screen needs and the first thing the
+  // server grants against: GET /user/balance is where a new account's ten free
+  // minutes are created, so this call is what puts them on screen before the
+  // user taps anything.
+  const balance = useBalance((s) => s.balance);
+  const balanceFailed = useBalance((s) => s.failed);
+  const refreshBalance = useBalance((s) => s.refresh);
 
   const [categories, setCategories] = useState<(CategoryLike & { id: number })[] | null>(null);
   const [recent, setRecent] = useState<SessionLike[] | null>(null);
@@ -144,15 +144,18 @@ export function HomeScreen({ navigation }: any) {
 
   const loadAll = useCallback(async () => {
     setFailed(false);
-    const results = await Promise.allSettled([loadCategories(), loadRecent(), refreshMe()]);
-    // Only the two data calls decide the error state; a stale /user/me is
-    // survivable and must not blank out a screen that already has content.
+    const results = await Promise.allSettled([
+      loadCategories(), loadRecent(), refreshMe(), refreshBalance(),
+    ]);
+    // Only the two data calls decide the error state; a stale /user/me or a
+    // stale balance is survivable and must not blank out a screen that already
+    // has content — the balance card says so itself instead.
     if (results[0].status === 'rejected' && results[1].status === 'rejected') {
       setFailed(true);
       setCategories((c) => c ?? []);
       setRecent((r) => r ?? []);
     }
-  }, [loadCategories, loadRecent, refreshMe]);
+  }, [loadCategories, loadRecent, refreshBalance, refreshMe]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -164,7 +167,10 @@ export function HomeScreen({ navigation }: any) {
       if (firstFocus.current) { firstFocus.current = false; return; }
       loadRecent().catch(() => {});
       refreshMe().catch(() => {});
-    }, [loadRecent, refreshMe]),
+      // Coming back from an interview, a practice session or a purchase — the
+      // three things that move the balance — always lands here.
+      refreshBalance().catch(() => {});
+    }, [loadRecent, refreshBalance, refreshMe]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -189,11 +195,29 @@ export function HomeScreen({ navigation }: any) {
   const goMeeting = useCallback(() => navigation.navigate('MeetingSetup'), [navigation]);
   const goHistory = useCallback(() => navigation.navigate('History'), [navigation]);
 
-  const isPremium = user?.plan === 'premium';
-  const used = Math.min(FREE_DAILY_QUESTIONS, Math.max(0, user?.dailyQuestionsUsed ?? 0));
-  const left = FREE_DAILY_QUESTIONS - used;
-  const remainingLabel = isPremium ? t('home.unlimited') : String(left);
+  // `balance.plan` is the same premium flag `/user/me` carries, but it is the
+  // one that came back with the minutes, so the badge and the card can never
+  // disagree with each other.
+  const isPremium = (balance?.plan ?? user?.plan) === 'premium';
+  const availableSeconds = balance?.availableSeconds ?? 0;
+  const remainingLabel = balance ? balanceLabel(availableSeconds, t) : '';
+  /** Only once a balance has actually arrived — an unloaded card is not empty. */
+  const empty = !!balance && availableSeconds <= 0;
   const firstLetter = (user?.name?.trim()?.[0] ?? '?').toUpperCase();
+
+  /**
+   * The one line under the balance. Ordered by what the user most needs to
+   * know: a stale number first, then the welcome gift, then an empty balance,
+   * then the subscription's own expiry.
+   */
+  const balanceHint =
+    !balance ? (balanceFailed ? t('home.balanceOffline') : null)
+    : balance.trialJustGranted
+      ? t('home.balanceTrialHint', { label: durationLabel(balance.trialSeconds, t) })
+    : availableSeconds <= 0 ? t('home.balanceEmpty')
+    : balance.subSeconds > 0 && balance.subExpiresAt
+      ? t('home.balanceSubHint', { date: formatShortDate(balance.subExpiresAt, i18n.language) })
+    : t('home.balanceHint');
 
   const gutter = theme.layout.gridGap / 2;
   const tileWidth = useMemo(() => `${100 / columns}%`, [columns]);
@@ -211,7 +235,7 @@ export function HomeScreen({ navigation }: any) {
           borderBottomLeftRadius: theme.radii.xl,
           borderBottomRightRadius: theme.radii.xl,
           paddingTop: theme.spacing.lg,
-          // Deep enough that the quota card can ride the bottom edge.
+          // Deep enough that the balance card can ride the bottom edge.
           paddingBottom: theme.spacing['5xl'],
         },
       ]}
@@ -270,9 +294,16 @@ export function HomeScreen({ navigation }: any) {
     </LinearGradient>
   );
 
-  /* --------------------------- quota card --------------------------- */
+  /* -------------------------- balance card -------------------------- *
+   *
+   * Where the daily question counter used to sit. The count is gone: the app
+   * no longer knows a limit, and the only honest number is the one the server
+   * just sent. While it is loading the card shows the label, never a zero —
+   * "0 minutes" briefly on every cold start is how you teach people to
+   * distrust the meter.
+   * ------------------------------------------------------------------ */
 
-  const quota = (
+  const balanceCard = (
     <MotiView
       from={{ opacity: 0, translateY: theme.spacing.md }}
       animate={{ opacity: 1, translateY: 0 }}
@@ -283,67 +314,42 @@ export function HomeScreen({ navigation }: any) {
         <View style={[styles.row, { gap: theme.spacing.md }]}>
           <View
             style={[
-              styles.quotaIcon,
+              styles.balanceIcon,
               {
                 width: theme.layout.avatar.md,
                 height: theme.layout.avatar.md,
                 borderRadius: theme.radii.md,
-                backgroundColor: isPremium ? theme.colors.accentMuted : theme.colors.primaryMuted,
+                backgroundColor: empty ? theme.colors.accentMuted : theme.colors.primaryMuted,
               },
             ]}
           >
             <Ionicons
-              name={isPremium ? 'infinite' : 'flash'}
+              name={empty ? 'alert-circle' : 'time'}
               size={theme.layout.icon.md}
-              color={isPremium ? theme.colors.accentText : theme.colors.primary}
+              color={empty ? theme.colors.accentText : theme.colors.primary}
             />
           </View>
 
           <View style={styles.grow}>
             <Text role="body" weight="bold" numberOfLines={1}>
-              {t('home.quotaLeft', { n: remainingLabel })}
+              {balance
+                ? t('home.balanceTitle', { label: remainingLabel })
+                : t('home.balanceLoading')}
             </Text>
-            <Text role="caption" tone="muted" numberOfLines={2}>
-              {isPremium
-                ? t('home.quotaPremiumHint')
-                : left === 0
-                  ? t('home.quotaSpent')
-                  : t('home.quotaFreeHint', { n: FREE_DAILY_QUESTIONS })}
-            </Text>
+            {balanceHint ? (
+              <Text role="caption" tone="muted" numberOfLines={2}>{balanceHint}</Text>
+            ) : null}
           </View>
 
-          {!isPremium ? (
-            <Button
-              title={t('plan.upgrade')}
-              onPress={goPremium}
-              variant="accent"
-              size="sm"
-              fullWidth={false}
-              accessibilityLabel={t('plan.upgradeLong')}
-            />
-          ) : null}
+          <Button
+            title={t('home.buyMinutes')}
+            onPress={goPremium}
+            variant={empty ? 'accent' : 'secondary'}
+            size="sm"
+            fullWidth={false}
+            accessibilityLabel={t('plan.upgradeLong')}
+          />
         </View>
-
-        {!isPremium ? (
-          <View
-            style={[styles.dots, { gap: theme.spacing.xs, marginTop: theme.spacing.md }]}
-            accessibilityRole="progressbar"
-            accessibilityLabel={t('home.quotaLeft', { n: remainingLabel })}
-            accessibilityValue={{ min: 0, max: FREE_DAILY_QUESTIONS, now: left }}
-          >
-            {Array.from({ length: FREE_DAILY_QUESTIONS }).map((_, i) => (
-              <View
-                key={i}
-                style={{
-                  flex: 1,
-                  height: theme.spacing.sm,
-                  borderRadius: theme.radii.pill,
-                  backgroundColor: i < left ? theme.colors.primary : theme.colors.surfaceSunken,
-                }}
-              />
-            ))}
-          </View>
-        ) : null}
       </Card>
     </MotiView>
   );
@@ -384,7 +390,7 @@ export function HomeScreen({ navigation }: any) {
         >
           <View
             style={[
-              styles.quotaIcon,
+              styles.balanceIcon,
               {
                 width: theme.layout.avatar.md,
                 height: theme.layout.avatar.md,
@@ -535,7 +541,7 @@ export function HomeScreen({ navigation }: any) {
       header={hero}
       contentStyle={{ gap: theme.spacing['2xl'] }}
     >
-      {quota}
+      {balanceCard}
       {meetingCta}
       {categoriesSection}
       {recentSection}
@@ -558,8 +564,7 @@ const styles = StyleSheet.create({
   avatar: { alignItems: 'center', justifyContent: 'center' },
   planTap: { justifyContent: 'center' },
 
-  quotaIcon: { alignItems: 'center', justifyContent: 'center' },
-  dots: { flexDirection: 'row', alignItems: 'center' },
+  balanceIcon: { alignItems: 'center', justifyContent: 'center' },
 
   ctaSubtitle: { opacity: 0.9 },
 

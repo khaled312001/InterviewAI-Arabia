@@ -5,6 +5,9 @@ import { useTheme } from '@mui/material/styles';
 import { Outlet, useLocation } from 'react-router-dom';
 import { layout } from '../../theme/tokens';
 import { useUi } from '../../store/ui';
+import { useAuth } from '../../store/auth';
+import { can } from '../../lib/permissions';
+import { useUnresolvedReportsCount } from '../../features/reports/api';
 import { PageTransition } from '../common/PageTransition';
 import { CommandPalette } from './CommandPalette';
 import { Header } from './Header';
@@ -28,6 +31,11 @@ export function AppShell() {
   const collapsed = useUi((s) => s.sidebarCollapsed);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
   const pushRecentRoute = useUi((s) => s.pushRecentRoute);
+
+  // The nav badge was plumbed through Sidebar -> SidebarNav but never fed.
+  // Only fetched for roles that can open the queue.
+  const role = useAuth((s) => s.admin?.role);
+  const unresolvedReports = useUnresolvedReportsCount(can(role, 'reports.read'));
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
@@ -78,6 +86,7 @@ export function AppShell() {
         onMobileClose={() => setMobileOpen(false)}
         overlayOpen={overlayOpen}
         onOverlayClose={() => setOverlayOpen(false)}
+        badges={{ unresolvedReports }}
       />
 
       <Box sx={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>

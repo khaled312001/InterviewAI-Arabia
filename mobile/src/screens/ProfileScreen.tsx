@@ -6,12 +6,13 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
+import { useBalance } from '../store/balance';
 import { setAppLanguage } from '../i18n';
 import { useAppTheme } from '../theme/useTheme';
 import {
   Screen, Text, Card, Badge, Button, Input, ListRow, SectionHeader,
 } from '../components';
-import { formatMonthYear } from './mainShared';
+import { balanceLabel, formatMonthYear } from './mainShared';
 
 type Lang = 'ar' | 'en';
 
@@ -28,7 +29,6 @@ const SAVED_BADGE_MS = 2600;
 type ProfileUser = {
   id: string; email: string; name: string;
   language: Lang; plan: 'free' | 'premium';
-  dailyQuestionsUsed: number;
   createdAt?: string;
 };
 
@@ -168,6 +168,12 @@ export function ProfileScreen({ navigation }: any) {
   const user = useAuth((s) => s.user) as ProfileUser | null;
   const logout = useAuth((s) => s.logout);
   const refreshMe = useAuth((s) => s.refreshMe);
+  const balance = useBalance((s) => s.balance);
+  const refreshBalance = useBalance((s) => s.refresh);
+
+  // The plan card states a balance, so it is re-read on mount rather than
+  // trusting whatever the last screen happened to leave in the store.
+  useEffect(() => { refreshBalance().catch(() => {}); }, [refreshBalance]);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name ?? '');
@@ -182,7 +188,7 @@ export function ProfileScreen({ navigation }: any) {
     if (savedTimer.current) clearTimeout(savedTimer.current);
   }, []);
 
-  const isPremium = user?.plan === 'premium';
+  const isPremium = (balance?.plan ?? user?.plan) === 'premium';
   const initial = (user?.name?.trim()?.[0] ?? '?').toUpperCase();
   const memberSince = useMemo(
     () => formatMonthYear(user?.createdAt, i18n.language),
@@ -395,7 +401,11 @@ export function ProfileScreen({ navigation }: any) {
               </View>
               <View style={styles.grow}>
                 <Text role="body" weight="bold">{t('plan.premium')}</Text>
-                <Text role="caption" tone="muted">{t('plan.premiumTagline')}</Text>
+                <Text role="caption" tone="muted">
+                  {balance
+                    ? t('home.balanceTitle', { label: balanceLabel(balance.availableSeconds, t) })
+                    : t('plan.premiumTagline')}
+                </Text>
               </View>
               <Button
                 title={t('plan.manage')}
@@ -427,7 +437,11 @@ export function ProfileScreen({ navigation }: any) {
                 />
               </View>
               <View style={styles.grow}>
-                <Text role="body" weight="bold">{t('plan.unlockTitle')}</Text>
+                <Text role="body" weight="bold">
+                  {balance
+                    ? t('home.balanceTitle', { label: balanceLabel(balance.availableSeconds, t) })
+                    : t('plan.unlockTitle')}
+                </Text>
                 <Text role="caption" tone="muted">{t('plan.unlockBody')}</Text>
               </View>
             </View>

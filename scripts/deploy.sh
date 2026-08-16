@@ -85,10 +85,25 @@ fi
 
 # ------------------------------------------------------------ migrate db
 if [ "$DO_MIGRATE" = 1 ] || [ "$DO_BACKEND" = 1 ]; then
-  say "Applying database migration"
+  say "Applying database migrations"
+  # Every *.sql in the migrations directory, in filename order. They are all
+  # written to be idempotent (Hostinger's shared MySQL has no shadow database,
+  # so `prisma migrate deploy` cannot run and there is no _prisma_migrations
+  # bookkeeping) — re-applying the whole set on every deploy is the design, not
+  # a shortcut. Concatenating them here means adding 003 needs no deploy edit.
+  MIGRATIONS="$ROOT/backend/prisma/migrations"
+  : > "$STAGE/_migration.sql"
+  # A bare glob, NOT $(ls ...): $ROOT contains a space ("F:/InterviewAI Arabia"),
+  # so command substitution word-splits every path in half. Bash expands globs
+  # in collation order already, which is the ordering this loop needs anyway.
+  for sql in "$MIGRATIONS"/*.sql; do
+    echo "  + $(basename "$sql")"
+    printf '\n-- ===== %s =====\n' "$(basename "$sql")" >> "$STAGE/_migration.sql"
+    cat "$sql" >> "$STAGE/_migration.sql"
+    printf '\n' >> "$STAGE/_migration.sql"
+  done
   scp "${SCP_PORT_FLAG[@]}" -i "$SSH_KEY" -o StrictHostKeyChecking=no \
-      "$ROOT/backend/prisma/migrations/001_monetisation_and_auth.sql" \
-      "$SSH_HOST:~/$APP_DIR/_migration.sql"
+      "$STAGE/_migration.sql" "$SSH_HOST:~/$APP_DIR/_migration.sql"
   "${SSH[@]}" bash -s <<'REMOTE'
 set -euo pipefail
 APP=~/domains/khaledahmed.net/interview-backend
@@ -119,7 +134,31 @@ fi
 # ------------------------------------------------------- install & restart
 if [ "$DO_BACKEND" = 1 ]; then
   say "Installing dependencies and generating Prisma client"
-  "${SSH[@]}" "cd ~/$APP_DIR && $NPM install --omit=dev --no-audit --no-fund 2>&1 | tail -5 && npx prisma generate 2>&1 | tail -3"
+  # PATH, not bare `npx`: the alt-nodejs20 toolchain is not on the default
+  # login PATH, so `npx prisma generate` died with "command not found" — and
+  # because that step is what teaches the client about new models, the deploy
+  # reported success while every route touching a new table would have thrown
+  # "cannot read properties of undefined". --ignore-scripts then invokes the
+  # generator explicitly, so a generator failure is a visible failure rather
+  # than an npm postinstall exit 127 buried in install output.
+  "${SSH[@]}" "cd ~/$APP_DIR \
+    && export PATH=/opt/alt/alt-nodejs20/root/bin:\$PATH \
+    && export TOKIO_WORKER_THREADS=1 \
+    && $NPM install --omit=dev --no-audit --no-fund --ignore-scripts 2>&1 | tail -5 \
+    && ./node_modules/.bin/prisma generate 2>&1 | tail -3"
+
+  say "Verifying the generated client knows the current schema"
+  # The one check that would have caught the silent failure above: every model
+  # in schema.prisma must exist in the client the server will actually load.
+  "${SSH[@]}" "cd ~/$APP_DIR && /opt/alt/alt-nodejs20/root/bin/node -e '
+    const fs = require(\"fs\");
+    const models = [...fs.readFileSync(\"prisma/schema.prisma\", \"utf8\")
+      .matchAll(/^model\s+(\w+)/gm)].map((m) => m[1]);
+    const dts = fs.readFileSync(\"node_modules/.prisma/client/index.d.ts\", \"utf8\");
+    const missing = models.filter((m) => !dts.includes(\"export type \" + m + \" =\"));
+    if (missing.length) { console.error(\"  STALE CLIENT, missing: \" + missing.join(\", \")); process.exit(1); }
+    console.log(\"  client covers all \" + models.length + \" models\");
+  '"
 fi
 
 say "Restarting application"

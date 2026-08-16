@@ -17,7 +17,10 @@ import crypto from 'node:crypto';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
-import { expireSubscriptions, purgeExpiredTokens } from '../services/maintenance.js';
+import {
+  expireSubscriptions, purgeExpiredTokens, sweepAbandonedMeetings,
+  grantSubscriptionCycles, expireSubscriptionMinutes, reconcileBalances,
+} from '../services/maintenance.js';
 
 const router = Router();
 
@@ -54,12 +57,47 @@ router.all('/daily', asyncHandler(async (_req, res) => {
   const started = Date.now();
   const expired = await expireSubscriptions();
   const tokens = await purgeExpiredTokens();
-  logger.info('Cron: daily', { ...expired, ...tokens, ms: Date.now() - started });
-  res.json({ ok: true, ...expired, ...tokens });
+  // Folded in so a deployment whose only scheduler is a once-a-day pinger
+  // still grants allowances and still reports drift. Expiry runs BEFORE the
+  // grant — see the note in services/cron.js: a subscription grant replaces the
+  // counter, so granting first destroys the leftover with no expiry row.
+  const lapsed = await expireSubscriptionMinutes();
+  const cycles = await grantSubscriptionCycles();
+  const swept = await sweepAbandonedMeetings();
+  const reconciled = await reconcileBalances();
+  const result = { ...expired, ...tokens, ...cycles, ...lapsed, ...swept, ...reconciled };
+  logger.info('Cron: daily', { ...result, ms: Date.now() - started });
+  res.json({ ok: true, ...result });
 }));
 
 router.all('/expire-subscriptions', asyncHandler(async (_req, res) => {
   const result = await expireSubscriptions();
+  res.json({ ok: true, ...result });
+}));
+
+/* --------------------------- minute metering ---------------------------
+ * Each of these also runs on the in-process scheduler. They are exposed here
+ * because that scheduler dies with a Passenger recycle, and the sweep in
+ * particular must not stop: while it is not running, every user whose app was
+ * killed mid-interview has minutes reserved that they cannot spend.
+ * -------------------------------------------------------------------- */
+
+/** Every minute, if you have a pinger. Settles meetings whose heartbeat died. */
+router.all('/sweep-meetings', asyncHandler(async (_req, res) => {
+  const result = await sweepAbandonedMeetings();
+  res.json({ ok: true, ...result });
+}));
+
+/** Hourly. Idempotent by construction — safe to call as often as you like. */
+router.all('/subscription-minutes', asyncHandler(async (_req, res) => {
+  const expired = await expireSubscriptionMinutes();
+  const granted = await grantSubscriptionCycles();
+  res.json({ ok: true, ...granted, ...expired });
+}));
+
+/** Nightly. Reports counter/ledger drift; repairs only the derived hold. */
+router.all('/reconcile-balances', asyncHandler(async (_req, res) => {
+  const result = await reconcileBalances();
   res.json({ ok: true, ...result });
 }));
 

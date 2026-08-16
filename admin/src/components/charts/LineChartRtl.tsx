@@ -31,7 +31,7 @@ export interface LineSeries {
   connectNulls?: boolean;
 }
 
-export interface LineChartRtlProps<T extends Record<string, unknown>> {
+export interface LineChartRtlProps<T extends object> {
   data: T[];
   categoryKey: string;
   series: LineSeries[];
@@ -46,11 +46,12 @@ export interface LineChartRtlProps<T extends Record<string, unknown>> {
 
 /** Trend over time. Same RTL treatment as BarChartRtl: the first point sits at
  *  the inline-start (right) and the value axis is on the right. */
-export function LineChartRtl<T extends Record<string, unknown>>({
+export function LineChartRtl<T extends object>({
   data,
   categoryKey,
   series,
-  height = chartHeight.md,
+  // Responsive by default (SHELL §3.5), not a fixed 300.
+  height = chartHeight,
   showLegend = true,
   yWidth = 48,
   tickFormatter,

@@ -23,13 +23,35 @@
  * @property {boolean} secret        Secrets are encrypted and never returned by any GET.
  * @property {string[]} [options]    For type 'select'.
  * @property {boolean} [testable]    Whether POST /:key/test can reach a provider.
+ * @property {string[]} [allowedHosts] For type 'url': registrable domains this URL may
+ *                                   point at (the domain itself or any subdomain).
+ *                                   REQUIRED for any URL the server sends a secret to.
  */
 
 /** @type {CredentialDef[]} */
 export const CREDENTIALS = [
   /* ----------------------------- EasyKash ----------------------------- */
   { key: 'EASYKASH_ENABLED', group: 'payments', type: 'boolean', secret: false },
-  { key: 'EASYKASH_BASE_URL', group: 'payments', type: 'url', secret: false },
+  /**
+   * Host-pinned, and that pin is load-bearing rather than tidiness.
+   *
+   * EASYKASH_API_KEY is write-only by design: no endpoint returns it. But
+   * services/payments/easykash.js builds the checkout URL from this key and
+   * sends the API key to it as the Authorization header. Without a pin, a
+   * super_admin who cannot READ the key could still point this at a host they
+   * control and have the server hand the live key over on the next checkout —
+   * defeating the write-only guarantee through a non-secret sibling setting.
+   *
+   * The same pin is re-checked at send time (easykash.js) so a row written
+   * before this existed, or straight into MySQL, cannot leak either.
+   */
+  {
+    key: 'EASYKASH_BASE_URL',
+    group: 'payments',
+    type: 'url',
+    secret: false,
+    allowedHosts: ['easykash.net'],
+  },
   { key: 'EASYKASH_PAY_PATH', group: 'payments', type: 'path', secret: false },
   { key: 'EASYKASH_API_KEY', group: 'payments', type: 'secret', secret: true, testable: true },
   { key: 'EASYKASH_WEBHOOK_SECRET', group: 'payments', type: 'secret', secret: true },
@@ -91,6 +113,48 @@ export function coerce(type, raw) {
 }
 
 /**
+ * Is `hostname` inside one of `domains` (the domain itself or a subdomain)?
+ *
+ * Compares labels, not substrings: `endsWith('easykash.net')` alone would also
+ * accept `notreallyeasykash.net`, which is exactly the shape of a look-alike
+ * host an exfiltration attempt would use.
+ */
+function hostMatches(hostname, domains) {
+  const host = String(hostname || '').toLowerCase().replace(/\.$/, '');
+  return domains.some((d) => {
+    const domain = d.toLowerCase();
+    return host === domain || host.endsWith(`.${domain}`);
+  });
+}
+
+/**
+ * Guard for the request path: re-checks a URL the app is about to send a
+ * credential to against the registry pin. Kept here so the allow-list has one
+ * definition and the check cannot drift from what PUT validates.
+ *
+ * @param {string} key    Registry key whose `allowedHosts` applies.
+ * @param {string} url    The absolute URL about to be requested.
+ * @returns {{ok: true} | {ok: false, reason: string}}
+ */
+export function checkOutboundUrl(key, url) {
+  const def = credentialDef(key);
+  if (!def?.allowedHosts?.length) return { ok: true };
+
+  let u;
+  try {
+    u = new URL(String(url));
+  } catch {
+    return { ok: false, reason: 'not a valid URL' };
+  }
+  if (u.protocol !== 'https:') return { ok: false, reason: 'must use https' };
+  if (u.username || u.password) return { ok: false, reason: 'must not embed credentials' };
+  if (!hostMatches(u.hostname, def.allowedHosts)) {
+    return { ok: false, reason: `host ${u.hostname} is not an allowed ${key} host` };
+  }
+  return { ok: true };
+}
+
+/**
  * Validate an incoming value for a key. Returns the canonical string to store.
  * @throws {Error} with a message safe to show an admin — it never contains the value.
  */
@@ -106,16 +170,37 @@ export function validateValue(def, value) {
     case 'select':
       if (!def.options?.includes(v)) throw new Error(`Value must be one of: ${def.options?.join(', ')}`);
       return v;
-    case 'url':
+    case 'url': {
+      let u;
       try {
-        const u = new URL(v);
-        if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('bad protocol');
+        u = new URL(v);
       } catch {
         throw new Error('Value must be an http(s) URL');
       }
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') {
+        throw new Error('Value must be an http(s) URL');
+      }
+      // A pinned URL is one the server sends a credential to, so the two ways
+      // of getting the credential onto the wire in the clear are both refused:
+      // an off-list host, and plain http to an on-list one.
+      if (def.allowedHosts?.length) {
+        if (u.username || u.password) throw new Error('URL must not contain a username or password');
+        if (u.protocol !== 'https:') throw new Error('URL must use https');
+        if (!hostMatches(u.hostname, def.allowedHosts)) {
+          throw new Error(`Host must be ${def.allowedHosts.join(' or ')} (or a subdomain of it)`);
+        }
+      }
       return v.replace(/\/$/, '');
+    }
     case 'path':
       if (!v.startsWith('/')) throw new Error('Path must start with /');
+      // The path is concatenated onto a pinned base URL. `//host/...` would
+      // parse as a new authority and move the request — and its Authorization
+      // header — off the pinned host, so a leading `//` is not a valid path.
+      if (v.startsWith('//')) throw new Error('Path must not start with //');
+      if (!/^\/[A-Za-z0-9\-._~/%?=&:@+,;$!*'()[\]]*$/.test(v)) {
+        throw new Error('Path contains characters that are not allowed');
+      }
       return v;
     case 'csv':
       return v.split(',').map((x) => x.trim()).filter(Boolean).join(',');

@@ -30,7 +30,7 @@ export interface BarSeries {
   stackId?: string;
 }
 
-export interface BarChartRtlProps<T extends Record<string, unknown>> {
+export interface BarChartRtlProps<T extends object> {
   data: T[];
   categoryKey: string;
   series: BarSeries[];
@@ -39,7 +39,7 @@ export interface BarChartRtlProps<T extends Record<string, unknown>> {
   yWidth?: number;
 }
 
-export function BarChartRtl<T extends Record<string, unknown>>({
+export function BarChartRtl<T extends object>({
   data,
   categoryKey,
   series,

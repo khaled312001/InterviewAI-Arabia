@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { secureStorage } from '../storage/secureStorage';
 import { api, AuthEvents } from '../api/client';
+import { useBalance } from './balance';
 
 export interface AppUser {
   id: string;
@@ -8,7 +9,12 @@ export interface AppUser {
   name: string;
   language: 'ar' | 'en';
   plan: 'free' | 'premium';
-  dailyQuestionsUsed: number;
+  /**
+   * DEPRECATED — the daily question quota was replaced by the minute balance.
+   * The server still emits it for one release so an old build keeps rendering;
+   * nothing in this app reads it any more. Use `useBalance()` instead.
+   */
+  dailyQuestionsUsed?: number;
 }
 
 interface AuthState {
@@ -76,6 +82,9 @@ export const useAuth = create<AuthState>((set, get) => ({
   logout: async () => {
     await persistTokens(null, null);
     set({ token: null, refreshToken: null, user: null });
+    // The balance belongs to the account, not to the app. Leaving it behind
+    // would show the next person to sign in the previous one's minutes.
+    useBalance.getState().clear();
   },
 
   refreshMe: async () => {

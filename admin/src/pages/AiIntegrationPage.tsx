@@ -1,11 +1,6 @@
-import { StubPage } from './StubPage';
+import { IntegrationPage } from '../features/integrations/IntegrationPage';
+import { AI_PAGE } from '../features/integrations/registry';
 
 export function AiIntegrationPage() {
-  return (
-    <StubPage
-      title="تكامل الذكاء الاصطناعي"
-      description="مزودو النماذج ومفاتيحهم"
-      blockedBy="يحتاج جدول provider_credentials وتشفير AES-256-GCM ونقاط /admin/integrations."
-    />
-  );
+  return <IntegrationPage spec={AI_PAGE} />;
 }
