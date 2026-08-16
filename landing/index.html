@@ -603,6 +603,10 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 .ftr-bottom{border-top:1px solid var(--border);padding-top:var(--sp-6);
   display:flex;flex-wrap:wrap;gap:var(--sp-4);justify-content:space-between;color:var(--text-3);font-size:13.5px}
 .heart{color:#EF4444;display:inline-flex;vertical-align:-.15em}
+.ftr-by a{color:var(--text-2);font-weight:700;text-decoration:none;
+  border-bottom:1px solid color-mix(in srgb,var(--text-3) 45%,transparent);
+  padding-bottom:1px;transition:color .2s,border-color .2s}
+.ftr-by a:hover{color:var(--primary);border-bottom-color:var(--primary)}
 
 /* Entrance animation — opt-in via IntersectionObserver so nothing is hidden
    if JS fails. Elements start visible and only animate once observed. */
@@ -1195,6 +1199,12 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
     </div>
     <div class="ftr-bottom">
       <span>© <span id="yr">2026</span> <span data-l="ar">ثقتي (Thiqty) — جميع الحقوق محفوظة</span><span data-l="en">Thiqty (ثقتي) — all rights reserved</span></span>
+      <span class="ftr-by">
+        <span data-l="ar">تطوير</span><span data-l="en">Built by</span>
+        <a href="https://barmagly.tech/" target="_blank" rel="noopener noreferrer">
+          <span data-l="ar">شركة برمجلي</span><span data-l="en">Barmagly</span>
+        </a>
+      </span>
       <span>
         <span data-l="ar">صُنع بـ</span><span data-l="en">Made with</span>
         <span class="heart"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span>

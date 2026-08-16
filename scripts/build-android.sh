@@ -25,6 +25,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-/c/iaabuild}"
+TARGET_SDK="${TARGET_SDK:-35}"      # Google Play floor for new apps
+AGP_VERSION="${AGP_VERSION:-8.6.0}" # minimum that supports compileSdk 35
 
 export JAVA_HOME="${JAVA_HOME:-f:/android-toolchain/jdk-17.0.13+11}"
 export ANDROID_HOME="${ANDROID_HOME:-F:/android-toolchain/sdk}"
@@ -65,6 +67,39 @@ cd "$BUILD_DIR"
 
 say "Regenerating the native project from app.json"
 npx expo prebuild --platform android --no-install --clean
+
+say "Raising the target API level for Google Play"
+# Play rejects new apps below API 35 (36 from 2026-08-31). Expo SDK 51 ships
+# AGP 8.2.1, whose ceiling is compileSdk 34 — and targetSdk can never exceed
+# compileSdk, so the level cannot be raised without also raising AGP. The
+# Gradle wrapper here is already 8.8, which satisfies AGP 8.6.
+cd "$BUILD_DIR/android"
+python - "$TARGET_SDK" "$AGP_VERSION" <<'PY'
+import io, re, sys
+sdk, agp = sys.argv[1], sys.argv[2]
+
+p = 'gradle.properties'
+s = io.open(p, encoding='utf-8').read()
+# build.gradle reads these through findProperty(), so setting them here is
+# what actually reaches Gradle.
+for key, val in (('compileSdkVersion', sdk), ('targetSdkVersion', sdk),
+                 ('buildToolsVersion', sdk + '.0.0')):
+    line = f'android.{key}={val}'
+    s = re.sub(rf'^android\.{key}=.*$', line, s, flags=re.M) \
+        if re.search(rf'^android\.{key}=', s, re.M) else s + chr(10) + line + chr(10)
+io.open(p, 'w', encoding='utf-8').write(s)
+
+p = 'build.gradle'
+s = io.open(p, encoding='utf-8').read()
+# The template declares the plugin without a version and lets the React
+# Native gradle plugin pin it. Pin it explicitly instead.
+before = s
+s = s.replace("classpath('com.android.tools.build:gradle')",
+              f"classpath('com.android.tools.build:gradle:{agp}')")
+assert s != before, 'AGP classpath line not found — template changed'
+io.open(p, 'w', encoding='utf-8').write(s)
+print(f'  targetSdk={sdk} compileSdk={sdk} AGP={agp}')
+PY
 
 say "Re-applying release signing"
 cd "$BUILD_DIR/android"
