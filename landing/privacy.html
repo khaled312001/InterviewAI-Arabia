@@ -1468,7 +1468,7 @@ tbody td:first-child{color:var(--text);font-weight:700}
     for (var i = 0; i < btns.length; i++){
       btns[i].setAttribute('aria-pressed', String(btns[i].getAttribute('data-set-lang') === lang));
     }
-    if (persist){ try { localStorage.setItem('thiqty-legal-lang', lang); } catch(e){} }
+    if (persist){ try { localStorage.setItem('thiqty-lang', lang); } catch(e){} }
   }
 
   for (var i = 0; i < btns.length; i++){
@@ -1488,7 +1488,10 @@ tbody td:first-child{color:var(--text);font-weight:700}
   var q = null;
   try { q = new URLSearchParams(location.search).get('lang'); } catch(e){}
   var stored = null;
-  try { stored = localStorage.getItem('thiqty-legal-lang'); } catch(e){}
+  // One key across the whole site ('thiqty-lang'), so a choice made on the
+  // landing page or /delete-account carries here. The old legal-only key is
+  // still read once so returning readers keep their setting.
+  try { stored = localStorage.getItem('thiqty-lang') || localStorage.getItem('thiqty-legal-lang'); } catch(e){}
   if (q === 'en' || q === 'ar') apply(q, false);
   else if (stored) apply(stored, false);
   else if (navigator.language && navigator.language.slice(0,2).toLowerCase() !== 'ar') apply('en', false);

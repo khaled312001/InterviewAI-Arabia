@@ -40,7 +40,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <Toolbar sx={{ gap: 1 }}>
         <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>IA</Avatar>
         <Box>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1 }}>InterviewAI</Typography>
+          <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1 }}>ثقتي</Typography>
           <Typography variant="caption" color="text.secondary">لوحة التحكم</Typography>
         </Box>
       </Toolbar>
@@ -82,7 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            {navItems.find((n) => n.path === location.pathname)?.label || 'InterviewAI Arabia'}
+            {navItems.find((n) => n.path === location.pathname)?.label || 'ثقتي — لوحة التحكم'}
           </Typography>
           <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)}>
             <Avatar sx={{ bgcolor: 'secondary.main', width: 32, height: 32 }}>

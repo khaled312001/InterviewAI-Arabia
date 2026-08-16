@@ -45,16 +45,21 @@ for a in "$@"; do
 done
 [ $# -gt 1 ] && { WANT_APK=1; WANT_AAB=1; }
 
+# Unbuffered: when this script is backgrounded its output is otherwise held
+# until exit, so a 25-minute build is indistinguishable from a hung one.
+exec 1>&2
+
 say() { printf '\n\033[1;34m▸ %s\033[0m\n' "$*"; }
 
 [ -f "$KEYSTORE" ] || { echo "keystore missing: $KEYSTORE"; exit 1; }
 
+set -o pipefail   # a half-finished sync must not look like success
 say "Syncing sources to a space-free path ($BUILD_DIR)"
 mkdir -p "$BUILD_DIR"
 tar -C "$ROOT/mobile" \
     --exclude='./android/build' --exclude='./android/app/build' \
     --exclude='./android/.gradle' --exclude='./.expo' --exclude='./dist' \
-    -cf - . | (cd "$BUILD_DIR" && tar -xf -)
+    -cf - . | (cd "$BUILD_DIR" && tar -x --overwrite -f -)
 
 cd "$BUILD_DIR"
 
@@ -136,7 +141,7 @@ TASKS=""
 [ "$WANT_AAB" = 1 ] && TASKS="$TASKS bundleRelease"
 
 say "Gradle:$TASKS"
-./gradlew $TASKS --no-daemon
+./gradlew $TASKS --no-daemon --console=plain
 
 say "Artifacts"
 mkdir -p "$ROOT/release"

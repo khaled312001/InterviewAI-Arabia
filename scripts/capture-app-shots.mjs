@@ -24,7 +24,15 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const OUT = path.join(ROOT, 'store-assets', 'phone');
+const OUT = process.env.SHOT_OUT
+  ? path.resolve(ROOT, process.env.SHOT_OUT)
+  : path.join(ROOT, 'store-assets', 'phone');
+// Tablet listings need a wider layout, not an upscaled phone. Driving the
+// CSS viewport wider makes the app lay itself out as it would on a tablet;
+// the scale factor then lands it on Play's pixel floor for that form factor.
+const VW = Number(process.env.SHOT_W || 540);
+const VH = Number(process.env.SHOT_H || 960);
+const DSF = Number(process.env.SHOT_DSF || 2);
 const EDGE = process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const APP = process.env.APP_URL || 'https://interview.khaledahmed.net/app';
 const EMAIL = process.env.SHOT_EMAIL || 'reviewer@thiqty.app';
@@ -53,7 +61,7 @@ const browser = await puppeteer.launch({
 });
 
 const page = await browser.newPage();
-await page.setViewport({ width: 540, height: 960, deviceScaleFactor: 2 });
+await page.setViewport({ width: VW, height: VH, deviceScaleFactor: DSF });
 await page.setExtraHTTPHeaders({ 'Accept-Language': 'ar-EG,ar;q=0.9' });
 
 const errors = [];

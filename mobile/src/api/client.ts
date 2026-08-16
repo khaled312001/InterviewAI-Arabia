@@ -21,6 +21,12 @@ const HOSTINGER_API   = 'https://interview.khaledahmed.net/api';
 const SAME_ORIGIN_HOSTS = [
   'interview.khaledahmed.net',
   'intervie-ai-arabia.barmagly.tech',
+  // Local regression runs serve the export behind a proxy that forwards /api
+  // upstream (scripts/serve-webtest.mjs). Without this the page would call the
+  // production origin cross-site and every request would die in CORS, which
+  // looks exactly like a broken app rather than a blocked one.
+  'localhost',
+  '127.0.0.1',
 ];
 
 let resolved: string;

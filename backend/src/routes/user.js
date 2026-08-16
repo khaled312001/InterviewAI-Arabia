@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
@@ -53,6 +54,66 @@ router.patch('/me', requireUser, asyncHandler(async (req, res) => {
 
   const updated = await prisma.user.update({ where: { id: req.userId }, data });
   res.json({ user: toPublicUser(updated) });
+}));
+
+/* -------------------------------------------------------------------------
+ * DELETE /api/user/me
+ *
+ * Google Play requires an in-app deletion path for any app with accounts, and
+ * a matching web URL (landing/delete-account.html).
+ *
+ * This ERASES rather than DROPS the row, and the distinction is deliberate.
+ * `Payment` has `onDelete: Cascade` on its user relation, so deleting the row
+ * would take the payment ledger with it — records we are obliged to keep for
+ * Egyptian bookkeeping, and which the published privacy policy states are
+ * retained. So: every piece of personal data is destroyed and the account is
+ * made permanently unusable, while the financial rows keep a foreign key to an
+ * anonymous shell. That is what the policy promises, exactly.
+ *
+ * Sessions, answers, refresh tokens and reset tokens are deleted outright —
+ * they cascade from the ids below and hold the candidate's own words.
+ * ---------------------------------------------------------------------- */
+
+const deleteSchema = z.object({
+  // A stolen session token must not be enough to destroy someone's account.
+  password: z.string().min(1),
+});
+
+router.delete('/me', requireUser, asyncHandler(async (req, res) => {
+  const { password } = deleteSchema.parse(req.body ?? {});
+
+  const user = await prisma.user.findUnique({ where: { id: req.userId } });
+  if (!user) throw new HttpError(404, 'User not found');
+
+  const ok = await bcrypt.compare(password, user.passwordHash);
+  if (!ok) throw new HttpError(401, 'كلمة المرور غير صحيحة / Password incorrect', undefined, 'BAD_PASSWORD');
+
+  const id = req.userId;
+  // A hash of a value nobody holds: the account can never be signed into again,
+  // and the column stays non-null as the schema requires.
+  const deadHash = await bcrypt.hash(`deleted:${id}:${crypto.randomUUID()}`, 12);
+
+  await prisma.$transaction([
+    prisma.session.deleteMany({ where: { userId: id } }),   // cascades to answers
+    prisma.refreshToken.deleteMany({ where: { userId: id } }),
+    prisma.passwordReset.deleteMany({ where: { userId: id } }),
+    prisma.user.update({
+      where: { id },
+      data: {
+        // Unique constraint still applies, so the tombstone has to be unique too.
+        email: `deleted-${id}@deleted.thiqty.app`,
+        name: 'حساب محذوف',
+        phone: null,
+        passwordHash: deadHash,
+        isDisabled: true,
+        plan: 'free',
+        premiumUntil: null,
+        dailyQuestionsUsed: 0,
+      },
+    }),
+  ]);
+
+  res.json({ deleted: true });
 }));
 
 router.get('/stats', requireUser, asyncHandler(async (req, res) => {

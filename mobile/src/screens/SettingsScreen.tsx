@@ -12,7 +12,7 @@
  */
 
 import { memo, useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, Switch, Linking, Platform, Alert } from 'react-native';
+import { View, StyleSheet, Pressable, Switch, Linking, Platform, Alert, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import { useNavigation } from '@react-navigation/native';
@@ -23,12 +23,18 @@ import Constants from 'expo-constants';
 import { setAppLanguage } from '../i18n';
 import { useAuth } from '../store/auth';
 import { useAppTheme, useThemePreference } from '../theme/useTheme';
-import { Screen, Text, Card, Badge, ListRow, SectionHeader, Skeleton } from '../components';
+import { Screen, Text, Card, Badge, ListRow, SectionHeader, Skeleton, Button, Input } from '../components';
+import { api } from '../api/client';
 
-/* Public pages owned by the marketing site — not localisable copy. */
-const WEBSITE_URL = 'https://barmagly.tech';
-const PRIVACY_URL = 'https://barmagly.tech/privacy';
-const TERMS_URL = 'https://barmagly.tech/terms';
+/* Public pages owned by the marketing site — not localisable copy.
+ * These MUST be Thiqty's own policies, not Barmagly's: barmagly.tech/privacy
+ * is the agency's policy and says nothing about interview recordings, AI
+ * providers or this app's data. Google Play compares the policy against the
+ * app's actual behaviour, and `/privacy#delete-account` is the deletion URL
+ * declared in the Data safety form. */
+const WEBSITE_URL = 'https://interview.khaledahmed.net';
+const PRIVACY_URL = 'https://interview.khaledahmed.net/privacy';
+const TERMS_URL = 'https://interview.khaledahmed.net/terms';
 
 const NOTIF_STORAGE_KEY = 'settings:notifications';
 
@@ -215,10 +221,24 @@ export function SettingsScreen() {
     });
   }, []);
 
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const logout = useAuth((st) => st.logout);
+
   const onPickTheme = useCallback((p: ThemePreference) => setPreference(p), [setPreference]);
   const onPickLanguage = useCallback((lng: 'ar' | 'en') => { setAppLanguage(lng); }, []);
   const onOpenSubscription = useCallback(() => navigation.navigate('Subscription'), [navigation]);
 
+  /**
+   * Account deletion. Google Play requires this to be reachable *inside* the
+   * app, not only as a support email.
+   *
+   * Two steps on purpose: a destructive confirm, then the password. Re-asking
+   * for the password means a phone left unlocked on a desk cannot erase
+   * someone's history, and it is the same check the API enforces.
+   */
   const onDeleteAccount = useCallback(() => {
     confirmDestructive({
       title: t('settings.deleteConfirmTitle'),
@@ -226,15 +246,37 @@ export function SettingsScreen() {
       confirmLabel: t('settings.deleteConfirmCta'),
       cancelLabel: t('common.cancel'),
       onConfirm: () => {
-        // No DELETE /user/me endpoint exists yet, so the request goes to the
-        // support inbox rather than silently doing nothing.
-        const to = t('settings.supportEmail');
-        const subject = encodeURIComponent(t('settings.deleteRequestSubject'));
-        const body = encodeURIComponent(t('settings.deleteRequestBody', { email: user?.email ?? '' }));
-        openUrl(`mailto:${to}?subject=${subject}&body=${body}`);
+        setDeletePassword('');
+        setDeleteError(null);
+        setDeleteOpen(true);
       },
     });
-  }, [t, user?.email]);
+  }, [t]);
+
+  const submitDeletion = useCallback(async () => {
+    if (!deletePassword) {
+      setDeleteError(t('settings.deletePasswordRequired'));
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      // axios sends a body on DELETE only under `data`.
+      await api.delete('/user/me', { data: { password: deletePassword } });
+      setDeleteOpen(false);
+      // The account is gone; the stored tokens now authenticate nothing.
+      await logout();
+    } catch (err: any) {
+      const code = err?.response?.data?.code;
+      setDeleteError(
+        code === 'BAD_PASSWORD'
+          ? t('settings.deleteWrongPassword')
+          : err?.response?.data?.error || t('settings.deleteFailed'),
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }, [deletePassword, logout, t]);
 
   const isPremium = user?.plan === 'premium';
   const appVersion = (Constants.expoConfig?.version as string | undefined) ?? '—';
@@ -446,6 +488,50 @@ export function SettingsScreen() {
         </Card>
       </View>
 
+      <Modal
+        visible={deleteOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!deleting) setDeleteOpen(false); }}
+      >
+        <View style={[styles.modalScrim, { padding: theme.spacing.lg }]}>
+          <Card
+            style={{ width: '100%', maxWidth: 420, gap: theme.spacing.md }}
+          >
+            <Text role="h4" weight="bold">{t('settings.deleteConfirmTitle')}</Text>
+            <Text role="bodySm" tone="muted">{t('settings.deletePasswordPrompt')}</Text>
+
+            <Input
+              label={t('auth.password')}
+              value={deletePassword}
+              onChangeText={(v) => { setDeletePassword(v); setDeleteError(null); }}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="current-password"
+              editable={!deleting}
+              error={deleteError ?? undefined}
+              testID="delete-password"
+            />
+
+            <View style={{ gap: theme.spacing.sm }}>
+              <Button
+                title={t('settings.deleteConfirmCta')}
+                variant="danger"
+                loading={deleting}
+                onPress={() => { void submitDeletion(); }}
+                testID="delete-submit"
+              />
+              <Button
+                title={t('common.cancel')}
+                variant="ghost"
+                disabled={deleting}
+                onPress={() => setDeleteOpen(false)}
+              />
+            </View>
+          </Card>
+        </View>
+      </Modal>
+
       {/* ----------------------------- Version ---------------------------- */}
       <View style={{ marginTop: theme.spacing['2xl'] }}>
         <Card variant="filled" padding="none">
@@ -466,6 +552,7 @@ export function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  modalScrim: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(6,11,22,0.66)' },
   flex: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center' },
   planIcon: { alignItems: 'center', justifyContent: 'center' },

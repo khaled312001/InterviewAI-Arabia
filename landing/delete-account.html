@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>حذف الحساب والبيانات — ثقتي (Thiqty) | Delete your account</title>
+<meta name="description" content="كيف تحذف حسابك في تطبيق ثقتي وكل البيانات المرتبطة به — How to delete your Thiqty account and all associated data.">
+<link rel="canonical" href="https://interview.khaledahmed.net/delete-account">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="/favicon.png">
+<meta property="og:title" content="حذف الحساب والبيانات — ثقتي">
+<meta property="og:description" content="كيف تحذف حسابك في ثقتي وكل بياناتك.">
+<meta property="og:url" content="https://interview.khaledahmed.net/delete-account">
+<meta property="og:image" content="https://interview.khaledahmed.net/og-image.png">
+<meta property="og:type" content="website">
+<style>
+:root{
+  --font:'Cairo','IBM Plex Sans Arabic','Noto Naskh Arabic',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --brand-500:#2D73FD; --brand-600:#1A56E8; --brand-700:#0736A8; --brand-50:#EFF5FF;
+  --brand-100:#DBE8FE; --brand-950:#172554;
+  --ink:#0F172A; --ink-2:#475569; --ink-3:#64748B;
+  --bg:#FFFFFF; --surface:#F8FAFC; --border:#E2E8F0;
+  --danger:#DC2626; --danger-soft:#FEF2F2; --gold:#FEAF04;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ink:#E9EEF6; --ink-2:#AFBACB; --ink-3:#8A97AB;
+    --bg:#0B1220; --surface:#111A2B; --border:#1E293B;
+    --brand-50:#132043; --brand-100:#1B2C55; --danger-soft:#2A1416; --danger:#F87171;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);line-height:1.85;
+  font-size:16.5px;padding:0 20px 80px}
+.wrap{max-width:760px;margin-inline:auto}
+header{padding:26px 0;border-bottom:1px solid var(--border);display:flex;
+  align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;font-weight:700}
+.brand img{width:34px;height:34px}
+.lang{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+.lang button{font:inherit;font-size:13.5px;font-weight:700;padding:7px 15px;border:0;cursor:pointer;
+  background:transparent;color:var(--ink-2)}
+.lang button[aria-pressed="true"]{background:var(--brand-500);color:#fff}
+h1{font-size:clamp(26px,5vw,36px);line-height:1.35;margin:38px 0 10px;letter-spacing:-.02em}
+.sub{color:var(--ink-2);font-size:16px;margin-bottom:34px}
+h2{font-size:20px;margin:34px 0 12px;display:flex;align-items:center;gap:10px}
+h2 .n{width:27px;height:27px;flex:0 0 auto;border-radius:50%;background:var(--brand-500);color:#fff;
+  font-size:13.5px;font-weight:700;display:inline-grid;place-items:center;line-height:1}
+p{margin:11px 0;color:var(--ink-2)}
+ul{margin:11px 0;padding-inline-start:24px;color:var(--ink-2)}
+li{margin:7px 0}
+strong{color:var(--ink);font-weight:700}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin:22px 0}
+.card.warn{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 34%,transparent)}
+.cta{display:inline-flex;align-items:center;gap:9px;background:var(--brand-500);color:#fff;
+  text-decoration:none;font-weight:700;padding:14px 26px;border-radius:12px;margin-top:8px}
+.cta:hover{background:var(--brand-600)}
+a{color:var(--brand-600)}
+code{font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;font-size:14px;
+  background:var(--brand-50);padding:2px 7px;border-radius:6px;color:var(--brand-700)}
+footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--border);
+  color:var(--ink-3);font-size:14px;display:flex;gap:18px;flex-wrap:wrap}
+[data-l]{display:none}
+html[lang="ar"] [data-l="ar"],html[lang="en"] [data-l="en"]{display:revert}
+html[lang="en"]{direction:ltr}
+html[lang="en"] body{text-align:left}
+html[lang="en"] ul{padding-inline-start:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <a class="brand" href="/">
+    <img src="/logo-mark.png" alt="">
+    <span data-l="ar">ثقتي</span><span data-l="en">Thiqty</span>
+  </a>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" id="b-ar" aria-pressed="true">العربية</button>
+    <button type="button" id="b-en" aria-pressed="false">English</button>
+  </div>
+</header>
+
+<h1><span data-l="ar">حذف الحساب والبيانات</span><span data-l="en">Delete your account and data</span></h1>
+<p class="sub">
+  <span data-l="ar">تطبيق ثقتي — <code>com.thiqty.app</code> — من بَرمَجلي، القاهرة، مصر.</span>
+  <span data-l="en">Thiqty — <code>com.thiqty.app</code> — by Barmagly, Cairo, Egypt.</span>
+</p>
+
+<h2><span class="n">١</span><span data-l="ar">اطلب الحذف</span><span data-l="en">Request deletion</span></h2>
+<div data-l="ar">
+  <p>ابعت رسالة من <strong>نفس البريد الإلكتروني المسجّل في حسابك</strong> إلى العنوان تحت،
+     واكتب في الموضوع <strong>«حذف الحساب»</strong>. طلب الحذف من بريد آخر لا يمكن تنفيذه،
+     لأننا لا نستطيع التأكد أنه صاحب الحساب.</p>
+  <a class="cta" href="mailto:info@barmagly.tech?subject=%D8%AD%D8%B0%D9%81%20%D8%A7%D9%84%D8%AD%D8%B3%D8%A7%D8%A8%20-%20Delete%20account&amp;body=%D8%A7%D8%B7%D9%84%D8%A8%20%D8%AD%D8%B0%D9%81%20%D8%AD%D8%B3%D8%A7%D8%A8%D9%8A%20%D9%88%D9%83%D9%84%20%D8%A8%D9%8A%D8%A7%D9%86%D8%A7%D8%AA%D9%8A%20%D9%86%D9%87%D8%A7%D8%A6%D9%8A%D9%8B%D8%A7.">
+    اطلب حذف حسابي
+  </a>
+  <p style="margin-top:14px">أو راسلنا مباشرة على <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>.</p>
+</div>
+<div data-l="en">
+  <p>Email us from the <strong>same address your account is registered with</strong>, with
+     <strong>“Delete account”</strong> as the subject. We cannot action a request sent from a
+     different address, because we have no way to confirm it is the account holder.</p>
+  <a class="cta" href="mailto:info@barmagly.tech?subject=Delete%20account&amp;body=Please%20permanently%20delete%20my%20account%20and%20all%20associated%20data.">
+    Request account deletion
+  </a>
+  <p style="margin-top:14px">Or write to <a href="mailto:info@barmagly.tech">info@barmagly.tech</a>.</p>
+</div>
+
+<h2><span class="n">٢</span><span data-l="ar">ما الذي يُحذف</span><span data-l="en">What gets deleted</span></h2>
+<div data-l="ar">
+  <p>يُحذف حسابك وكل ما هو مرتبط به نهائيًا:</p>
+  <ul>
+    <li>اسمك وبريدك الإلكتروني وكلمة مرورك المشفّرة، ورقم هاتفك إن كنت أدخلته عند الدفع</li>
+    <li>كل جلسات التدريب والمقابلات، ومدّتها ودرجاتها</li>
+    <li>كل إجاباتك ونصوص كلامك، وتقييمات الذكاء الاصطناعي المرتبطة بها</li>
+    <li>لغتك المفضّلة وحالة رصيدك اليومي</li>
+    <li>جلسات الدخول ورموز التحديث، فتخرج من كل الأجهزة</li>
+  </ul>
+</div>
+<div data-l="en">
+  <p>Your account and everything attached to it is permanently removed:</p>
+  <ul>
+    <li>Your name, email address and password hash, plus your phone number if you entered one at checkout</li>
+    <li>Every practice session and interview, with its duration and scores</li>
+    <li>Every answer and transcript you produced, and the AI evaluations attached to them</li>
+    <li>Your language preference and daily allowance state</li>
+    <li>Sign-in sessions and refresh tokens, so you are signed out everywhere</li>
+  </ul>
+</div>
+
+<h2><span class="n">٣</span><span data-l="ar">ما الذي يبقى، ولماذا</span><span data-l="en">What is kept, and why</span></h2>
+<div class="card">
+  <div data-l="ar">
+    <p><strong>سجلّات الدفع.</strong> إذا سبق أن اشتركت، نحتفظ بسجل المعاملة (المبلغ والتاريخ
+      ورقم العملية لدى مزوّد الدفع) للمدة التي يفرضها القانون المصري على الدفاتر المحاسبية.
+      هذا السجل لا يحتوي على بيانات بطاقتك — نحن لا نراها ولا نخزّنها أصلًا.</p>
+    <p><strong>نسخ احتياطية.</strong> قد تظل بياناتك في نسخة احتياطية مشفّرة لفترة قصيرة بعد
+      الحذف، ثم تُستبدل تلقائيًا. لا تُستخدم هذه النسخ إلا لاستعادة النظام بعد عطل.</p>
+  </div>
+  <div data-l="en">
+    <p><strong>Payment records.</strong> If you ever subscribed, we keep the transaction record
+      (amount, date, and the payment provider's reference) for as long as Egyptian bookkeeping
+      law requires. It contains no card details — we never see or store those.</p>
+    <p><strong>Backups.</strong> Your data may persist in an encrypted backup for a short period
+      after deletion and is then rotated out automatically. Backups are used only to restore the
+      service after a failure.</p>
+  </div>
+</div>
+
+<h2><span class="n">٤</span><span data-l="ar">كم يستغرق</span><span data-l="en">How long it takes</span></h2>
+<p>
+  <span data-l="ar">نؤكّد استلام طلبك خلال <strong>٤٨ ساعة</strong>، ونتمّ الحذف خلال
+    <strong>٣٠ يومًا</strong> على الأكثر، ونرسل لك تأكيدًا عند الانتهاء.</span>
+  <span data-l="en">We acknowledge your request within <strong>48 hours</strong> and complete the
+    deletion within <strong>30 days</strong> at the latest, then confirm when it is done.</span>
+</p>
+
+<div class="card warn">
+  <p style="color:inherit">
+    <span data-l="ar"><strong>الحذف نهائي ولا يمكن التراجع عنه.</strong> سجلّك وتقدّمك ودرجاتك
+      لا يمكن استعادتها بعد التنفيذ. لو كنت تريد فقط التوقّف عن استخدام التطبيق، يكفي أن تسجّل
+      الخروج — لن نرسل لك أي رسائل.</span>
+    <span data-l="en"><strong>Deletion is permanent and cannot be undone.</strong> Your history,
+      progress and scores cannot be recovered afterwards. If you only want to stop using the app,
+      simply sign out — we will not email you.</span>
+  </p>
+</div>
+
+<footer>
+  <a href="/"><span data-l="ar">الرئيسية</span><span data-l="en">Home</span></a>
+  <a href="/privacy"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a>
+  <a href="/terms"><span data-l="ar">شروط الاستخدام</span><span data-l="en">Terms of use</span></a>
+  <span>© 2026 Barmagly</span>
+</footer>
+
+</div>
+<script>
+(function () {
+  var ar = document.getElementById('b-ar'), en = document.getElementById('b-en');
+  function set(lang) {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    ar.setAttribute('aria-pressed', String(lang === 'ar'));
+    en.setAttribute('aria-pressed', String(lang === 'en'));
+    try { localStorage.setItem('thiqty-lang', lang); } catch (e) {}
+  }
+  ar.addEventListener('click', function () { set('ar'); });
+  en.addEventListener('click', function () { set('en'); });
+  // A Play reviewer arrives with an English browser; meet them in their language.
+  var saved = null;
+  try { saved = localStorage.getItem('thiqty-lang'); } catch (e) {}
+  set(saved || ((navigator.language || 'ar').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en'));
+})();
+</script>
+</body>
+</html>

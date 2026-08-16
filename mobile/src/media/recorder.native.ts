@@ -281,12 +281,18 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
 
   const release = useCallback((opts: { save: boolean }) => {
     releasedRef.current = true;
-    saveRef.current = opts.save;
 
+    // The guard comes BEFORE the flag, exactly as in recorder.web.ts. A second
+    // release — the screen's unmount cleanup arriving behind the one teardown
+    // already ran — must not re-arm a take it is not driving: `finalize` reads
+    // `saveRef` when `recordAsync` finally resolves, so writing it here would
+    // hand back a file the candidate asked to discard.
     if (!recordingRef.current) {
       if (graceRef.current) { clearTimeout(graceRef.current); graceRef.current = null; }
       return;
     }
+
+    saveRef.current = opts.save;
 
     // Synchronous by contract: teardown stops the camera in the same block, and
     // a capture session whose surface disappears mid-flush can leave

@@ -9,11 +9,18 @@
 <meta name="author" content="ثقتي — Thiqty">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="https://interview.khaledahmed.net/">
+<!-- Arabic is the served document; the English translation lives in the same
+     HTML behind [data-l] and is reachable with ?lang=en. -->
 <link rel="alternate" hreflang="ar" href="https://interview.khaledahmed.net/">
+<link rel="alternate" hreflang="en" href="https://interview.khaledahmed.net/?lang=en">
 <link rel="alternate" hreflang="x-default" href="https://interview.khaledahmed.net/">
 <link rel="manifest" href="/site.webmanifest">
-<meta name="theme-color" content="#2D73FD" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#080D1A" media="(prefers-color-scheme: dark)">
+<!-- The media-keyed pair serves the "follow the system" state. When the reader
+     forces a theme, the script flips these to `not all` and enables #tc-forced,
+     so the browser chrome never contradicts the page. -->
+<meta id="tc-light" name="theme-color" content="#2D73FD" media="(prefers-color-scheme: light)">
+<meta id="tc-dark" name="theme-color" content="#080D1A" media="(prefers-color-scheme: dark)">
+<meta id="tc-forced" name="theme-color" content="#2D73FD" media="not all">
 <meta name="color-scheme" content="light dark">
 <meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-title" content="ثقتي">
@@ -22,6 +29,7 @@
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ar_EG">
+<meta property="og:locale:alternate" content="en_US">
 <meta property="og:site_name" content="ثقتي — Thiqty">
 <meta property="og:title" content="ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي">
 <meta property="og:description" content="محاوِر ذكي يسألك بالعربية، يسمع إجابتك، ويقول لك بالضبط أين كنت قوياً وأين خسرت الوظيفة.">
@@ -38,6 +46,27 @@
 <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64">
 <link rel="icon" href="/logo-mark.png" type="image/png" sizes="256x256">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+<!-- Theme + language, applied before the first paint. Without this the page
+     paints light for one frame on a forced-dark reader, and Arabic for one
+     frame on an English one. Kept tiny and dependency-free on purpose. -->
+<script>
+(function(){
+  var d = document.documentElement;
+  try {
+    var t = localStorage.getItem('thiqty-theme');
+    if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+  } catch (e) {}
+  var l = null;
+  try { l = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+  if (l !== 'ar' && l !== 'en') { try { l = localStorage.getItem('thiqty-lang'); } catch (e) { l = null; } }
+  if (l !== 'ar' && l !== 'en') {
+    l = (navigator.language || 'ar').slice(0, 2).toLowerCase() === 'ar' ? 'ar' : 'en';
+  }
+  d.setAttribute('lang', l);
+  d.setAttribute('dir', l === 'en' ? 'ltr' : 'rtl');
+})();
+</script>
 
 <!-- LCP is the hero screenshot; preloading it removes a round-trip from the
      critical path. Fonts use swap so first paint never waits on them. -->
@@ -65,7 +94,7 @@
       "@id": "https://interview.khaledahmed.net/#site",
       "url": "https://interview.khaledahmed.net/",
       "name": "ثقتي — Thiqty",
-      "inLanguage": "ar",
+      "inLanguage": ["ar", "en"],
       "publisher": { "@id": "https://interview.khaledahmed.net/#org" }
     },
     {
@@ -73,7 +102,7 @@
       "name": "ثقتي (Thiqty)",
       "applicationCategory": "EducationalApplication",
       "operatingSystem": "Android, Web",
-      "inLanguage": "ar",
+      "inLanguage": ["ar", "en"],
       "description": "مدرّب مقابلات وظيفية بالذكاء الاصطناعي باللغة العربية.",
       "publisher": { "@id": "https://interview.khaledahmed.net/#org" },
       "featureList": [
@@ -115,19 +144,56 @@
 
 <style>
 /* ── Design tokens: mirrored from mobile/src/theme/tokens.ts so the landing
-      page and the app are visibly the same product. ─────────────────── */
+      page and the app are visibly the same product.
+
+      THEMING CONTRACT
+      1. bare :root is the complete LIGHT palette. Every colour is defined
+         here, so nothing lives only inside a media query.
+      2. the prefers-color-scheme block is guarded with
+         :not([data-theme="light"]) — a reader who forces light wins over a
+         dark OS.
+      3. :root[data-theme="dark"] repeats the same declarations, later in the
+         sheet — a reader who forces dark wins over a light OS.
+      Both overrides are specificity (0,1,1) against :root's (0,1,0), so no
+      !important is needed anywhere. ───────────────────────────────────── */
 :root{
+  /* Raw scale — theme-independent, never overridden. */
   --brand-50:#EFF5FF; --brand-100:#DBE8FE; --brand-200:#BFD7FE; --brand-400:#609AFA;
   --brand-500:#2D73FD; --brand-600:#1A56E8; --brand-700:#0736A8; --brand-800:#1E3CAF; --brand-950:#172554;
-  --gold-300:#FCD34D; --gold-400:#FBBF24; --gold-500:#FEAF04; --gold-700:#B45309;
-  --green-500:#22C55E; --green-600:#16A34A;
+  --gold-300:#FCD34D; --gold-400:#FBBF24; --gold-500:#FEAF04; --gold-700:#B45309; --gold-800:#92400E;
+  --green-400:#4ADE80; --green-500:#22C55E; --green-600:#16A34A; --green-700:#15803D; --green-800:#166534;
   --n-0:#FFFFFF; --n-50:#F7F9FC; --n-100:#EEF2F7; --n-200:#E2E8F0; --n-300:#CBD5E1;
   --n-400:#94A3B8; --n-500:#64748B; --n-600:#475569; --n-800:#1E293B; --n-900:#0F172A; --n-950:#080D1A;
 
-  --bg:var(--n-50); --surface:var(--n-0); --surface-alt:var(--n-100);
+  /* ── LIGHT theme ──────────────────────────────────────────────────────
+     Designed, not de-saturated: a cool paper ground, pure-white cards so
+     they lift off it, and a slightly bluer band colour so the alternating
+     sections read as deliberate stripes rather than dirty white.
+     Contrast (measured against the surface each token actually sits on):
+       text  #0F172A on #F6F9FD ......... 16.3:1
+       text-2 #475569 on #F6F9FD ......... 7.3:1
+       text-3 #64748B on #F6F9FD ......... 4.8:1
+       primary #1A56E8 on #FFFFFF ........ 5.9:1
+       accent-ink #92400E on #FFFBEB ..... 6.8:1  (gold-500 itself is 1.8:1
+         on white — it is a fill colour only, never a text colour)
+       green-ink #166534 on the green tint 6.3:1
+       #fff on primary-solid #1A56E8 ..... 5.9:1 */
+  --bg:#F6F9FD; --surface:var(--n-0); --surface-alt:#ECF1F9;
   --text:var(--n-900); --text-2:var(--n-600); --text-3:var(--n-500);
-  --border:var(--n-200); --primary:var(--brand-600); --primary-soft:var(--brand-50);
-  --accent:var(--gold-500); --accent-ink:var(--gold-700); --accent-soft:#FFFBEB;
+  --border:#DEE7F2;
+  --primary:var(--brand-600);            /* links, icons, kickers */
+  --primary-solid:var(--brand-600);      /* filled buttons + badges, always on #fff */
+  --primary-solid-h:var(--brand-700);
+  --primary-soft:var(--brand-50);
+  --accent:var(--gold-500);              /* fills and glows only */
+  --accent-ink:var(--gold-800);          /* the readable gold */
+  --accent-soft:#FFFBEB;
+  --green-ink:var(--green-800);          /* green that survives a white page */
+  --tick:var(--green-700);
+  --pill-green:var(--green-700);
+  --muted-ink:var(--n-500);              /* the struck-through plan rows */
+  --grad-a:var(--brand-500); --grad-b:var(--brand-800);
+  --device-a:#2b3648; --device-b:#0d1420;
 
   --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px; --r-2xl:32px; --r-pill:999px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
@@ -140,18 +206,48 @@
   --shadow-brand:0 10px 30px rgba(37,92,235,.30);
 
   --maxw:1160px;
-  --font:'Cairo','IBM Plex Sans Arabic',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font:'Cairo','IBM Plex Sans Arabic','Noto Naskh Arabic',system-ui,-apple-system,'Segoe UI',sans-serif;
+
+  color-scheme:light dark;
 }
+
+/* Dark, when the system asks for it AND the reader has not forced light. */
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     --bg:var(--n-950); --surface:#111C31; --surface-alt:#0B1424;
     --text:var(--n-50); --text-2:var(--n-300); --text-3:var(--n-400);
-    --border:rgba(148,163,184,.18); --primary:var(--brand-400); --primary-soft:rgba(96,154,250,.12);
+    --border:rgba(148,163,184,.18);
+    --primary:var(--brand-400);
+    --primary-solid:var(--brand-600); --primary-solid-h:var(--brand-500);
+    --primary-soft:rgba(96,154,250,.12);
     --accent:var(--gold-400); --accent-ink:var(--gold-300); --accent-soft:rgba(251,191,36,.12);
+    --green-ink:var(--green-400); --tick:var(--green-400); --pill-green:var(--green-700);
+    --muted-ink:var(--n-400);
+    --grad-a:var(--brand-400); --grad-b:#A5C8FF;
     --shadow-sm:0 1px 3px rgba(0,0,0,.4); --shadow-md:0 4px 12px rgba(0,0,0,.45);
     --shadow-lg:0 8px 24px rgba(0,0,0,.5); --shadow-xl:0 16px 48px rgba(0,0,0,.55);
   }
 }
+/* Dark, forced by the reader — identical declarations, later in the sheet so
+   it also beats a light OS. Keep the two blocks in sync. */
+:root[data-theme="dark"]{
+  --bg:var(--n-950); --surface:#111C31; --surface-alt:#0B1424;
+  --text:var(--n-50); --text-2:var(--n-300); --text-3:var(--n-400);
+  --border:rgba(148,163,184,.18);
+  --primary:var(--brand-400);
+  --primary-solid:var(--brand-600); --primary-solid-h:var(--brand-500);
+  --primary-soft:rgba(96,154,250,.12);
+  --accent:var(--gold-400); --accent-ink:var(--gold-300); --accent-soft:rgba(251,191,36,.12);
+  --green-ink:var(--green-400); --tick:var(--green-400); --pill-green:var(--green-700);
+  --muted-ink:var(--n-400);
+  --grad-a:var(--brand-400); --grad-b:#A5C8FF;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.4); --shadow-md:0 4px 12px rgba(0,0,0,.45);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.5); --shadow-xl:0 16px 48px rgba(0,0,0,.55);
+}
+/* UA widgets — scrollbars, form controls, the canvas behind the page — must
+   follow the forced choice too, or they fight the palette. */
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
 
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -170,7 +266,17 @@ p{margin:0}
 ul{margin:0;padding:0;list-style:none}
 :focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px}
 
-.skip{position:absolute;inset-inline-start:-9999px;top:0;background:var(--primary);color:#fff;padding:12px 20px;z-index:200;border-radius:0 0 var(--r-md) 0}
+/* ── Bilingual switching — the same mechanism as privacy.html / terms.html.
+      Arabic is the document default and is what a reader with JavaScript
+      disabled sees; nothing is hidden behind script.
+      NOTE: display:revert rolls back to the UA value, so a [data-l] wrapper
+      must never be an element whose display comes from author CSS. Every
+      wrapper below is a plain <span>/<div>/<p>. ────────────────────────── */
+[data-l]{display:none}
+html[lang="ar"] [data-l="ar"]{display:revert}
+html[lang="en"] [data-l="en"]{display:revert}
+
+.skip{position:absolute;inset-inline-start:-9999px;top:0;background:var(--primary-solid);color:#fff;padding:12px 20px;z-index:200;border-radius:0 0 var(--r-md) 0}
 .skip:focus{inset-inline-start:0}
 
 .wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5)}
@@ -182,26 +288,53 @@ ul{margin:0;padding:0;list-style:none}
   -webkit-backdrop-filter:saturate(180%) blur(14px);
   background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid transparent;transition:border-color .2s}
 .hdr.scrolled{border-bottom-color:var(--border)}
-.hdr-in{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);height:68px}
+/* Wraps rather than overflows: the row now carries two pill switchers as well
+   as the two CTAs, which does not fit a 360px phone on one line. */
+.hdr-in{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  min-height:68px;flex-wrap:wrap;padding-block:8px}
 .brand{display:flex;align-items:center;gap:var(--sp-3);font-weight:900;font-size:18px}
+.brand-alt{color:var(--text-3);font-weight:600;font-size:15px}
 .brand-mark{width:38px;height:38px;border-radius:11px;flex:0 0 auto;
   background:linear-gradient(135deg,var(--brand-500),var(--brand-800));
   display:grid;place-items:center;color:#fff;font-size:19px;box-shadow:var(--shadow-brand)}
-.nav{display:flex;align-items:center;gap:var(--sp-6)}
+.nav{display:flex;align-items:center;gap:var(--sp-5)}
 .nav a{color:var(--text-2);font-size:15px;font-weight:600;transition:color .15s}
 .nav a:hover{color:var(--primary)}
-@media (max-width:900px){.nav{display:none}}
+/* Raised from 900px: the row now also carries two switchers, and Arabic sets
+   wider than English — below this the nav would push the header to two rows. */
+@media (max-width:1080px){.nav{display:none}}
+/* The switchers live here, NOT inside .nav — .nav is display:none on mobile
+   and a hidden language control would be a trap. */
+.hdr-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Phones: the row carries brand + two switchers + two CTAs, which cannot fit.
+   The login link goes (the primary CTA lands on the same /app), the Latin half
+   of the wordmark goes, and the pills tighten — enough to keep the sticky
+   header to two rows at 360px instead of three. */
+/* Scoped through .hdr-tools so these beat the .toggle.pill-sm base rules,
+   which are declared further down the sheet with the pricing switcher. */
+@media (max-width:520px){
+  .hdr-tools .btn-ghost{display:none}
+  .brand .brand-alt{display:none}
+  .hdr-tools .btn-sm{padding-inline:var(--sp-3);font-size:14px}
+  .hdr-tools .toggle.pill-sm button{font-size:12px;padding:5px 9px}
+  .hdr-tools .toggle.theme-pill button{padding:5px 7px}
+  .hdr-tools .toggle.theme-pill .icon{width:16px;height:16px}
+}
+@media (max-width:400px){
+  .hdr-tools .toggle.pill-sm button{font-size:11.5px;padding:5px 7px}
+  .hdr-tools .toggle.theme-pill button{padding:5px 6px}
+}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
   height:48px;padding-inline:var(--sp-6);border-radius:var(--r-md);border:0;cursor:pointer;
   font-family:inherit;font-size:16px;font-weight:700;transition:transform .15s,box-shadow .15s,background .15s;white-space:nowrap}
 .btn:active{transform:scale(.97)}
-.btn-primary{background:var(--primary);color:#fff;box-shadow:var(--shadow-brand)}
-.btn-primary:hover{background:var(--brand-700)}
+.btn-primary{background:var(--primary-solid);color:#fff;box-shadow:var(--shadow-brand)}
+.btn-primary:hover{background:var(--primary-solid-h)}
 .btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border)}
 .btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
 .btn-lg{height:56px;padding-inline:var(--sp-8);font-size:17px}
-.btn-sm{height:42px;padding-inline:var(--sp-5);font-size:15px}
+.btn-sm{height:42px;padding-inline:var(--sp-4);font-size:14.5px}
 
 /* ── Hero ───────────────────────────────────────────────────────────── */
 .hero{position:relative;padding-block:var(--sp-20) var(--sp-24);overflow:hidden}
@@ -216,22 +349,22 @@ ul{margin:0;padding:0;list-style:none}
   color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
   padding:7px 15px;border-radius:var(--r-pill);font-size:13.5px;font-weight:700;margin-bottom:var(--sp-5)}
 .hero h1{font-size:clamp(34px,5.4vw,60px);font-weight:900;letter-spacing:-.03em;margin-bottom:var(--sp-5)}
-.hero h1 .grad{background:linear-gradient(120deg,var(--brand-500),var(--brand-800) 70%);
+/* Tokenised, so the headline gradient follows a FORCED theme too — it used to
+   have its own prefers-color-scheme rule that an attribute cannot reach. */
+.hero h1 .grad{background:linear-gradient(120deg,var(--grad-a),var(--grad-b) 70%);
   -webkit-background-clip:text;background-clip:text;color:transparent}
-@media (prefers-color-scheme:dark){.hero h1 .grad{background:linear-gradient(120deg,var(--brand-400),#A5C8FF);-webkit-background-clip:text;background-clip:text}}
 .hero .lede{font-size:clamp(17px,2.1vw,20px);color:var(--text-2);max-width:56ch;margin-bottom:var(--sp-8)}
 .hero-cta{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--sp-6)}
 .hero-note{display:flex;flex-wrap:wrap;gap:var(--sp-5);color:var(--text-3);font-size:14px}
-.hero-note span{display:inline-flex;align-items:center;gap:6px}
-.tick{color:var(--green-500);font-weight:900}
+.hero-note > span{display:inline-flex;align-items:center;gap:6px}
 
 /* Phone mockup — pure CSS/SVG, no image request on the critical path. */
 .phone{position:relative;margin-inline:auto;width:300px;max-width:100%;
-  border-radius:44px;padding:11px;background:linear-gradient(160deg,#2b3648,#0d1420);
+  border-radius:44px;padding:11px;background:linear-gradient(160deg,var(--device-a),var(--device-b));
   box-shadow:var(--shadow-xl),0 0 0 1px rgba(255,255,255,.06) inset}
 .phone-screen{border-radius:34px;background:var(--surface);overflow:hidden;aspect-ratio:9/19}
 .phone-notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);
-  width:112px;height:26px;background:#0d1420;border-radius:0 0 16px 16px;z-index:2}
+  width:112px;height:26px;background:var(--device-b);border-radius:0 0 16px 16px;z-index:2}
 .ps-hd{background:linear-gradient(150deg,var(--brand-600),var(--brand-800));
   padding:34px var(--sp-4) var(--sp-5);color:#fff}
 .ps-hd .row{display:flex;align-items:center;gap:10px}
@@ -247,19 +380,19 @@ ul{margin:0;padding:0;list-style:none}
 .ps-q{font-size:11.5px;color:var(--text-2);line-height:1.65}
 .ps-score{display:flex;align-items:center;gap:11px}
 .ring{width:52px;height:52px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;
-  font-weight:900;font-size:16px;color:var(--green-600);
+  font-weight:900;font-size:16px;color:var(--green-ink);
   background:conic-gradient(var(--green-500) 0 82%,color-mix(in srgb,var(--green-500) 18%,transparent) 82% 100%)}
 .ring i{width:40px;height:40px;border-radius:50%;background:var(--surface-alt);display:grid;place-items:center;font-style:normal}
 .ps-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 .tag{font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:var(--r-pill)}
-.tag.g{background:rgba(34,197,94,.14);color:var(--green-600)}
+.tag.g{background:rgba(34,197,94,.14);color:var(--green-ink)}
 .tag.a{background:var(--accent-soft);color:var(--accent-ink)}
 
 /* Real product screenshots. Framed in a device-ish shell so a flat PNG
    still reads as "this is the app", without pretending to be a mockup. */
 .brand-logo{width:40px;height:auto;flex:0 0 auto}
 .shot-hero{position:relative;margin-inline:auto;width:300px;max-width:78vw;
-  border-radius:38px;padding:9px;background:linear-gradient(160deg,#2b3648,#0d1420);
+  border-radius:38px;padding:9px;background:linear-gradient(160deg,var(--device-a),var(--device-b));
   box-shadow:var(--shadow-xl),0 0 0 1px rgba(255,255,255,.06) inset}
 .shot-hero img{border-radius:30px;display:block;width:100%;height:auto}
 .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6);align-items:start}
@@ -274,13 +407,15 @@ ul{margin:0;padding:0;list-style:none}
 .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-5);align-items:start}
 @media (max-width:1040px){.flow{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:560px){.flow{grid-template-columns:1fr;max-width:320px;margin-inline:auto}}
-.flow .shot{padding:var(--sp-4);position:relative;text-align:right}
+/* text-align:start, not right — under dir=ltr a physical `right` would leave
+   these eight cards right-aligned on a left-aligned page. */
+.flow .shot{padding:var(--sp-4);position:relative;text-align:start}
 .flow .shot img{margin-bottom:var(--sp-3)}
 .flow h3{font-size:15px;display:flex;align-items:center;gap:8px}
 .flow p{font-size:13.5px;line-height:1.65}
 .step-no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;
   display:inline-grid;place-items:center;font-size:12px;font-weight:700;
-  background:var(--brand-500);color:#fff}
+  background:var(--primary-solid);color:#fff}
 .shots-sub{margin-top:var(--sp-8)}
 
 
@@ -288,9 +423,9 @@ ul{margin:0;padding:0;list-style:none}
 .icon{width:1em;height:1em;display:inline-block;vertical-align:-.125em;flex:0 0 auto}
 .ico .icon{width:24px;height:24px}
 .eyebrow .icon{width:18px;height:13px;border-radius:2px;vertical-align:-.15em}
-.tick{color:var(--green-500);display:inline-flex}
+.tick{color:var(--tick);display:inline-flex}
 .tick .icon{width:15px;height:15px}
-.muted-x{color:var(--n-400);display:inline-flex}
+.muted-x{color:var(--muted-ink);display:inline-flex}
 .muted-x .icon{width:15px;height:15px}
 .plan li .tick,.plan li .muted-x{margin-top:4px}
 
@@ -337,7 +472,9 @@ ul{margin:0;padding:0;list-style:none}
   font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,var(--text),color-mix(in srgb,var(--primary) 55%,var(--text)));
   -webkit-background-clip:text;background-clip:text;color:transparent}
-.stat span{font-size:13.5px;color:var(--text-3);line-height:1.5;max-width:15ch}
+/* Scoped to the label only: `.stat span` also matched .stat-ico and, being one
+   step more specific, was repainting the icons in --text-3. */
+.stat > span:not(.stat-ico){font-size:13.5px;color:var(--text-3);line-height:1.5;max-width:15ch}
 
 @media (prefers-reduced-motion:no-preference){
   .stat-ico{transition:transform .35s cubic-bezier(.2,0,0,1),background .25s}
@@ -358,11 +495,17 @@ ul{margin:0;padding:0;list-style:none}
   transition:transform .25s cubic-bezier(.2,0,0,1),box-shadow .25s,border-color .25s}
 .step:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);
   border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
-/* Step number, trailing edge — the icon leads, the numeral orders. */
+/* Step number, trailing edge — the icon leads, the numeral orders.
+   The counter style follows the language: Arabic-Indic in Arabic, Latin in
+   English. (Never duplicate a .step per language — counter-increment would
+   then run 1..6 and the dashed connectors would land between translations.) */
 .step::before{counter-increment:s;content:counter(s, arabic-indic);position:absolute;top:var(--sp-5);inset-inline-end:var(--sp-6);
   font-weight:900;font-size:44px;line-height:1;color:var(--primary);opacity:.13}
-/* Dashed connector between cards, desktop only. */
-.step:not(:last-child)::after{content:'';position:absolute;top:76px;inset-inline-start:-13px;
+html[lang="en"] .step::before{content:counter(s, decimal)}
+/* Dashed connector between cards, desktop only. inset-inline-END, so the dash
+   lands in the gutter AFTER each non-last card — with -start it hung off the
+   outer edge of card 1 and left the 2→3 gutter empty, in both directions. */
+.step:not(:last-child)::after{content:'';position:absolute;top:76px;inset-inline-end:-13px;
   width:26px;border-top:2px dashed color-mix(in srgb,var(--primary) 40%,transparent)}
 @media (max-width:860px){.step:not(:last-child)::after{display:none}}
 .step .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;margin-bottom:var(--sp-4)}
@@ -382,7 +525,7 @@ ul{margin:0;padding:0;list-style:none}
 .feat p{color:var(--text-2);font-size:15px}
 .i-blue{background:var(--primary-soft);color:var(--primary)}
 .i-gold{background:var(--accent-soft);color:var(--accent-ink)}
-.i-green{background:rgba(34,197,94,.13);color:var(--green-600)}
+.i-green{background:rgba(34,197,94,.13);color:var(--green-ink)}
 
 .feat-wide{grid-column:span 2;background:linear-gradient(140deg,var(--brand-600),var(--brand-800));color:#fff;border:0}
 @media (max-width:620px){.feat-wide{grid-column:span 1}}
@@ -395,16 +538,26 @@ ul{margin:0;padding:0;list-style:none}
 .toggle{display:inline-flex;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-pill);padding:5px;gap:4px}
 .toggle button{border:0;background:transparent;font-family:inherit;font-size:14.5px;font-weight:700;
   color:var(--text-2);padding:9px 20px;border-radius:var(--r-pill);cursor:pointer;transition:all .18s}
-.toggle button[aria-pressed="true"]{background:var(--primary);color:#fff;box-shadow:var(--shadow-sm)}
-.save-pill{background:var(--green-500);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);margin-inline-start:6px}
+.toggle button[aria-pressed="true"]{background:var(--primary-solid);color:#fff;box-shadow:var(--shadow-sm)}
+/* Same component, header size — used by the language and theme switchers. */
+.toggle.pill-sm{padding:3px}
+.toggle.pill-sm button{font-size:12.5px;padding:6px 11px}
+.toggle.theme-pill button{padding:5px 8px;display:inline-grid;place-items:center}
+.toggle.theme-pill .icon{width:17px;height:17px}
+/* #fff on --green-500 is 2.2:1; this pill carries 11px text, so it uses the
+   darker green in both themes. */
+.save-pill{background:var(--pill-green);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);margin-inline-start:6px}
 
 .plans{display:grid;grid-template-columns:repeat(2,minmax(0,380px));gap:var(--sp-6);justify-content:center;align-items:stretch}
 @media (max-width:800px){.plans{grid-template-columns:1fr;max-width:420px;margin-inline:auto}}
 .plan{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
   padding:var(--sp-8);display:flex;flex-direction:column;position:relative}
 .plan.featured{border:2px solid var(--primary);box-shadow:var(--shadow-xl)}
-.plan-badge{position:absolute;top:-14px;inset-inline-start:50%;transform:translateX(50%);
-  background:var(--primary);color:#fff;font-size:12.5px;font-weight:800;padding:5px 16px;border-radius:var(--r-pill)}
+/* left + translateX(-50%) centres in BOTH directions. The old
+   inset-inline-start:50% + translateX(50%) only centred under RTL, because
+   translateX is physical and is not mirrored by `direction`. */
+.plan-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+  background:var(--primary-solid);color:#fff;font-size:12.5px;font-weight:800;padding:5px 16px;border-radius:var(--r-pill);white-space:nowrap}
 .plan h3{font-size:19px;margin-bottom:var(--sp-2)}
 .plan .amt{font-size:42px;font-weight:900;line-height:1.15;margin-block:var(--sp-3)}
 .plan .amt small{font-size:16px;font-weight:700;color:var(--text-3)}
@@ -413,7 +566,7 @@ ul{margin:0;padding:0;list-style:none}
 .plan li{display:flex;gap:var(--sp-3);align-items:flex-start;font-size:15px;color:var(--text-2)}
 .plan li b{color:var(--text);font-weight:700}
 .plan li .tick{flex:0 0 auto;margin-top:2px}
-.muted-x{color:var(--n-400);flex:0 0 auto;margin-top:2px}
+.muted-x{color:var(--muted-ink);flex:0 0 auto;margin-top:2px}
 
 /* ── FAQ ────────────────────────────────────────────────────────────── */
 .faq{max-width:760px;margin-inline:auto;display:grid;gap:var(--sp-3)}
@@ -449,6 +602,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 .ftr a:hover{color:var(--primary)}
 .ftr-bottom{border-top:1px solid var(--border);padding-top:var(--sp-6);
   display:flex;flex-wrap:wrap;gap:var(--sp-4);justify-content:space-between;color:var(--text-3);font-size:13.5px}
+.heart{color:#EF4444;display:inline-flex;vertical-align:-.15em}
 
 /* Entrance animation — opt-in via IntersectionObserver so nothing is hidden
    if JS fails. Elements start visible and only animate once observed. */
@@ -458,7 +612,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 </style>
 </head>
 <body class="no-js">
-<a class="skip" href="#main">تخطَّ إلى المحتوى</a>
+<a class="skip" href="#main"><span data-l="ar">تخطَّ إلى المحتوى</span><span data-l="en">Skip to content</span></a>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
 <defs>
@@ -509,6 +663,17 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
   <g id="i-bolt" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"/>
   </g>
+  <!-- Theme switcher glyphs. -->
+  <g id="i-sun" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+  </g>
+  <g id="i-moon" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.5 14.5A8.6 8.6 0 0 1 9.5 3.5a8.6 8.6 0 1 0 11 11Z"/>
+  </g>
+  <g id="i-auto" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.8" y="4" width="18.4" height="12.4" rx="2.2"/><path d="M8.5 20.5h7M12 16.4v4.1"/>
+  </g>
   <!-- Egypt flag, drawn rather than emoji so it renders identically everywhere. -->
   <g id="i-eg">
     <rect x="1" y="4" width="22" height="5.33" fill="#CE1126"/>
@@ -523,20 +688,40 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 
 <header class="hdr" id="hdr">
   <div class="wrap hdr-in">
-    <a href="/" class="brand" aria-label="ثقتي — الصفحة الرئيسية">
+    <a href="/" class="brand" aria-label="ثقتي — الصفحة الرئيسية" data-aria-en="Thiqty — home">
       <img class="brand-logo" src="/logo-mark.png" alt="" width="40" height="39" decoding="async">
-      <span>ثقتي<span style="color:var(--text-3);font-weight:600;font-size:15px"> · Thiqty</span></span>
+      <span>
+        <span data-l="ar">ثقتي<span class="brand-alt"> · Thiqty</span></span>
+        <span data-l="en">Thiqty<span class="brand-alt"> · ثقتي</span></span>
+      </span>
     </a>
-    <nav class="nav" aria-label="التنقل الرئيسي">
-      <a href="#how">كيف يعمل</a>
-      <a href="#features">المميزات</a>
-      <a href="#screens">من داخل التطبيق</a>
-      <a href="#pricing">الأسعار</a>
-      <a href="#faq">أسئلة شائعة</a>
+    <nav class="nav" aria-label="التنقل الرئيسي" data-aria-en="Main navigation">
+      <a href="#how"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a>
+      <a href="#features"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a>
+      <a href="#screens"><span data-l="ar">من داخل التطبيق</span><span data-l="en">Inside the app</span></a>
+      <a href="#pricing"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
+      <a href="#faq"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
     </nav>
-    <div style="display:flex;gap:10px;align-items:center">
-      <a class="btn btn-ghost btn-sm" href="/app">تسجيل الدخول</a>
-      <a class="btn btn-primary btn-sm" href="/app?signup=1">ابدأ مجاناً</a>
+    <div class="hdr-tools">
+      <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
+        <button type="button" data-set-lang="ar" aria-pressed="true" lang="ar">عربي</button>
+        <button type="button" data-set-lang="en" aria-pressed="false" lang="en">English</button>
+      </div>
+      <div class="toggle pill-sm theme-pill" role="group" aria-label="المظهر / Theme">
+        <!-- These three carry a viewBox: the sheet's .icon svgs have none, so
+             artwork drawn on the 24 grid is clipped at any box under 24px. -->
+        <button type="button" data-set-theme="light" aria-pressed="false" aria-label="مظهر فاتح" data-aria-en="Light theme">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
+        <button type="button" data-set-theme="dark" aria-pressed="false" aria-label="مظهر داكن" data-aria-en="Dark theme">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg>
+        </button>
+        <button type="button" data-set-theme="system" aria-pressed="true" aria-label="حسب إعدادات الجهاز" data-aria-en="Match system">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
+        </button>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
+      <a class="btn btn-primary btn-sm" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
     </div>
   </div>
 </header>
@@ -548,52 +733,65 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
   <div class="hero-glow" aria-hidden="true"></div>
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow"><svg class="icon" aria-hidden="true"><use href="#i-eg"/></svg> أول تطبيق عربي لمقابلات العمل بالذكاء الاصطناعي</span>
-      <h1>تدرّب على المقابلة<br><span class="grad">قبل ما تدخلها فعلاً</span></h1>
+      <span class="eyebrow"><svg class="icon" viewBox="1 4 22 16" aria-hidden="true"><use href="#i-eg"/></svg>
+        <span data-l="ar">أول تطبيق عربي لمقابلات العمل بالذكاء الاصطناعي</span>
+        <span data-l="en">The first Arabic AI interview coach</span>
+      </span>
+      <h1>
+        <span data-l="ar">تدرّب على المقابلة<br><span class="grad">قبل ما تدخلها فعلاً</span></span>
+        <span data-l="en">Practise the interview<br><span class="grad">before you walk into it</span></span>
+      </h1>
       <p class="lede">
-        محاوِر ذكاء اصطناعي يسألك بالعربية، يسمع إجابتك، ويقول لك بالضبط أين كنت قوياً
-        وأين خسرت الوظيفة — بدرجة من ١٠ وسبب واضح لكل نقطة.
+        <span data-l="ar">محاوِر ذكاء اصطناعي يسألك بالعربية، يسمع إجابتك، ويقول لك بالضبط أين كنت قوياً
+        وأين خسرت الوظيفة — بدرجة من ١٠ وسبب واضح لكل نقطة.</span>
+        <span data-l="en">An AI interviewer asks the questions, listens to your answer, and tells you
+        exactly where you were strong and where you lost the job — scored out of 10, with a clear
+        reason behind every point.</span>
       </p>
       <div class="hero-cta">
-        <a class="btn btn-primary btn-lg" href="/app?signup=1">ابدأ التدريب مجاناً</a>
-        <a class="btn btn-ghost btn-lg" href="#how">شاهد كيف يعمل</a>
+        <a class="btn btn-primary btn-lg" href="/app?signup=1"><span data-l="ar">ابدأ التدريب مجاناً</span><span data-l="en">Start practising free</span></a>
+        <a class="btn btn-ghost btn-lg" href="#how"><span data-l="ar">شاهد كيف يعمل</span><span data-l="en">See how it works</span></a>
       </div>
       <div class="hero-note">
-        <span><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span> بدون بطاقة ائتمان</span>
-        <span><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span> ٥ أسئلة يومياً مجاناً</span>
-        <span><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span> يفهم اللهجة المصرية</span>
+        <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span data-l="ar">بدون بطاقة ائتمان</span><span data-l="en">No credit card</span></span>
+        <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span data-l="ar">٥ أسئلة يومياً مجاناً</span><span data-l="en">5 free questions a day</span></span>
+        <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span data-l="ar">يفهم اللهجة المصرية</span><span data-l="en">Understands Egyptian dialect</span></span>
       </div>
     </div>
 
     <div class="shot-hero">
       <img src="/shots/app-home.png" alt="لقطة من تطبيق ثقتي تعرض الرصيد اليومي ومجالات التدريب"
+           data-alt-en="The Thiqty app showing your daily allowance and practice tracks"
            width="720" height="1558" fetchpriority="high" decoding="async">
     </div>
   </div>
 </section>
 
 <!-- ══ Trust ══ -->
-<section class="trust" aria-label="أرقام عن المنتج">
+<section class="trust" aria-label="أرقام عن المنتج" data-aria-en="The product in numbers">
   <div class="wrap trust-grid">
     <div class="stat reveal">
-      <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg></span>
-      <b class="num" data-to="4" data-suffix="">٤</b>
-      <span>محاور تقييم لكل إجابة</span>
+      <span class="stat-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg></span>
+      <b class="num" data-to="4" data-suffix="" data-suffix-en="">٤</b>
+      <span><span data-l="ar">محاور تقييم لكل إجابة</span><span data-l="en">scoring criteria on every answer</span></span>
     </div>
     <div class="stat reveal">
-      <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-library"/></svg></span>
+      <span class="stat-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-library"/></svg></span>
       <b class="num" data-to="500" data-prefix="+">+٥٠٠</b>
-      <span>سؤال مقابلة حقيقي</span>
+      <span><span data-l="ar">سؤال مقابلة حقيقي</span><span data-l="en">real interview questions</span></span>
     </div>
     <div class="stat reveal">
-      <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg></span>
-      <b class="num" data-to="7" data-suffix="">٧</b>
-      <span>مجالات وظيفية</span>
+      <span class="stat-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg></span>
+      <b class="num" data-to="7" data-suffix="" data-suffix-en="">٧</b>
+      <span><span data-l="ar">مجالات وظيفية</span><span data-l="en">career tracks</span></span>
     </div>
     <div class="stat reveal">
-      <span class="stat-ico"><svg class="icon" aria-hidden="true"><use href="#i-bolt"/></svg></span>
-      <b class="num" data-to="10" data-prefix="&lt;" data-suffix="ث">&lt;١٠ ث</b>
-      <span>متوسط زمن التقييم</span>
+      <span class="stat-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bolt"/></svg></span>
+      <b class="num" data-to="10" data-prefix="&lt;" data-suffix="ث" data-suffix-en="s">&lt;١٠ ث</b>
+      <span><span data-l="ar">متوسط زمن التقييم</span><span data-l="en">average time to a score</span></span>
     </div>
   </div>
 </section>
@@ -602,25 +800,37 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 <section class="section" id="how">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker">كيف يعمل</div>
-      <h2>ثلاث خطوات من التدريب إلى العرض الوظيفي</h2>
-      <p>لا دورات طويلة ولا نظريات. تتدرّب على نفس الأسئلة التي ستُسأل عنها فعلاً.</p>
+      <div class="kicker"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></div>
+      <h2><span data-l="ar">ثلاث خطوات من التدريب إلى العرض الوظيفي</span><span data-l="en">Three steps from practice to the offer</span></h2>
+      <p>
+        <span data-l="ar">لا دورات طويلة ولا نظريات. تتدرّب على نفس الأسئلة التي ستُسأل عنها فعلاً.</span>
+        <span data-l="en">No long courses, no theory. You practise the exact questions you are going to be asked.</span>
+      </p>
     </div>
     <div class="steps">
       <article class="step reveal">
-        <div class="ico i-blue"><svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg></div>
-        <h3>ارفع سيرتك وأعلان الوظيفة</h3>
-        <p>يقرأ الذكاء الاصطناعي سيرتك الذاتية ووصف الوظيفة، ويبني منهما أسئلة مخصّصة لخبرتك أنت — لا أسئلة عامة منسوخة.</p>
+        <div class="ico i-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-upload"/></svg></div>
+        <h3><span data-l="ar">ارفع سيرتك وأعلان الوظيفة</span><span data-l="en">Upload your CV and the job ad</span></h3>
+        <p>
+          <span data-l="ar">يقرأ الذكاء الاصطناعي سيرتك الذاتية ووصف الوظيفة، ويبني منهما أسئلة مخصّصة لخبرتك أنت — لا أسئلة عامة منسوخة.</span>
+          <span data-l="en">The AI reads your CV and the job description and builds questions around your experience — not a generic list copied off a blog.</span>
+        </p>
       </article>
       <article class="step reveal">
-        <div class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-mic"/></svg></div>
-        <h3>ادخل المقابلة</h3>
-        <p>محاوِر موارد بشرية ذكي يسألك سؤالاً واحداً في كل مرة، بالصوت أو بالكتابة، ويتابع إجابتك بسؤال أعمق تماماً كما يحدث في الواقع.</p>
+        <div class="ico i-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg></div>
+        <h3><span data-l="ar">ادخل المقابلة</span><span data-l="en">Sit the interview</span></h3>
+        <p>
+          <span data-l="ar">محاوِر موارد بشرية ذكي يسألك سؤالاً واحداً في كل مرة، بالصوت أو بالكتابة، ويتابع إجابتك بسؤال أعمق تماماً كما يحدث في الواقع.</span>
+          <span data-l="en">An AI hiring manager asks one question at a time, by voice or in writing, then follows up on what you actually said — exactly like the real thing.</span>
+        </p>
       </article>
       <article class="step reveal">
-        <div class="ico i-gold"><svg class="icon" aria-hidden="true"><use href="#i-award"/></svg></div>
-        <h3>احصل على تقييمك</h3>
-        <p>درجة من ١٠ على أربعة محاور، مع نقاط قوتك، وما أضعف إجابتك، وإجابة نموذجية قصيرة تقدر تتدرّب عليها فوراً.</p>
+        <div class="ico i-gold"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-award"/></svg></div>
+        <h3><span data-l="ar">احصل على تقييمك</span><span data-l="en">Get your score</span></h3>
+        <p>
+          <span data-l="ar">درجة من ١٠ على أربعة محاور، مع نقاط قوتك، وما أضعف إجابتك، وإجابة نموذجية قصيرة تقدر تتدرّب عليها فوراً.</span>
+          <span data-l="en">A score out of 10 across four criteria, with your strengths, what weakened the answer, and a short model answer you can rehearse straight away.</span>
+        </p>
       </article>
     </div>
   </div>
@@ -630,35 +840,53 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 <section class="section" id="features" style="background:var(--surface-alt)">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker">المميزات</div>
-      <h2>مبني للسوق العربي — لا ترجمة لأداة أجنبية</h2>
-      <p>كل تفصيلة، من صياغة السؤال إلى نبرة التقييم، مصمّمة لطريقة إجراء المقابلات في مصر والخليج.</p>
+      <div class="kicker"><span data-l="ar">المميزات</span><span data-l="en">Features</span></div>
+      <h2><span data-l="ar">مبني للسوق العربي — لا ترجمة لأداة أجنبية</span><span data-l="en">Built for the Arab market — not a translated foreign tool</span></h2>
+      <p>
+        <span data-l="ar">كل تفصيلة، من صياغة السؤال إلى نبرة التقييم، مصمّمة لطريقة إجراء المقابلات في مصر والخليج.</span>
+        <span data-l="en">Every detail, from how a question is worded to the tone of the feedback, is designed for the way interviews are actually run in Egypt and the Gulf.</span>
+      </p>
     </div>
     <div class="feats">
       <article class="feat reveal">
-        <div class="ico i-blue"><svg class="icon" aria-hidden="true"><use href="#i-target"/></svg></div>
-        <h3>تقييم بأسباب لا بأرقام</h3>
-        <p>كل درجة مبنية على معايير معلنة: الصلة بالسؤال، التحديد والأدلة، البنية، والعمق المهني. تعرف بالضبط لماذا حصلت على ٦ بدل ٩.</p>
+        <div class="ico i-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg></div>
+        <h3><span data-l="ar">تقييم بأسباب لا بأرقام</span><span data-l="en">Scores with reasons, not just numbers</span></h3>
+        <p>
+          <span data-l="ar">كل درجة مبنية على معايير معلنة: الصلة بالسؤال، التحديد والأدلة، البنية، والعمق المهني. تعرف بالضبط لماذا حصلت على ٦ بدل ٩.</span>
+          <span data-l="en">Every score comes from published criteria: relevance, specifics and evidence, structure, and professional depth. You know exactly why you got a 6 instead of a 9.</span>
+        </p>
       </article>
       <article class="feat reveal">
-        <div class="ico i-green"><svg class="icon" aria-hidden="true"><use href="#i-speech"/></svg></div>
-        <h3>يفهم لهجتك</h3>
-        <p>تتكلم مصري أو خليجي أو شامي — لا فرق. التقييم على المضمون فقط، ولا يُخصم منك بسبب العامية أبداً.</p>
+        <div class="ico i-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-speech"/></svg></div>
+        <h3><span data-l="ar">يفهم لهجتك</span><span data-l="en">It understands your dialect</span></h3>
+        <p>
+          <span data-l="ar">تتكلم مصري أو خليجي أو شامي — لا فرق. التقييم على المضمون فقط، ولا يُخصم منك بسبب العامية أبداً.</span>
+          <span data-l="en">Egyptian, Gulf, Levantine — it makes no difference. You are judged on substance alone, and speaking colloquially never costs you a point.</span>
+        </p>
       </article>
       <article class="feat reveal">
-        <div class="ico i-gold"><svg class="icon" aria-hidden="true"><use href="#i-doc"/></svg></div>
-        <h3>أسئلة من سيرتك الذاتية</h3>
-        <p>ارفع الـ CV بصيغة PDF ويستخرج منه مشاريعك ومهاراتك، ثم يسألك عنها بالتحديد — كما يفعل مسؤول توظيف قرأها قبل المقابلة.</p>
+        <div class="ico i-gold"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg></div>
+        <h3><span data-l="ar">أسئلة من سيرتك الذاتية</span><span data-l="en">Questions drawn from your own CV</span></h3>
+        <p>
+          <span data-l="ar">ارفع الـ CV بصيغة PDF ويستخرج منه مشاريعك ومهاراتك، ثم يسألك عنها بالتحديد — كما يفعل مسؤول توظيف قرأها قبل المقابلة.</span>
+          <span data-l="en">Upload your CV as a PDF and it pulls out your projects and skills, then asks about them by name — like a recruiter who read it before the call.</span>
+        </p>
       </article>
       <article class="feat feat-wide reveal">
-        <div class="ico"><svg class="icon" aria-hidden="true"><use href="#i-video"/></svg></div>
-        <h3>مقابلة فيديو مباشرة مع محاوِر ذكي</h3>
-        <p>ليست دردشة نصية. مقابلة بالصوت والكاميرا مع «سارة» أو «أحمد» — محاوِر يرحّب بك، يسأل، يعلّق على إجابتك، ثم يختم بانطباع نهائي ونسبة ملاءمتك للوظيفة.</p>
+        <div class="ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-video"/></svg></div>
+        <h3><span data-l="ar">مقابلة فيديو مباشرة مع محاوِر ذكي</span><span data-l="en">A live video interview with an AI interviewer</span></h3>
+        <p>
+          <span data-l="ar">ليست دردشة نصية. مقابلة بالصوت والكاميرا مع «سارة» أو «أحمد» — محاوِر يرحّب بك، يسأل، يعلّق على إجابتك، ثم يختم بانطباع نهائي ونسبة ملاءمتك للوظيفة.</span>
+          <span data-l="en">Not a chat window. A real voice-and-camera interview with “Sara” or “Ahmed” — an interviewer who greets you, asks, reacts to what you say, then closes with a verdict and how well you fit the role.</span>
+        </p>
       </article>
       <article class="feat reveal">
-        <div class="ico i-blue"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg></div>
-        <h3>تتبّع تقدّمك</h3>
-        <p>رسم بياني لتطوّر درجاتك عبر الوقت، وتحليل لكل مجال يوضّح أين تحتاج تدريباً أكثر.</p>
+        <div class="ico i-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chart"/></svg></div>
+        <h3><span data-l="ar">تتبّع تقدّمك</span><span data-l="en">Track your progress</span></h3>
+        <p>
+          <span data-l="ar">رسم بياني لتطوّر درجاتك عبر الوقت، وتحليل لكل مجال يوضّح أين تحتاج تدريباً أكثر.</span>
+          <span data-l="en">A chart of how your scores move over time, plus a per-track breakdown showing where you still need the practice.</span>
+        </p>
       </article>
     </div>
   </div>
@@ -669,84 +897,126 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 <section class="section" id="screens">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker">من داخل التطبيق</div>
-      <h2>مش صور تسويقية — ده التطبيق نفسه</h2>
-      <p>كل لقطة هنا مأخوذة مباشرة من النسخة الشغالة اللي هتستخدمها، من أول ما تفتح المقابلة لحد ما تستلم تقييمك.</p>
+      <div class="kicker"><span data-l="ar">من داخل التطبيق</span><span data-l="en">Inside the app</span></div>
+      <h2><span data-l="ar">مش صور تسويقية — ده التطبيق نفسه</span><span data-l="en">Not marketing renders — this is the app</span></h2>
+      <p>
+        <span data-l="ar">كل لقطة هنا مأخوذة مباشرة من النسخة الشغالة اللي هتستخدمها، من أول ما تفتح المقابلة لحد ما تستلم تقييمك.</span>
+        <span data-l="en">Every shot here is taken straight from the build you will use, from opening the interview to collecting your score.</span>
+      </p>
     </div>
 
     <div class="flow">
       <figure class="shot reveal">
-        <img src="/shots/setup-language.png" alt="اختَر لغة المقابلة — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">1</span>اختَر لغة المقابلة</h3>
-        <p>عربي أو إنجليزي — الأسئلة وصوت المحاور والتعرّف على كلامك والتقييم كلها بنفس اللغة.</p>
+        <img src="/shots/setup-language.png" alt="اختَر لغة المقابلة — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Pick the interview language — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">1</span><span data-l="ar">اختَر لغة المقابلة</span><span data-l="en">Pick the interview language</span></h3>
+        <p>
+          <span data-l="ar">عربي أو إنجليزي — الأسئلة وصوت المحاور والتعرّف على كلامك والتقييم كلها بنفس اللغة.</span>
+          <span data-l="en">Arabic or English — the questions, the interviewer's voice, the speech recognition and the scoring all follow it.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/setup-details.png" alt="عرّف الوظيفة — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">2</span>عرّف الوظيفة</h3>
-        <p>اسم الشركة والمسمى الوظيفي، ووصف الإعلان لو حابب. كل تفصيلة بتقرّب الأسئلة من الواقع.</p>
+        <img src="/shots/setup-details.png" alt="شاشة إعداد المقابلة: اسم الشركة والمسمى الوظيفي ورفع السيرة الذاتية — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Interview setup: company, job title and CV upload — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">2</span><span data-l="ar">عرّف الوظيفة</span><span data-l="en">Describe the job</span></h3>
+        <p>
+          <span data-l="ar">اسم الشركة والمسمى الوظيفي، ووصف الإعلان لو حابب — وتقدر ترفع سيرتك الذاتية (PDF أو نص) فيقرأها المحاور ويسألك في خبرتك أنت بالذات. كل تفصيلة بتقرّب الأسئلة من الواقع.</span>
+          <span data-l="en">Company and job title, plus the ad itself if you have it — and you can upload your CV (PDF or text), so the interviewer reads it and asks about your own experience. Every detail pulls the questions closer to the real thing.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/meeting-lobby.png" alt="ادخل الغرفة — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">3</span>ادخل الغرفة</h3>
-        <p>تشيك على الكاميرا والمايك قبل ما تبدأ، زي أي مقابلة فيديو حقيقية.</p>
+        <img src="/shots/meeting-lobby.png" alt="ادخل الغرفة — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Enter the room — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">3</span><span data-l="ar">ادخل الغرفة</span><span data-l="en">Enter the room</span></h3>
+        <p>
+          <span data-l="ar">تشيك على الكاميرا والمايك قبل ما تبدأ، زي أي مقابلة فيديو حقيقية.</span>
+          <span data-l="en">Check your camera and mic before you start, like any real video interview.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/meeting-live.png" alt="المقابلة بتبدأ — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">4</span>المقابلة بتبدأ</h3>
-        <p>المحاورة بتتكلم بصوت طبيعي، وكلامها بيظهر نص، وبترد على إجاباتك مش على سكريبت جاهز.</p>
+        <img src="/shots/meeting-live.png" alt="المقابلة بتبدأ — لقطة حقيقية من تطبيق ثقتي" data-alt-en="The interview begins — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">4</span><span data-l="ar">المقابلة بتبدأ</span><span data-l="en">The interview begins</span></h3>
+        <p>
+          <span data-l="ar">المحاورة بتتكلم بصوت طبيعي، وكلامها بيظهر نص، وبترد على إجاباتك مش على سكريبت جاهز.</span>
+          <span data-l="en">She speaks in a natural voice, her words appear as text, and she responds to your answers — not to a script.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/meeting-recording.png" alt="سجّل الجلسة — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">5</span>سجّل الجلسة</h3>
-        <p>صوت وصورة، عشان تراجع أداءك بنفسك بعدين وتشوف بتتكلم إزاي فعلاً.</p>
+        <img src="/shots/meeting-recording.png" alt="سجّل الجلسة — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Record the session — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">5</span><span data-l="ar">سجّل الجلسة</span><span data-l="en">Record the session</span></h3>
+        <p>
+          <span data-l="ar">صوت وصورة، عشان تراجع أداءك بنفسك بعدين وتشوف بتتكلم إزاي فعلاً.</span>
+          <span data-l="en">Audio and video, so you can review your own performance later and see how you really come across.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/meeting-tips.png" alt="نصائح لحظية — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">6</span>نصائح لحظية</h3>
-        <p>إرشادات سريعة وأنت في الجلسة من غير ما تقطع تركيزك.</p>
+        <img src="/shots/meeting-tips.png" alt="نصائح لحظية — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Live tips — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">6</span><span data-l="ar">نصائح لحظية</span><span data-l="en">Live tips</span></h3>
+        <p>
+          <span data-l="ar">إرشادات سريعة وأنت في الجلسة من غير ما تقطع تركيزك.</span>
+          <span data-l="en">Quick prompts mid-session that never break your concentration.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/meeting-end.png" alt="أنهِ واحفظ — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">7</span>أنهِ واحفظ</h3>
-        <p>التطبيق بيفكّرك تحفظ التسجيل قبل ما تقفل، عشان مجهودك ما يضيعش.</p>
+        <img src="/shots/meeting-end.png" alt="أنهِ واحفظ — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Finish and save — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">7</span><span data-l="ar">أنهِ واحفظ</span><span data-l="en">Finish and save</span></h3>
+        <p>
+          <span data-l="ar">التطبيق بيفكّرك تحفظ التسجيل قبل ما تقفل، عشان مجهودك ما يضيعش.</span>
+          <span data-l="en">The app reminds you to save the recording before you close it, so the work you just did is not lost.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/session-summary.png" alt="استلم تقييمك — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3><span class="step-no">8</span>استلم تقييمك</h3>
-        <p>درجة لكل إجابة، ونقاط قوتك، وإيه اللي محتاج يتحسّن — مش مجرد رقم.</p>
+        <img src="/shots/session-summary.png" alt="استلم تقييمك — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Collect your evaluation — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span class="step-no">8</span><span data-l="ar">استلم تقييمك</span><span data-l="en">Collect your evaluation</span></h3>
+        <p>
+          <span data-l="ar">درجة لكل إجابة، ونقاط قوتك، وإيه اللي محتاج يتحسّن — مش مجرد رقم.</span>
+          <span data-l="en">A score for every answer, your strengths, and what needs work — not just a number.</span>
+        </p>
       </figure>
     </div>
 
     <div class="sec-head reveal shots-sub">
-      <h2>وباقي التطبيق</h2>
-      <p>كل حاجة في مكانها: مجالك، وسجلك، وتقدّمك.</p>
+      <h2><span data-l="ar">وباقي التطبيق</span><span data-l="en">And the rest of the app</span></h2>
+      <p>
+        <span data-l="ar">كل حاجة في مكانها: مجالك، وسجلك، وتقدّمك.</span>
+        <span data-l="en">Everything in its place: your track, your history, your progress.</span>
+      </p>
     </div>
 
     <div class="shots">
       <figure class="shot reveal">
-        <img src="/shots/onboarding.png" alt="تعريف في دقيقة — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3>تعريف في دقيقة</h3>
-        <p>حساب مجاني بدون بطاقة ائتمان.</p>
+        <img src="/shots/onboarding.png" alt="تعريف في دقيقة — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Set up in a minute — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">تعريف في دقيقة</span><span data-l="en">Set up in a minute</span></h3>
+        <p><span data-l="ar">حساب مجاني بدون بطاقة ائتمان.</span><span data-l="en">A free account, no credit card.</span></p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/app-home.png" alt="مجالك ورصيدك — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3>مجالك ورصيدك</h3>
-        <p>سبعة مجالات وظيفية، ورصيدك اليومي واضح قدامك.</p>
+        <img src="/shots/app-home.png" alt="مجالك ورصيدك — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Your track and your allowance — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">مجالك ورصيدك</span><span data-l="en">Your track and your allowance</span></h3>
+        <p>
+          <span data-l="ar">سبعة مجالات وظيفية، ورصيدك اليومي واضح قدامك.</span>
+          <span data-l="en">Seven career tracks, with your daily allowance in plain sight.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/history.png" alt="سجل جلساتك — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3>سجل جلساتك</h3>
-        <p>كل جلسة محفوظة، ترجعلها وقت ما تحب.</p>
+        <img src="/shots/history.png" alt="سجل جلساتك — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Your session history — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">سجل جلساتك</span><span data-l="en">Your session history</span></h3>
+        <p>
+          <span data-l="ar">كل جلسة محفوظة، ترجعلها وقت ما تحب.</span>
+          <span data-l="en">Every session saved, there whenever you want it back.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/stats.png" alt="تقدّمك بالأرقام — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3>تقدّمك بالأرقام</h3>
-        <p>متوسط درجاتك ومساره عبر الوقت.</p>
+        <img src="/shots/stats.png" alt="تقدّمك بالأرقام — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Your progress in numbers — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">تقدّمك بالأرقام</span><span data-l="en">Your progress in numbers</span></h3>
+        <p>
+          <span data-l="ar">متوسط درجاتك ومساره عبر الوقت.</span>
+          <span data-l="en">Your average score, and the direction it is heading.</span>
+        </p>
       </figure>
       <figure class="shot reveal">
-        <img src="/shots/premium.png" alt="اشترك وقت ما تحتاج — لقطة حقيقية من تطبيق ثقتي" width="1080" height="1920" loading="lazy" decoding="async">
-        <h3>اشترك وقت ما تحتاج</h3>
-        <p>ابدأ مجاني، وارقّي لما تلاقي إنه بيفرق معاك.</p>
+        <img src="/shots/premium.png" alt="اشترك وقت ما تحتاج — لقطة حقيقية من تطبيق ثقتي" data-alt-en="Upgrade when you need it — a real screenshot from Thiqty" width="1080" height="1920" loading="lazy" decoding="async">
+        <h3><span data-l="ar">اشترك وقت ما تحتاج</span><span data-l="en">Upgrade when you need it</span></h3>
+        <p>
+          <span data-l="ar">ابدأ مجاني، وارقّي لما تلاقي إنه بيفرق معاك.</span>
+          <span data-l="en">Start free, and upgrade once you can feel the difference.</span>
+        </p>
       </figure>
     </div>
   </div>
@@ -756,52 +1026,58 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 <section class="section" id="pricing">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker">الأسعار</div>
-      <h2>ابدأ مجاناً. ادفع فقط لو نفعك</h2>
-      <p>أقل من تكلفة فنجان قهوة في الأسبوع — مقابل وظيفة قد تغيّر حياتك.</p>
+      <div class="kicker"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></div>
+      <h2><span data-l="ar">ابدأ مجاناً. ادفع فقط لو نفعك</span><span data-l="en">Start free. Pay only if it works</span></h2>
+      <p>
+        <span data-l="ar">أقل من تكلفة فنجان قهوة في الأسبوع — مقابل وظيفة قد تغيّر حياتك.</span>
+        <span data-l="en">Less than a cup of coffee a week — for a job that can change your life.</span>
+      </p>
     </div>
 
     <div class="price-toggle">
-      <div class="toggle" role="group" aria-label="اختيار مدة الاشتراك">
-        <button type="button" id="tgl-m" aria-pressed="false">شهري</button>
-        <button type="button" id="tgl-y" aria-pressed="true">سنوي<span class="save-pill">وفّر ٣٣٪</span></button>
+      <div class="toggle" role="group" aria-label="اختيار مدة الاشتراك" data-aria-en="Choose a billing period">
+        <button type="button" id="tgl-m" aria-pressed="false"><span data-l="ar">شهري</span><span data-l="en">Monthly</span></button>
+        <button type="button" id="tgl-y" aria-pressed="true"><span data-l="ar">سنوي</span><span data-l="en">Yearly</span><span class="save-pill">وفّر ٣٣٪</span></button>
       </div>
     </div>
 
     <div class="plans">
       <div class="plan reveal">
-        <h3>المجاني</h3>
-        <div class="amt">٠ <small>ج.م</small></div>
-        <p class="sub">للتجربة والبدء</p>
+        <h3><span data-l="ar">المجاني</span><span data-l="en">Free</span></h3>
+        <div class="amt"><span data-l="ar">٠ <small>ج.م</small></span><span data-l="en">0 <small>EGP</small></span></div>
+        <p class="sub"><span data-l="ar">للتجربة والبدء</span><span data-l="en">To try it and get going</span></p>
         <ul>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>٥ أسئلة</b> يومياً</span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>تقييم كامل بالذكاء الاصطناعي</span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>٥ مجالات وظيفية</span></li>
-          <li><span class="muted-x"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></span><span>المقابلة المباشرة بالفيديو</span></li>
-          <li><span class="muted-x"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></span><span>تحليل السيرة الذاتية</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>٥ أسئلة</b> يومياً</span><span data-l="en"><b>5 questions</b> a day</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تقييم كامل بالذكاء الاصطناعي</span><span data-l="en">The full AI evaluation</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">٥ مجالات وظيفية</span><span data-l="en">5 career tracks</span></li>
+          <li><span class="muted-x"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></span><span data-l="ar">المقابلة المباشرة بالفيديو</span><span data-l="en">The live video interview</span></li>
+          <li><span class="muted-x"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg></span><span data-l="ar">تحليل السيرة الذاتية</span><span data-l="en">CV analysis</span></li>
         </ul>
-        <a class="btn btn-ghost" href="/app?signup=1">ابدأ مجاناً</a>
+        <a class="btn btn-ghost" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
       </div>
 
       <div class="plan featured reveal">
-        <span class="plan-badge">الأكثر اختياراً</span>
-        <h3>المميّز</h3>
-        <div class="amt"><span id="price-amt">٩٩</span> <small>ج.م / <span id="price-per">شهرياً</span></small></div>
+        <span class="plan-badge"><span data-l="ar">الأكثر اختياراً</span><span data-l="en">Most popular</span></span>
+        <h3><span data-l="ar">المميّز</span><span data-l="en">Premium</span></h3>
+        <!-- JS-owned: renderPrice() rewrites these three nodes, so they must
+             never contain [data-l] spans — textContent would delete them. -->
+        <div class="amt"><span id="price-amt">٩٩</span> <small><span id="price-cur">ج.م</span> / <span id="price-per">شهرياً</span></small></div>
         <p class="sub" id="price-sub">تُدفع سنوياً ١١٩٩ ج.م — وفّر ٣٣٪</p>
         <ul>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>أسئلة غير محدودة</b></span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span><b>المقابلة المباشرة</b> بالصوت والفيديو</span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>تحليل السيرة الذاتية وأسئلة مخصّصة</span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>كل المجالات الوظيفية</span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>تقارير تفصيلية وتتبّع التقدّم</span></li>
-          <li><span class="tick"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><span>دعم ذو أولوية</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>أسئلة غير محدودة</b></span><span data-l="en"><b>Unlimited questions</b></span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar"><b>المقابلة المباشرة</b> بالصوت والفيديو</span><span data-l="en"><b>The live interview</b> with voice and video</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تحليل السيرة الذاتية وأسئلة مخصّصة</span><span data-l="en">CV analysis and questions tailored to it</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">كل المجالات الوظيفية</span><span data-l="en">Every career track</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">تقارير تفصيلية وتتبّع التقدّم</span><span data-l="en">Detailed reports and progress tracking</span></li>
+          <li><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span><span data-l="ar">دعم ذو أولوية</span><span data-l="en">Priority support</span></li>
         </ul>
-        <a class="btn btn-primary" href="/app?upgrade=1">اشترك الآن</a>
+        <a class="btn btn-primary" href="/app?upgrade=1"><span data-l="ar">اشترك الآن</span><span data-l="en">Subscribe now</span></a>
       </div>
     </div>
 
     <p style="text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-6)">
-      الدفع بالبطاقة أو فوري أو المحفظة الإلكترونية عبر EasyKash · يمكنك الإلغاء في أي وقت
+      <span data-l="ar">الدفع بالبطاقة أو فوري أو المحفظة الإلكترونية عبر EasyKash · يمكنك الإلغاء في أي وقت</span>
+      <span data-l="en">Pay by card, Fawry or e-wallet through EasyKash · cancel any time</span>
     </p>
   </div>
 </section>
@@ -810,33 +1086,51 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 <section class="section" id="faq" style="background:var(--surface-alt)">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker">أسئلة شائعة</div>
-      <h2>كل ما قد تسأل عنه</h2>
+      <div class="kicker"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></div>
+      <h2><span data-l="ar">كل ما قد تسأل عنه</span><span data-l="en">Everything you might ask</span></h2>
     </div>
     <div class="faq">
       <details>
-        <summary>هل التطبيق بالعربية فعلاً أم ترجمة؟</summary>
-        <p>عربي أصلاً. الأسئلة والتقييم والنصائح كلها مكتوبة بالعربية الفصحى المبسطة، والمحاوِر يفهم العامية المصرية والخليجية والشامية ولا يخصم من درجتك بسببها إطلاقاً — التقييم على المضمون فقط.</p>
+        <summary><span data-l="ar">هل التطبيق بالعربية فعلاً أم ترجمة؟</span><span data-l="en">Is it really Arabic, or a translation?</span></summary>
+        <p>
+          <span data-l="ar">عربي أصلاً. الأسئلة والتقييم والنصائح كلها مكتوبة بالعربية الفصحى المبسطة، والمحاوِر يفهم العامية المصرية والخليجية والشامية ولا يخصم من درجتك بسببها إطلاقاً — التقييم على المضمون فقط.</span>
+          <span data-l="en">Arabic first. The questions, the scoring and the advice are written in simplified Modern Standard Arabic, and the interviewer understands Egyptian, Gulf and Levantine colloquial without ever docking you for it — you are judged on substance alone.</span>
+        </p>
       </details>
       <details>
-        <summary>هل أحتاج بطاقة ائتمان للتجربة؟</summary>
-        <p>لا. تنشئ حساباً وتبدأ فوراً بـ ٥ أسئلة يومياً مجاناً، بدون إدخال أي بيانات دفع.</p>
+        <summary><span data-l="ar">هل أحتاج بطاقة ائتمان للتجربة؟</span><span data-l="en">Do I need a credit card to try it?</span></summary>
+        <p>
+          <span data-l="ar">لا. تنشئ حساباً وتبدأ فوراً بـ ٥ أسئلة يومياً مجاناً، بدون إدخال أي بيانات دفع.</span>
+          <span data-l="en">No. Create an account and start immediately with 5 free questions a day, without entering any payment details.</span>
+        </p>
       </details>
       <details>
-        <summary>كيف يتم حساب الدرجة؟</summary>
-        <p>كل إجابة تُقيَّم على أربعة محاور: مدى إجابتك على السؤال المطروح فعلاً، وجود مثال محدد بأرقام ونتائج، تنظيم الإجابة، والعمق المهني. تحصل على درجة من ١٠ لكل محور ودرجة إجمالية، مع شرح مكتوب لكل نقطة.</p>
+        <summary><span data-l="ar">كيف يتم حساب الدرجة؟</span><span data-l="en">How is the score calculated?</span></summary>
+        <p>
+          <span data-l="ar">كل إجابة تُقيَّم على أربعة محاور: مدى إجابتك على السؤال المطروح فعلاً، وجود مثال محدد بأرقام ونتائج، تنظيم الإجابة، والعمق المهني. تحصل على درجة من ١٠ لكل محور ودرجة إجمالية، مع شرح مكتوب لكل نقطة.</span>
+          <span data-l="en">Every answer is judged on four criteria: whether you actually answered the question asked, whether you gave a specific example with numbers and outcomes, how the answer was organised, and professional depth. You get a score out of 10 on each plus an overall score, with a written explanation for every point.</span>
+        </p>
       </details>
       <details>
-        <summary>هل بياناتي وسيرتي الذاتية آمنة؟</summary>
-        <p>سيرتك تُستخدم فقط لتوليد أسئلة مقابلتك ولا تُشارك مع أي طرف ثالث. يمكنك حذف حسابك وكل بياناته في أي وقت من داخل التطبيق.</p>
+        <summary><span data-l="ar">هل بياناتي وسيرتي الذاتية آمنة؟</span><span data-l="en">Are my data and my CV safe?</span></summary>
+        <p>
+          <span data-l="ar">سيرتك تُستخدم فقط لتوليد أسئلة مقابلتك ولا تُشارك مع أي طرف ثالث. يمكنك حذف حسابك وكل بياناته في أي وقت من داخل التطبيق.</span>
+          <span data-l="en">Your CV is used only to generate your interview questions and is never shared with a third party. You can delete your account and all of its data at any time from inside the app.</span>
+        </p>
       </details>
       <details>
-        <summary>ما طرق الدفع المتاحة؟</summary>
-        <p>بطاقات الائتمان والخصم (فيزا وماستركارد)، فوري، والمحافظ الإلكترونية — كلها عبر بوابة EasyKash المصرية.</p>
+        <summary><span data-l="ar">ما طرق الدفع المتاحة؟</span><span data-l="en">What payment methods can I use?</span></summary>
+        <p>
+          <span data-l="ar">بطاقات الائتمان والخصم (فيزا وماستركارد)، فوري، والمحافظ الإلكترونية — كلها عبر بوابة EasyKash المصرية.</span>
+          <span data-l="en">Credit and debit cards (Visa and Mastercard), Fawry, and e-wallets — all through the Egyptian payment gateway EasyKash.</span>
+        </p>
       </details>
       <details>
-        <summary>هل يوجد تطبيق أندرويد؟</summary>
-        <p>نعم، بالإضافة إلى نسخة الويب التي تعمل على أي متصفح بدون تثبيت. المقابلة المباشرة بالصوت متاحة على الاثنين.</p>
+        <summary><span data-l="ar">هل يوجد تطبيق أندرويد؟</span><span data-l="en">Is there an Android app?</span></summary>
+        <p>
+          <span data-l="ar">نعم، بالإضافة إلى نسخة الويب التي تعمل على أي متصفح بدون تثبيت. المقابلة المباشرة بالصوت متاحة على الاثنين.</span>
+          <span data-l="en">Yes, alongside the web version that runs in any browser with nothing to install. The live voice interview works on both.</span>
+        </p>
       </details>
     </div>
   </div>
@@ -846,11 +1140,14 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 <section class="section">
   <div class="wrap">
     <div class="cta reveal">
-      <h2>وظيفتك القادمة تبدأ بتدريب واحد</h2>
-      <p>انضم للمرشحين الذين يدخلون المقابلة وهم يعرفون بالضبط ماذا سيقولون.</p>
+      <h2><span data-l="ar">وظيفتك القادمة تبدأ بتدريب واحد</span><span data-l="en">Your next job starts with one practice run</span></h2>
+      <p>
+        <span data-l="ar">انضم للمرشحين الذين يدخلون المقابلة وهم يعرفون بالضبط ماذا سيقولون.</span>
+        <span data-l="en">Join the candidates who walk into the interview knowing exactly what they are going to say.</span>
+      </p>
       <div style="display:flex;gap:var(--sp-3);justify-content:center;flex-wrap:wrap">
-        <a class="btn btn-primary btn-lg" href="/app?signup=1">ابدأ مجاناً الآن</a>
-        <a class="btn btn-ghost btn-lg" href="#pricing">اعرف الأسعار</a>
+        <a class="btn btn-primary btn-lg" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً الآن</span><span data-l="en">Start free now</span></a>
+        <a class="btn btn-ghost btn-lg" href="#pricing"><span data-l="ar">اعرف الأسعار</span><span data-l="en">See pricing</span></a>
       </div>
     </div>
   </div>
@@ -864,46 +1161,52 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
       <div>
         <div class="brand" style="margin-bottom:var(--sp-4)">
           <img class="brand-logo" src="/logo-mark.png" alt="" width="36" height="35" decoding="async">
-          <span>ثقتي · Thiqty</span>
+          <span><span data-l="ar">ثقتي · Thiqty</span><span data-l="en">Thiqty · ثقتي</span></span>
         </div>
         <p style="color:var(--text-3);font-size:14.5px;max-width:34ch">
-          ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي. تدرّب، اتقيّم، واتوظّف.
+          <span data-l="ar">ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي. تدرّب، اتقيّم، واتوظّف.</span>
+          <span data-l="en">Thiqty — the first Arabic AI interview coach. Practise, get scored, get hired.</span>
         </p>
       </div>
       <div>
-        <h4>المنتج</h4>
+        <h4><span data-l="ar">المنتج</span><span data-l="en">Product</span></h4>
         <ul>
-          <li><a href="#features">المميزات</a>
-      <a href="#screens">من داخل التطبيق</a></li>
-          <li><a href="#pricing">الأسعار</a></li>
-          <li><a href="/app">تطبيق الويب</a></li>
+          <li><a href="#features"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a></li>
+          <li><a href="#screens"><span data-l="ar">من داخل التطبيق</span><span data-l="en">Inside the app</span></a></li>
+          <li><a href="#pricing"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a></li>
+          <li><a href="/app"><span data-l="ar">تطبيق الويب</span><span data-l="en">Web app</span></a></li>
         </ul>
       </div>
       <div>
-        <h4>الشركة</h4>
+        <h4><span data-l="ar">الشركة</span><span data-l="en">Company</span></h4>
         <ul>
-          <li><a href="https://barmagly.tech" rel="noopener">شركة برمجلي</a></li>
-          <li><a href="mailto:support@khaledahmed.net">تواصل معنا</a></li>
+          <li><a href="https://barmagly.tech" rel="noopener"><span data-l="ar">شركة برمجلي</span><span data-l="en">Barmagly</span></a></li>
+          <li><a href="mailto:support@khaledahmed.net"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact us</span></a></li>
         </ul>
       </div>
       <div>
-        <h4>قانوني</h4>
+        <h4><span data-l="ar">قانوني</span><span data-l="en">Legal</span></h4>
         <ul>
-          <li><a href="/privacy">سياسة الخصوصية</a></li>
-          <li><a href="/terms">الشروط والأحكام</a></li>
-          <li><a href="/privacy#delete-account">حذف الحساب</a></li>
+          <li><a href="/privacy"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a></li>
+          <li><a href="/terms"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms and conditions</span></a></li>
+          <li><a href="/privacy#delete-account"><span data-l="ar">حذف الحساب</span><span data-l="en">Delete account</span></a></li>
         </ul>
       </div>
     </div>
     <div class="ftr-bottom">
-      <span>© <span id="yr">2026</span> ثقتي (Thiqty) — جميع الحقوق محفوظة</span>
-      <span>صُنع بـ <span style="color:#EF4444;display:inline-flex;vertical-align:-.15em"><svg class="icon" aria-hidden="true"><use href="#i-heart"/></svg></span> في مصر</span>
+      <span>© <span id="yr">2026</span> <span data-l="ar">ثقتي (Thiqty) — جميع الحقوق محفوظة</span><span data-l="en">Thiqty (ثقتي) — all rights reserved</span></span>
+      <span>
+        <span data-l="ar">صُنع بـ</span><span data-l="en">Made with</span>
+        <span class="heart"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg></span>
+        <span data-l="ar">في مصر</span><span data-l="en">in Egypt</span>
+      </span>
     </div>
   </div>
 </footer>
 
 <script>
 document.body.classList.remove('no-js');
+var root = document.documentElement;
 
 // Sticky header border appears only once scrolled — avoids a hairline
 // floating over the hero at rest.
@@ -927,17 +1230,39 @@ if ('IntersectionObserver' in window) {
   document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
 }
 
-// Animated counters. Numbers that tick up read as "measured", where a static
-// figure reads as decoration — and it gives the trust strip a reason to exist
-// visually. Arabic-Indic digits, and skipped entirely under reduced-motion.
-var toAR = function(n){ return String(n).replace(/[0-9]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'[d]; }); };
+// ── Numerals ──────────────────────────────────────────────────────────
+// Arabic-Indic under Arabic, grouped Latin under English. Everything that
+// prints a number goes through fmt(), so a language switch can never leave
+// ٩٩ sitting next to "EGP".
+var AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function currentLang(){ return root.getAttribute('lang') === 'en' ? 'en' : 'ar'; }
+function fmt(n){
+  if (currentLang() === 'en') {
+    try { return Number(n).toLocaleString('en-US'); } catch (e) { return String(n); }
+  }
+  return String(n).replace(/[0-9]/g, function(d){ return AR_DIGITS[d]; });
+}
+
+// ── Animated counters ─────────────────────────────────────────────────
+// Numbers that tick up read as "measured", where a static figure reads as
+// decoration — and it gives the trust strip a reason to exist visually.
+// Skipped entirely under reduced-motion. The last painted value is kept on
+// the element so a language switch can repaint without restarting.
+var refreshNums = function(){};
 (function(){
-  var nums = document.querySelectorAll('.num');
+  var nums = [].slice.call(document.querySelectorAll('.num'));
   if (!nums.length) return;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var render = function(el, v){
-    var pre = el.dataset.prefix || '', suf = el.dataset.suffix || '';
-    el.textContent = pre + toAR(v) + (suf ? ' ' + suf : '');
+    el.__v = v;
+    var pre = el.dataset.prefix || '';
+    var suf = currentLang() === 'en'
+      ? (el.dataset.suffixEn || '')
+      : (el.dataset.suffix || '');
+    el.textContent = pre + fmt(v) + (suf ? ' ' + suf : '');
+  };
+  refreshNums = function(){
+    nums.forEach(function(el){ render(el, el.__v == null ? +el.dataset.to : el.__v); });
   };
   if (reduce || !('IntersectionObserver' in window)) {
     nums.forEach(function(el){ render(el, +el.dataset.to); });
@@ -960,41 +1285,141 @@ var toAR = function(n){ return String(n).replace(/[0-9]/g, function(d){ return '
   nums.forEach(function(el){ render(el, 0); io2.observe(el); });
 })();
 
-// Pricing toggle. Prices are fetched from the API so this page can never
-// disagree with what the checkout actually charges — the previous build had
-// the price hardcoded in three separate places.
-var AR = function(n){ return String(n).replace(/[0-9]/g, function(d){ return '٠١٢٣٤٥٦٧٨٩'[d]; }); };
-var plans = {
-  monthly: { amount: 149, per: 'شهرياً', sub: 'يُجدَّد شهرياً · ألغِ في أي وقت' },
-  yearly:  { amount: 99,  per: 'شهرياً', sub: 'تُدفع سنوياً ١١٩٩ ج.م — وفّر ٣٣٪' }
+// ── Pricing ───────────────────────────────────────────────────────────
+// Prices are fetched from the API so this page can never disagree with what
+// the checkout actually charges. The plan object now holds numbers only —
+// every word around them comes from PLAN_TEXT and follows the language.
+var PLAN_TEXT = {
+  ar: {
+    cur: 'ج.م', per: 'شهرياً',
+    monthlySub: 'يُجدَّد شهرياً · ألغِ في أي وقت',
+    yearlySub: function(total, pct){ return 'تُدفع سنوياً ' + fmt(total) + ' ج.م — وفّر ' + fmt(pct) + '٪'; },
+    save: function(pct){ return 'وفّر ' + fmt(pct) + '٪'; }
+  },
+  en: {
+    cur: 'EGP', per: 'month',
+    monthlySub: 'Renews monthly · cancel any time',
+    yearlySub: function(total, pct){ return 'Billed yearly at ' + fmt(total) + ' EGP — save ' + fmt(pct) + '%'; },
+    save: function(pct){ return 'Save ' + fmt(pct) + '%'; }
+  }
 };
+var plans = { monthly: { amount: 149 }, yearly: { amount: 99, total: 1199, savingPct: 33 } };
+var activePlan = 'yearly';
+var elAmt = document.getElementById('price-amt');
+var elCur = document.getElementById('price-cur');
+var elPer = document.getElementById('price-per');
+var elSub = document.getElementById('price-sub');
+var tglM = document.getElementById('tgl-m');
+var tglY = document.getElementById('tgl-y');
 function renderPrice(key){
-  var p = plans[key];
-  document.getElementById('price-amt').textContent = AR(p.amount);
-  document.getElementById('price-per').textContent = p.per;
-  document.getElementById('price-sub').textContent = p.sub;
-  document.getElementById('tgl-m').setAttribute('aria-pressed', key === 'monthly');
-  document.getElementById('tgl-y').setAttribute('aria-pressed', key === 'yearly');
+  if (key) activePlan = key;
+  var L = PLAN_TEXT[currentLang()], p = plans[activePlan];
+  elAmt.textContent = fmt(p.amount);
+  elCur.textContent = L.cur;
+  elPer.textContent = L.per;
+  elSub.textContent = activePlan === 'yearly' ? L.yearlySub(p.total, p.savingPct) : L.monthlySub;
+  var pill = document.querySelector('.save-pill');
+  if (pill) pill.textContent = L.save(plans.yearly.savingPct);
+  tglM.setAttribute('aria-pressed', String(activePlan === 'monthly'));
+  tglY.setAttribute('aria-pressed', String(activePlan === 'yearly'));
 }
-document.getElementById('tgl-m').addEventListener('click', function(){ renderPrice('monthly'); });
-document.getElementById('tgl-y').addEventListener('click', function(){ renderPrice('yearly'); });
+tglM.addEventListener('click', function(){ renderPrice('monthly'); });
+tglY.addEventListener('click', function(){ renderPrice('yearly'); });
 
 fetch('/api/payments/config').then(function(r){ return r.ok ? r.json() : null; }).then(function(cfg){
   if (!cfg || !cfg.plans) return;
   var m = cfg.plans.find(function(p){ return p.code === 'monthly'; });
   var y = cfg.plans.find(function(p){ return p.code === 'yearly'; });
-  if (m) plans.monthly = { amount: m.amountEgp, per: 'شهرياً', sub: 'يُجدَّد شهرياً · ألغِ في أي وقت' };
-  if (y) plans.yearly = {
-    amount: y.monthlyEquivalentEgp,
-    per: 'شهرياً',
-    sub: 'تُدفع سنوياً ' + AR(y.amountEgp) + ' ج.م — وفّر ' + AR(y.savingPct) + '٪'
-  };
-  if (y && y.savingPct) {
-    var pill = document.querySelector('.save-pill');
-    if (pill) pill.textContent = 'وفّر ' + AR(y.savingPct) + '٪';
-  }
-  renderPrice(document.getElementById('tgl-y').getAttribute('aria-pressed') === 'true' ? 'yearly' : 'monthly');
+  if (m) plans.monthly = { amount: m.amountEgp };
+  if (y) plans.yearly = { amount: y.monthlyEquivalentEgp, total: y.amountEgp, savingPct: y.savingPct };
+  renderPrice();
 }).catch(function(){ /* keep the static defaults */ });
+
+// ── Theme ─────────────────────────────────────────────────────────────
+// Three states: system (no attribute), forced light, forced dark. The head
+// script already stamped data-theme before first paint; this only wires the
+// control, the aria state and the browser-chrome colour.
+var themeBtns = [].slice.call(document.querySelectorAll('[data-set-theme]'));
+var tcLight = document.getElementById('tc-light');
+var tcDark = document.getElementById('tc-dark');
+var tcForced = document.getElementById('tc-forced');
+function syncThemeColor(mode){
+  if (mode === 'system'){
+    tcLight.setAttribute('media', '(prefers-color-scheme: light)');
+    tcDark.setAttribute('media', '(prefers-color-scheme: dark)');
+    tcForced.setAttribute('media', 'not all');
+  } else {
+    // A media-less tag earlier in the head would win, so the pair is disabled
+    // rather than left to fight the forced one.
+    tcLight.setAttribute('media', 'not all');
+    tcDark.setAttribute('media', 'not all');
+    tcForced.setAttribute('content', mode === 'dark' ? '#080D1A' : '#2D73FD');
+    tcForced.setAttribute('media', 'all');
+  }
+}
+function applyTheme(mode, persist){
+  if (mode !== 'light' && mode !== 'dark') mode = 'system';
+  if (mode === 'system'){
+    root.removeAttribute('data-theme');
+    if (persist){ try { localStorage.removeItem('thiqty-theme'); } catch (e) {} }
+  } else {
+    root.setAttribute('data-theme', mode);
+    if (persist){ try { localStorage.setItem('thiqty-theme', mode); } catch (e) {} }
+  }
+  themeBtns.forEach(function(b){
+    b.setAttribute('aria-pressed', String(b.getAttribute('data-set-theme') === mode));
+  });
+  syncThemeColor(mode);
+}
+themeBtns.forEach(function(b){
+  b.addEventListener('click', function(){ applyTheme(b.getAttribute('data-set-theme'), true); });
+});
+
+// ── Language ──────────────────────────────────────────────────────────
+// Same mechanism as privacy.html / terms.html, same 'thiqty-lang' key, so a
+// choice made on any of the four pages carries to the rest. Arabic is the
+// document default and renders with JS off; this only swaps which of the two
+// already-present translations is visible, plus lang/dir and the handful of
+// strings that live in attributes or are written by script.
+var langBtns = [].slice.call(document.querySelectorAll('[data-set-lang]'));
+var altEls = [].slice.call(document.querySelectorAll('[data-alt-en]'));
+var ariaEls = [].slice.call(document.querySelectorAll('[data-aria-en]'));
+altEls.forEach(function(el){ el.__ar = el.getAttribute('alt') || ''; });
+ariaEls.forEach(function(el){ el.__ar = el.getAttribute('aria-label') || ''; });
+
+function applyLang(lang, persist){
+  lang = (lang === 'en') ? 'en' : 'ar';
+  root.setAttribute('lang', lang);
+  root.setAttribute('dir', lang === 'en' ? 'ltr' : 'rtl');
+  langBtns.forEach(function(b){
+    b.setAttribute('aria-pressed', String(b.getAttribute('data-set-lang') === lang));
+  });
+  // Text that cannot hold a <span>.
+  altEls.forEach(function(el){ el.setAttribute('alt', lang === 'en' ? el.dataset.altEn : el.__ar); });
+  ariaEls.forEach(function(el){ el.setAttribute('aria-label', lang === 'en' ? el.dataset.ariaEn : el.__ar); });
+  // Text owned by script.
+  refreshNums();
+  renderPrice();
+  if (persist){ try { localStorage.setItem('thiqty-lang', lang); } catch (e) {} }
+}
+langBtns.forEach(function(b){
+  b.addEventListener('click', function(){
+    applyLang(b.getAttribute('data-set-lang'), true);
+    // Re-anchor after the swap: the flow and FAQ blocks change height between
+    // languages, so a deep link like #pricing would otherwise drift.
+    if (location.hash){
+      var t = document.querySelector(location.hash);
+      if (t) t.scrollIntoView({ block: 'start' });
+    }
+  });
+});
+
+// The head script already picked the language (?lang=, then the stored choice,
+// then the browser). Sync the controls and the script-owned strings to it.
+applyLang(currentLang(), false);
+var storedTheme = null;
+try { storedTheme = localStorage.getItem('thiqty-theme'); } catch (e) {}
+applyTheme(storedTheme || 'system', false);
 </script>
 </body>
 </html>

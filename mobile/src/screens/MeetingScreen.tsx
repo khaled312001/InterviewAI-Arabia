@@ -7,17 +7,14 @@
  * demoted to a bottom sheet.
  *
  * How a turn works
- *   1. Web SpeechRecognition stays open continuously; the utterance is only
- *      committed after `SILENCE_MS` of quiet, so thinking pauses don't cut the
- *      candidate off mid-sentence.
+ *   1. The recognizer stays open continuously; the utterance is only committed
+ *      after `SILENCE_MS` of quiet, so thinking pauses don't cut the candidate
+ *      off mid-sentence.
  *   2. The committed text goes to `/meeting/turn`, which replies with the
  *      interviewer's next line plus coaching tips for the *next* answer.
- *   3. The reply is spoken by the browser's own neural voice
- *      (`speechSynthesis` — see `src/speech/webSpeech.ts`), which starts
+ *   3. The reply is spoken by the platform's own neural voice, which starts
  *      immediately and needs no round-trip of ours. Server TTS remains as the
- *      fallback for engines with no usable voice for the interview language;
- *      that path is piped through a Web Audio analyser so the avatar's
- *      presence ring breathes with the real waveform.
+ *      fallback for engines with no usable voice for the interview language.
  *
  * Language
  *   Chosen before the call on MeetingSetupScreen and carried in
@@ -25,29 +22,32 @@
  *   recognizer locale and the final evaluation — everything, not just copy.
  *
  * Platform
- *   The whole flow depends on `getUserMedia`, `MediaRecorder` and
- *   `webkitSpeechRecognition`, none of which exist in React Native on Android
- *   or iOS. Rather than render a screen whose every control is dead, native
- *   gets a designed "web only" state with a link to the web build.
+ *   Every camera, microphone, voice, level and recorder call goes through
+ *   `src/media`, which Metro resolves to a browser implementation on web and an
+ *   Expo one on device. So this screen holds no `Platform.OS` media branch and
+ *   no browser global: where the two platforms genuinely differ it reads
+ *   `capabilities` — and, where the difference costs the candidate something,
+ *   says so in the UI before they can be surprised by it.
  *
  * Session recording
- *   `MediaRecorder` over the camera+mic stream (with the interviewer's voice
- *   mixed in when the audio graph allows it), saved as a .webm download so the
- *   candidate can review their own performance. Chunks live in a ref — putting
- *   them in state would re-render the entire call UI on every `dataavailable`.
+ *   A review artifact of the call, delivered as a download on web and through
+ *   the share sheet on device. It is not the same recording on both: on web it
+ *   captures the whole call including the interviewer, while on Android the
+ *   recognizer owns the one microphone client the OS gives an app, so the file
+ *   is video only. `capabilities.recorder` says which, and the control bar
+ *   repeats it under the record button.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator,
-  Modal, Linking,
+  View, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
+import { SvgUri } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
-import Constants from 'expo-constants';
 
 import { api, API_BASE } from '../api/client';
 import { secureStorage } from '../storage/secureStorage';
@@ -55,10 +55,11 @@ import { useAuth } from '../store/auth';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
 import { Screen, Text, Button, Card, Badge, ScoreRing } from '../components';
 import {
-  SPEECH_LOCALE, cancelBrowserSpeech, loadVoices, speakWithBrowserVoice,
-  speechSynthesisSupported,
-} from '../speech/webSpeech';
-import type { SpeechLang } from '../speech/webSpeech';
+  capabilities, useCamera, useInterviewerVoice, useLevelMeter,
+  useSessionRecorder, useSpeechRecognizer,
+} from '../media';
+import type { SpeechLang } from '../media';
+import { RESUME_LISTEN_MS, SILENCE_MS } from '../media/tuning';
 import { PERSONA, personaAvatarUrl } from './interviewerPersona';
 
 /* ------------------------------------------------------------------ *
@@ -123,56 +124,30 @@ const VIDEO = {
  * 2. Tuning
  * ------------------------------------------------------------------ */
 
-/** How long after the last transcription event we treat the user as done. */
-const SILENCE_MS = 2500;
-/** Pause before re-opening the mic after the interviewer stops speaking. */
-const RESUME_LISTEN_MS = 500;
-/** How long a transient notice stays on the stage. */
+/** How long a transient notice stays on the stage. Timing of the UI, not of the
+ *  media — everything the two platforms must agree on lives in `media/tuning`. */
 const NOTICE_MS = 5500;
-/** Voice-envelope sampling: emit at most ~16fps, and only on a real change.
- *  Emitting every animation frame re-rendered the whole call UI 60×/s. */
-const LEVEL_EMIT_MS = 60;
-const LEVEL_EMIT_DELTA = 0.04;
+
 /**
- * `speechSynthesis` plays through the OS, not through a MediaStream, so there
- * is no waveform to analyse while a neural voice is talking. The presence ring
- * rides a synthesised envelope instead — sampled at the same rate as the real
- * analyser so the two paths look identical on stage. Smoothing keeps it from
- * flickering; the sine term gives it the loose periodicity of speech rather
- * than the jitter of pure noise.
+ * The two fault states have to tell the candidate where to go and fix the
+ * problem, and that is the one place the answer genuinely differs: site
+ * permissions in a browser, app permissions in the OS settings. Read off the
+ * media layer's own descriptor rather than off `Platform`, and used for copy
+ * only — no behaviour hangs on it.
  */
-const ENVELOPE_SMOOTHING = 0.55;
-const ENVELOPE_FLOOR = 0.34;
-const ENVELOPE_SWING = 0.44;
-const ENVELOPE_NOISE = 0.18;
-/** Recorder timeslice — flushes a chunk every second so an abrupt teardown
- *  loses at most one second of footage. */
-const REC_TIMESLICE_MS = 1000;
-/** Object URLs are revoked after the browser has had time to start the save. */
-const BLOB_URL_TTL_MS = 60_000;
-/**
- * How long we wait for `MediaRecorder.onstop` before saving what we already
- * have. Ending a call stops the camera/mic tracks in the same synchronous
- * block as `rec.stop()` — the camera light must not outlive the call — and a
- * recorder whose source tracks die mid-flush can fail to emit `onstop` at all.
- * Without this the candidate's footage would be silently dropped.
- */
-const REC_STOP_GRACE_MS = 1200;
-
-/** Preference order for the recording container/codec. */
-const REC_MIME_CANDIDATES = [
-  'video/webm;codecs=vp9,opus',
-  'video/webm;codecs=vp8,opus',
-  'video/webm',
-];
-
-const WEB_APP_URL =
-  ((Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.webAppUrl as string | undefined)
-  ?? 'https://interview.khaledahmed.net';
-
-const SR: any = Platform.OS === 'web' && typeof window !== 'undefined'
-  ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
-  : null;
+const MEDIA_COPY = capabilities.platform === 'web'
+  ? {
+      deniedBody: 'meeting.mediaDeniedBody',
+      unsupportedTitle: 'meeting.mediaUnsupportedTitle',
+      unsupportedBody: 'meeting.mediaUnsupportedBody',
+      sttUnsupported: 'meeting.sttUnsupported',
+    }
+  : {
+      deniedBody: 'meeting.mediaDeniedBodyDevice',
+      unsupportedTitle: 'meeting.mediaUnsupportedTitleDevice',
+      unsupportedBody: 'meeting.mediaUnsupportedBodyDevice',
+      sttUnsupported: 'meeting.sttUnsupportedDevice',
+    };
 
 /* ------------------------------------------------------------------ *
  * 3. Types + helpers
@@ -185,7 +160,6 @@ interface Tip { id: number; text: string; at: number }
 type MeetingState = 'preparing' | 'active' | 'closing' | 'ended';
 type Presence = 'idle' | 'listening' | 'thinking' | 'speaking';
 type EvalPhase = 'idle' | 'loading' | 'ready' | 'none' | 'error';
-type MediaFault = 'denied' | 'unsupported';
 type NoticeTone = 'info' | 'danger' | 'success';
 
 interface Evaluation {
@@ -207,32 +181,6 @@ function formatDuration(ms: number) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
-}
-
-/** `thiqty-interview-2026-08-16-1435.webm` */
-function recordingFileName() {
-  const d = new Date();
-  return `thiqty-interview-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}.webm`;
-}
-
-/**
- * What this browser can record.
- * `mimeType: ''` means "MediaRecorder exists but cannot be asked about
- * types" — the browser picks its own container in that case.
- */
-function detectRecorderSupport(): { supported: boolean; mimeType: string } {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return { supported: false, mimeType: '' };
-  const MR = (window as any).MediaRecorder as typeof MediaRecorder | undefined;
-  if (!MR) return { supported: false, mimeType: '' };
-  if (typeof MR.isTypeSupported !== 'function') return { supported: true, mimeType: '' };
-  for (const mime of REC_MIME_CANDIDATES) {
-    try {
-      if (MR.isTypeSupported(mime)) return { supported: true, mimeType: mime };
-    } catch {
-      /* isTypeSupported can throw on malformed strings in older engines */
-    }
-  }
-  return { supported: false, mimeType: '' };
 }
 
 function apiErrorMessage(err: any, fallback: string): string {
@@ -532,9 +480,14 @@ function InterviewerStage({
             },
           ]}
         >
+          {/* The only platform branch left in this file, and it is not a media
+              one: it is how a single remote SVG gets painted. The browser
+              renders it with its own <img>, which is what the live build
+              already ships and what no SVG parser can be guaranteed to match
+              pixel for pixel; native has no <img>, so it fetches and parses the
+              same URL, and falls back to the initial if the network says no. */}
           {Platform.OS === 'web' ? (
-            // @ts-ignore — the DiceBear avatar is an SVG served over HTTP; a
-            // plain <img> renders it without pulling in an SVG loader.
+            // @ts-ignore — web-only HTMLImageElement
             <img
               src={avatarUrl}
               alt={name}
@@ -543,9 +496,16 @@ function InterviewerStage({
               style={{ width: size, height: size, display: 'block' }}
             />
           ) : (
-            <Text role="display" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
-              {name.slice(0, 1)}
-            </Text>
+            <SvgUri
+              uri={avatarUrl}
+              width={size}
+              height={size}
+              fallback={(
+                <Text role="display" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
+                  {name.slice(0, 1)}
+                </Text>
+              )}
+            />
           )}
         </View>
       </View>
@@ -716,7 +676,7 @@ export function MeetingScreen({ route, navigation }: any) {
   /**
    * The interview language, chosen on the setup screen. Everything the
    * candidate hears, says and is graded on follows it: `/meeting/turn`,
-   * `/meeting/finish`, the synthesised voice and `SpeechRecognition.lang`.
+   * `/meeting/finish`, the synthesised voice and the recognizer's locale.
    * Older navigation entries (a deep link, a restored state) carry no value,
    * so it falls back to the app's UI language rather than to a hardcoded 'ar'.
    */
@@ -724,7 +684,6 @@ export function MeetingScreen({ route, navigation }: any) {
     : params.language === 'ar' ? 'ar'
     : (i18n.language === 'en' ? 'en' : 'ar');
 
-  const isWeb = Platform.OS === 'web';
   const hrGender: 'male' | 'female' = context?.gender === 'male' ? 'male' : 'female';
   const persona = PERSONA[hrGender];
   const hrName = t(hrGender === 'male' ? 'meeting.hrMaleName' : 'meeting.hrFemaleName');
@@ -732,54 +691,19 @@ export function MeetingScreen({ route, navigation }: any) {
   const hrAvatar = personaAvatarUrl(hrGender);
 
   const youInitial = (userName?.trim()?.[0] ?? '?').toUpperCase();
-  const recorderSupport = useMemo(detectRecorderSupport, []);
 
   /* -------------------- refs -------------------- */
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  /** The element source feeding `analyserRef`. Held so the pair can be
-   *  disconnected: a `MediaElementAudioSourceNode` left wired to
-   *  `ctx.destination` keeps itself and its <audio> element alive, so one
-   *  orphaned chain per interview turn would accumulate over a long call. */
-  const ttsSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const levelAnimRef = useRef<number | null>(null);
-  const lastLevelRef = useRef({ at: 0, value: 0 });
-  /** Timer behind the synthesised envelope used while `speechSynthesis` talks. */
-  const envelopeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const mixDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const micSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const tabSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  /** Screen-capture stream, when the browser grants one. Separate from the
-   *  camera stream so teardown can release both independently. */
-  const displayStreamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const recSaveRef = useRef(true);
-  const recStartedAtRef = useRef<number | null>(null);
-  /** True between `rec.stop()` and its `onstop`, so a second teardown pass
-   *  cannot flush the same chunks into a second download. */
-  const recStoppingRef = useRef(false);
-  /** Safety net for a recorder whose `onstop` never arrives — see
-   *  `stopRecording`. Cleared by `finalizeRecording`. */
-  const recStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const recognitionRef = useRef<any>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const accumulatedFinalRef = useRef('');
+  /** Re-open-the-mic timer. Everything else about listening belongs to the
+   *  recognizer; this is only the pause after the interviewer stops. */
+  const resumeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Mirrors the camera's mic flag for callbacks that fire a turn later. */
+  const micOnRef = useRef(true);
 
   const turnsRef = useRef<Turn[]>([]);
   const startedAtRef = useRef(Date.now());
   const tipCounterRef = useRef(0);
-  const micOnRef = useRef(true);
   const stateRef = useRef<MeetingState>('preparing');
   const endedRef = useRef(false);
   const endingRef = useRef(false);
@@ -787,27 +711,26 @@ export function MeetingScreen({ route, navigation }: any) {
   const evaluatingRef = useRef(false);
   const sendUserMessageRef = useRef<(text: string) => void>(() => {});
   const teardownRef = useRef<(opts?: { saveRecording?: boolean }) => void>(() => {});
+  /**
+   * What an unmount should do with a take that is still being written.
+   *
+   * Defaults to saving — leaving mid-call (Back, a deep link) must not throw
+   * the footage away. `concludeCall` overwrites it first, because "Discard and
+   * finish" unmounts the screen milliseconds later and a hardcoded `true` here
+   * would hand the candidate back the very file they asked us to drop.
+   */
+  const saveOnExitRef = useRef(true);
 
   /* -------------------- state -------------------- */
 
   const [turns, setTurns] = useState<Turn[]>([]);
   const [tips, setTips] = useState<Tip[]>([]);
-  const [interim, setInterim] = useState('');
-  const [level, setLevel] = useState(0);
 
   const [thinking, setThinking] = useState(false);
   const [aiSpeaking, setAiSpeaking] = useState(false);
-  const [listening, setListening] = useState(false);
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
-  const [streamReady, setStreamReady] = useState(false);
-
-  const [recording, setRecording] = useState(false);
-  const [recElapsed, setRecElapsed] = useState(0);
 
   const [elapsed, setElapsed] = useState(0);
   const [meetingState, setMeetingState] = useState<MeetingState>('preparing');
-  const [mediaFault, setMediaFault] = useState<MediaFault | null>(null);
   const [notice, setNotice] = useState<{ text: string; tone: NoticeTone } | null>(null);
 
   const [captionsOn, setCaptionsOn] = useState(true);
@@ -819,7 +742,6 @@ export function MeetingScreen({ route, navigation }: any) {
   const [evalError, setEvalError] = useState<string | null>(null);
   const [evalErrorKind, setEvalErrorKind] = useState<ApiErrorKind>('unknown');
 
-  useEffect(() => { micOnRef.current = micOn; }, [micOn]);
   useEffect(() => { stateRef.current = meetingState; }, [meetingState]);
 
   /* -------------------- notices -------------------- */
@@ -829,6 +751,109 @@ export function MeetingScreen({ route, navigation }: any) {
     setNotice({ text, tone });
     noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS);
   }, []);
+
+  /* -------------------- exit -------------------- */
+
+  /**
+   * The screen's own promise: the call is not over until this component is
+   * gone, and a recording in flight is saved on the way out.
+   *
+   * ITS POSITION IN THIS FILE IS THE FIX. React runs unmount destructors in the
+   * order their effects were *created*, and each media hook registers its own
+   * (`useCamera` → `release()`, `useSessionRecorder` → `release({save})`, …).
+   * Declared after the hooks, this cleanup ran last — every hook had already
+   * released itself in hook-declaration order, which stops the camera tracks
+   * *before* the recorder is asked to flush and truncates or empties the take
+   * (contract.ts: "Must be called before the camera/mic tracks are stopped so
+   * the encoder can still flush"). Declared here it runs first, so `teardown`
+   * is once again the single ordered exit; the per-hook cleanups that follow
+   * are no-ops because every `release()` is idempotent.
+   *
+   * Do not move this below the `useCamera` / `useSessionRecorder` calls.
+   *
+   * `teardownRef` is filled by an unconditional effect further down, so it is
+   * populated by the time this destructor runs.
+   */
+  useEffect(() => {
+    endedRef.current = false;
+    return () => { teardownRef.current({ saveRecording: saveOnExitRef.current }); };
+  }, []);
+
+  /* -------------------- media -------------------- *
+   *
+   * Five hooks, one per capture concern, each resolved per platform by Metro.
+   * Between them they own every device handle this screen used to hold itself:
+   * the stream, the audio graph, the recognizer, the recorder and their
+   * teardown order. What is left here is the interview.
+   * ------------------------------------------------------------------ */
+
+  const camera = useCamera({
+    active: meetingState !== 'ended',
+    initialFacing: 'front',
+  });
+
+  const voice = useInterviewerVoice({
+    /**
+     * The one call that bypasses the axios client — it wants the raw audio
+     * body, not JSON — and the only reason it stays in the screen: the token
+     * lives with the auth store here, not in the media layer.
+     */
+    fetchServerTts: async ({ text, gender, language: lang }) => {
+      const token = await secureStorage.getItem('access_token');
+      const res = await fetch(`${API_BASE}/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ text, gender, language: lang }),
+      });
+      if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
+      return res.arrayBuffer();
+    },
+  });
+
+  const meter = useLevelMeter();
+
+  const recorder = useSessionRecorder({
+    handle: camera.handle,
+    onNotice: (key, tone) => {
+      // The recorder reports in keys. Where the file actually lands is the one
+      // thing it cannot phrase for us, so the "saved" line is redirected to the
+      // wording that matches this platform's delivery.
+      const resolved = key === 'recordingSaved' && capabilities.recorder.delivery !== 'download'
+        ? 'recordingSavedDevice'
+        : key;
+      showNotice(t(`meeting.${resolved}`), tone);
+    },
+  });
+
+  const recognizer = useSpeechRecognizer({
+    language,
+    silenceMs: SILENCE_MS,
+    onFinal: (text) => { if (!endedRef.current) sendUserMessageRef.current(text); },
+    onError: (code) => {
+      // Permission wording, which is the honest reading of both codes on web.
+      // On native a permanent `service-not-allowed` also flips
+      // `recognizer.supported`, and the effect watching that flag replaces this
+      // notice with the "no speech engine" wording a moment later — the right
+      // copy wins without the screen having to branch on platform.
+      if (code === 'not-allowed' || code === 'service-not-allowed') {
+        showNotice(t(MEDIA_COPY.deniedBody), 'danger');
+      }
+    },
+  });
+
+  // Aliased so the ~200 references below read as call state rather than as
+  // plumbing — these are the nine values that used to be `useState` here.
+  const { listening, interim } = recognizer;
+  const { level } = meter;
+  const { recording, elapsedMs: recElapsed } = recorder;
+  const {
+    enabled: camOn, micEnabled: micOn, ready: streamReady, fault: mediaFault,
+  } = camera;
+
+  useEffect(() => { micOnRef.current = micOn; }, [micOn]);
 
   /* -------------------- turn bookkeeping -------------------- */
 
@@ -842,692 +867,169 @@ export function MeetingScreen({ route, navigation }: any) {
     [],
   );
 
-  /* -------------------- speech recognition -------------------- */
-
-  const stopRecognition = useCallback(() => {
-    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-    if (resumeTimerRef.current) { clearTimeout(resumeTimerRef.current); resumeTimerRef.current = null; }
-
-    const rec = recognitionRef.current;
-    recognitionRef.current = null;
-    accumulatedFinalRef.current = '';
-
-    if (rec) {
-      // Detach first: a deliberate stop (mute, end call) must not commit a
-      // half-finished utterance through `onend`.
-      rec.onresult = null;
-      rec.onend = null;
-      rec.onerror = null;
-      rec.onspeechstart = null;
-      try { rec.abort?.(); } catch { /* not implemented everywhere */ }
-      try { rec.stop?.(); } catch { /* already stopped */ }
-    }
-
-    setListening(false);
-    setInterim('');
-  }, []);
-
-  const startRecognition = useCallback(() => {
-    if (!SR || endedRef.current || !micOnRef.current) return;
-    if (recognitionRef.current) return; // already open
-
-    const rec = new SR();
-    // The recognizer must be on the same locale as the interview, or an
-    // English answer gets transcribed as Arabic phonetics and scored as noise.
-    rec.lang = SPEECH_LOCALE[language];
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-
-    accumulatedFinalRef.current = '';
-
-    const armSilence = () => {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => {
-        if (accumulatedFinalRef.current.trim()) {
-          // Let `onend` commit — that is the single place an utterance is sent.
-          try { rec.stop(); } catch { /* noop */ }
-        }
-      }, SILENCE_MS);
-    };
-
-    rec.onresult = (e: any) => {
-      let interimText = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) accumulatedFinalRef.current += `${r[0].transcript} `;
-        else interimText += r[0].transcript;
-      }
-      setInterim(interimText);
-      armSilence();
-    };
-
-    rec.onspeechstart = () => {
-      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-    };
-
-    rec.onend = () => {
-      recognitionRef.current = null;
-      setListening(false);
-      setInterim('');
-      if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
-      const final = accumulatedFinalRef.current.trim();
-      accumulatedFinalRef.current = '';
-      if (final && !endedRef.current) sendUserMessageRef.current(final);
-    };
-
-    rec.onerror = (e: any) => {
-      setListening(false);
-      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed') {
-        showNotice(t('meeting.mediaDeniedBody'), 'danger');
-      }
-    };
-
-    try {
-      rec.start();
-      recognitionRef.current = rec;
-      setListening(true);
-    } catch {
-      recognitionRef.current = null;
-      setListening(false);
-    }
-  }, [language, showNotice, t]);
-
-  const scheduleListen = useCallback(() => {
-    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
-    resumeTimerRef.current = setTimeout(() => {
-      resumeTimerRef.current = null;
-      if (endedRef.current) return;
-      if (stateRef.current !== 'active') return;
-      startRecognition();
-    }, RESUME_LISTEN_MS);
-  }, [startRecognition]);
-
-  /* -------------------- audio graph + TTS -------------------- */
-
-  const ensureAudioContext = useCallback((): AudioContext | null => {
-    if (typeof window === 'undefined') return null;
-    if (!audioCtxRef.current) {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!Ctx) return null;
-      try { audioCtxRef.current = new Ctx(); } catch { return null; }
-    }
-    const ctx = audioCtxRef.current;
-    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
-    return ctx;
-  }, []);
-
-  /** Stops both envelope sources — the real analyser loop and the synthesised
-   *  one — so whichever voice path was running, the ring settles. */
-  const stopLevelMeter = useCallback(() => {
-    if (levelAnimRef.current !== null) {
-      cancelAnimationFrame(levelAnimRef.current);
-      levelAnimRef.current = null;
-    }
-    if (envelopeTimerRef.current !== null) {
-      clearInterval(envelopeTimerRef.current);
-      envelopeTimerRef.current = null;
-    }
-    lastLevelRef.current = { at: 0, value: 0 };
-    setLevel(0);
-  }, []);
+  /* -------------------- listening -------------------- */
 
   /**
-   * Presence ring for the `speechSynthesis` path. The browser voice plays
-   * straight to the OS mixer, so there is no MediaStream to run an analyser
-   * over — the ring rides a smoothed pseudo-envelope for as long as the
-   * utterance is active. It is decoration, not measurement, and it is labelled
-   * as such so nobody later mistakes it for a real level.
+   * Re-open the mic after the interviewer stops. The delay is what keeps the
+   * recognizer from catching the tail of the synthesised voice — on a phone
+   * there is no acoustic echo cancellation between the two, so this turn
+   * discipline is load-bearing rather than polite.
    */
-  const startEnvelopeMeter = useCallback(() => {
-    if (envelopeTimerRef.current !== null) clearInterval(envelopeTimerRef.current);
-    let phase = 0;
-    let value = ENVELOPE_FLOOR;
-    envelopeTimerRef.current = setInterval(() => {
-      phase += 1;
-      const target =
-        ENVELOPE_FLOOR
-        + Math.abs(Math.sin(phase * 0.7)) * ENVELOPE_SWING
-        + Math.random() * ENVELOPE_NOISE;
-      value = value * ENVELOPE_SMOOTHING + target * (1 - ENVELOPE_SMOOTHING);
-      setLevel(Math.min(1, value));
-    }, LEVEL_EMIT_MS);
-  }, []);
+  const scheduleListen = useCallback(() => {
+    if (resumeRef.current) clearTimeout(resumeRef.current);
+    resumeRef.current = setTimeout(() => {
+      resumeRef.current = null;
+      if (endedRef.current || stateRef.current !== 'active') return;
+      // Muted while the interviewer was still talking. The recognizer opens its
+      // own capture, so nothing but this check keeps a muted mic from listening.
+      if (!micOnRef.current) return;
+      recognizer.start();
+    }, RESUME_LISTEN_MS);
+  }, [recognizer]);
 
-  const startLevelMeter = useCallback(() => {
-    const analyser = analyserRef.current;
-    if (!analyser) return;
-    // Only one loop may own `levelAnimRef`; a second would leak the first's
-    // frame id and leave it running against a dead analyser forever.
-    if (levelAnimRef.current !== null) {
-      cancelAnimationFrame(levelAnimRef.current);
-      levelAnimRef.current = null;
-    }
-    const buf = new Uint8Array(analyser.fftSize);
-
-    const tick = () => {
-      analyser.getByteTimeDomainData(buf);
-      let sumSq = 0;
-      for (let i = 0; i < buf.length; i++) {
-        const v = (buf[i] - 128) / 128;
-        sumSq += v * v;
-      }
-      const next = Math.min(1, Math.sqrt(sumSq / buf.length) * 6);
-
-      // Throttled: re-rendering the whole call UI 60×/s to move a ring is the
-      // difference between a smooth call and a stuttering one.
-      const now = Date.now();
-      const last = lastLevelRef.current;
-      if (now - last.at >= LEVEL_EMIT_MS && Math.abs(next - last.value) >= LEVEL_EMIT_DELTA) {
-        lastLevelRef.current = { at: now, value: next };
-        setLevel(next);
-      }
-      levelAnimRef.current = requestAnimationFrame(tick);
-    };
-
-    levelAnimRef.current = requestAnimationFrame(tick);
-  }, []);
-
-  const stopSpeech = useCallback(() => {
-    // Browser voice first: `cancel()` also invalidates the pending utterance's
-    // callbacks, so a torn-down call cannot advance the interview from a line
-    // that is being cut off mid-word.
-    cancelBrowserSpeech();
-
-    const audio = audioRef.current;
-    audioRef.current = null;
-    if (audio) {
-      audio.onplay = null;
-      audio.onended = null;
-      audio.onerror = null;
-      try { audio.pause(); } catch { /* noop */ }
-      try { audio.removeAttribute('src'); } catch { /* noop */ }
-      try { audio.load(); } catch { /* noop */ }
-    }
-
-    // Unwire this turn's audio graph. Once an <audio> element is routed
-    // through `createMediaElementSource`, pausing it is not enough on its own
-    // to guarantee silence — the graph is the only path to the speakers, and
-    // it must be torn down or every turn leaves a live chain behind.
-    const src = ttsSourceRef.current;
-    ttsSourceRef.current = null;
-    if (src) { try { src.disconnect(); } catch { /* noop */ } }
-    const analyser = analyserRef.current;
-    analyserRef.current = null;
-    if (analyser) { try { analyser.disconnect(); } catch { /* noop */ } }
-
-    const url = audioUrlRef.current;
-    audioUrlRef.current = null;
-    if (url) { try { URL.revokeObjectURL(url); } catch { /* noop */ } }
-    stopLevelMeter();
-    setAiSpeaking(false);
-  }, [stopLevelMeter]);
+  /* -------------------- the interviewer's voice -------------------- */
 
   /**
-   * Voice the interviewer's line.
+   * Voice the interviewer's line and drive the stage while it plays.
    *
-   * Two paths, in order of preference:
-   *   1. `speechSynthesis` — a local neural voice, speaking within
-   *      milliseconds. This is the path that fixed "الصوت كأن روبوت".
-   *   2. `POST /api/tts` — the Google-Translate-scraping fallback, for
-   *      browsers with no usable voice for this language. Kept because a
-   *      missing voice must never stall the interview.
+   * The media layer decides *how* — a local neural voice first, server TTS
+   * second — and reports which one made it through, because only one of them
+   * has a waveform the presence ring can be driven from.
    *
    * A failure in either path still calls `onDone`: the conversation carries on
    * silently rather than deadlocking on a voice that never arrives.
    */
   const speak = useCallback(async (line: string, onDone?: () => void) => {
-    if (!isWeb || endedRef.current) { setThinking(false); onDone?.(); return; }
+    if (endedRef.current) { setThinking(false); onDone?.(); return; }
 
     // "Thinking" stays on until audio actually starts: flipping to "speaking"
     // while the voice is still downloading shows a talking avatar in silence.
-    stopSpeech();
+    setAiSpeaking(false);
+    meter.stop();
 
-    if (speechSynthesisSupported()) {
-      // Resolves true only once sound is actually leaving the speaker, so a
-      // false here means nothing was heard and the fallback cannot double the
-      // line.
-      const spoken = await speakWithBrowserVoice({
-        text: line,
-        lang: language,
-        gender: hrGender,
-        onStart: () => {
-          if (endedRef.current) return;
-          setThinking(false);
-          setAiSpeaking(true);
-          startEnvelopeMeter();
-        },
-        onEnd: () => {
-          setAiSpeaking(false);
-          stopLevelMeter();
-          if (!endedRef.current) onDone?.();
-        },
-      });
-      if (endedRef.current) { setThinking(false); setAiSpeaking(false); return; }
-      if (spoken) { setThinking(false); return; }
-    }
-
-    try {
-      const token = await secureStorage.getItem('access_token');
-      const res = await fetch(`${API_BASE}/tts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ text: line, gender: hrGender, language }),
-      });
-      if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
-
-      const blob = await res.blob();
-      if (endedRef.current) { setThinking(false); setAiSpeaking(false); return; }
-
-      const url = URL.createObjectURL(blob);
-      audioUrlRef.current = url;
-
-      const audio = new Audio(url);
-      audio.crossOrigin = 'anonymous';
-      audioRef.current = audio;
-
-      // Route through an analyser so the presence ring can breathe with the
-      // voice, and into the recording mix when a recording is running.
-      try {
-        const ctx = ensureAudioContext();
-        if (ctx) {
-          const src = ctx.createMediaElementSource(audio);
-          const analyser = ctx.createAnalyser();
-          analyser.fftSize = 256;
-          analyser.smoothingTimeConstant = 0.6;
-          src.connect(analyser);
-          analyser.connect(ctx.destination);
-          if (mixDestRef.current) analyser.connect(mixDestRef.current);
-          ttsSourceRef.current = src;
-          analyserRef.current = analyser;
-        }
-      } catch {
-        // Analyser wiring is optional — playback still works without it.
-      }
-
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        setAiSpeaking(false);
-        stopLevelMeter();
-        if (audioUrlRef.current === url) {
-          audioUrlRef.current = null;
-          try { URL.revokeObjectURL(url); } catch { /* noop */ }
-        }
-        if (!endedRef.current) onDone?.();
-      };
-
-      audio.onplay = () => {
+    const outcome = await voice.speak({
+      text: line,
+      lang: language,
+      gender: hrGender,
+      onStart: (by, analysable) => {
+        if (endedRef.current) return;
         setThinking(false);
         setAiSpeaking(true);
-        startLevelMeter();
-      };
-      audio.onended = finish;
-      audio.onerror = finish;
-      await audio.play();
-      setThinking(false);
-    } catch {
-      setThinking(false);
+        // Only the server-TTS element plays through a stream there is anything
+        // to measure; every other path rides the synthesised envelope.
+        if (by === 'server-tts') meter.startTtsWaveform(analysable);
+        else meter.startEnvelope();
+      },
+      onEnd: () => {
+        setAiSpeaking(false);
+        meter.stop();
+        if (!endedRef.current) onDone?.();
+      },
+    });
+
+    setThinking(false);
+    // `heard: false` means nothing reached the speaker and no `onEnd` is coming,
+    // so the turn has to be advanced from here or the interview stalls on a
+    // line nobody ever hears.
+    if (!outcome.heard) {
       setAiSpeaking(false);
-      stopLevelMeter();
-      // A missing voice must never block the interview — carry on silently.
+      meter.stop();
       if (!endedRef.current) onDone?.();
     }
-  }, [
-    isWeb, hrGender, language, ensureAudioContext,
-    startEnvelopeMeter, startLevelMeter, stopLevelMeter, stopSpeech,
-  ]);
+  }, [hrGender, language, meter, voice]);
 
   /* -------------------- session recording -------------------- */
 
-  const finalizeRecording = useCallback((save: boolean) => {
-    // Safe to call twice: the second pass sees no session and returns quietly
-    // instead of saving a duplicate file or crying "nothing was captured".
-    const wasRecording = recStartedAtRef.current !== null || chunksRef.current.length > 0;
-    recStoppingRef.current = false;
-    if (recStopTimerRef.current) { clearTimeout(recStopTimerRef.current); recStopTimerRef.current = null; }
-
-    const chunks = chunksRef.current;
-    chunksRef.current = [];
-    recStartedAtRef.current = null;
-    setRecording(false);
-    setRecElapsed(0);
-
-    // Detach the mic from the mixing graph so the node is not left running,
-    // and end the synthetic track the mix produced — it is a MediaStreamTrack
-    // like any other and would otherwise stay live until the AudioContext
-    // closes at the end of the call.
-    try { micSourceRef.current?.disconnect(); } catch { /* noop */ }
-    micSourceRef.current = null;
-    try { tabSourceRef.current?.disconnect(); } catch { /* noop */ }
-    tabSourceRef.current = null;
-    // Release the screen-capture tracks as well. Leaving them live keeps the
-    // browser's "you are sharing your screen" bar up after the call ended.
-    try {
-      displayStreamRef.current?.getTracks().forEach((t) => {
-        t.onended = null;
-        t.stop();
-      });
-    } catch { /* noop */ }
-    displayStreamRef.current = null;
-    const dest = mixDestRef.current;
-    mixDestRef.current = null;
-    if (dest) {
-      try { dest.disconnect(); } catch { /* noop */ }
-      dest.stream.getTracks().forEach((track) => { try { track.stop(); } catch { /* noop */ } });
-    }
-
-    if (!save || !wasRecording) return;
-    if (!chunks.length) { showNotice(t('meeting.recordingEmpty'), 'danger'); return; }
-    if (typeof document === 'undefined') return;
-
-    try {
-      const blob = new Blob(chunks, { type: recorderSupport.mimeType || 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = recordingFileName();
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      // Revoking immediately cancels the save in some engines; the URL is
-      // released once the browser has certainly taken the bytes.
-      setTimeout(() => { try { URL.revokeObjectURL(url); } catch { /* noop */ } }, BLOB_URL_TTL_MS);
-      showNotice(t('meeting.recordingSaved'), 'success');
-    } catch {
-      showNotice(t('meeting.recordFailed'), 'danger');
-    }
-  }, [recorderSupport.mimeType, showNotice, t]);
-
-  const stopRecording = useCallback((save: boolean) => {
-    const rec = recorderRef.current;
-    recorderRef.current = null;
-    if (!rec) {
-      // Nothing running — flush only if a stop is not already in flight.
-      if (!recStoppingRef.current && chunksRef.current.length) finalizeRecording(save);
+  const toggleRecording = useCallback(() => {
+    if (recording) { void recorder.stop({ save: true }); return; }
+    // Where the preview *is* the recorder, there is nothing to record with the
+    // camera off — say so rather than fail on tap.
+    if (capabilities.recorder.locksCameraControls && !camOn) {
+      showNotice(t('meeting.recordNeedsCamera'), 'info');
       return;
     }
-    recSaveRef.current = save;
-    try {
-      if (rec.state !== 'inactive') {
-        recStoppingRef.current = true;
-        try { rec.requestData(); } catch { /* not supported everywhere */ }
-        rec.stop(); // `onstop` finalizes
-
-        // …unless it doesn't. Teardown stops the camera/mic tracks in the same
-        // synchronous block — the camera light must not outlive the call — and
-        // a recorder that loses its input mid-flush can go quiet without ever
-        // firing `onstop`, silently losing the take. So on the teardown path
-        // only, save what we already have if `onstop` misses its window.
-        //
-        // Deliberately NOT armed for a mid-call stop (the record button): there
-        // the tracks stay live, `onstop` is certain to arrive, and finalizing
-        // early would truncate the last second of footage for no reason.
-        // `finalizeRecording` empties the chunk buffer, so whichever path runs
-        // first wins and a late `onstop` cannot produce a second download.
-        if (endedRef.current) {
-          if (recStopTimerRef.current) clearTimeout(recStopTimerRef.current);
-          recStopTimerRef.current = setTimeout(() => {
-            recStopTimerRef.current = null;
-            if (recStoppingRef.current) finalizeRecording(recSaveRef.current);
-          }, REC_STOP_GRACE_MS);
-        }
-      } else {
-        finalizeRecording(save);
-      }
-    } catch {
-      recStoppingRef.current = false;
-      finalizeRecording(save);
-    }
-  }, [finalizeRecording]);
-
-  /**
-   * Camera + mic, with the interviewer's voice mixed in when the Web Audio
-   * graph is available. Any failure falls back to the raw camera+mic stream
-   * so a recording is never silently lost to a mixing problem.
-   */
-  /**
-   * Assemble what actually gets recorded.
-   *
-   * `base` is the camera+mic stream. When `display` is supplied (screen
-   * capture) its video replaces the webcam, so the review file shows the whole
-   * call — interviewer, captions and the candidate's PiP — rather than just a
-   * head-and-shoulders crop. Audio is always mixed through a Web Audio graph so
-   * the candidate's microphone and any captured tab audio land on one track;
-   * MediaRecorder will only encode a single audio track, so handing it two
-   * would silently drop one.
-   *
-   * Note on the interviewer's voice: the server-TTS fallback plays through an
-   * <audio> element that `speak` wires straight into `mixDestRef`, so it is
-   * always in the take. The browser neural voice does not go through Web Audio
-   * at all — `speechSynthesis` has no MediaStream — so it reaches the recording
-   * only via the captured tab/system audio the user grants in the share dialog.
-   */
-  const buildRecordingStream = useCallback(
-    (base: MediaStream, display?: MediaStream | null): MediaStream => {
-      const video = display?.getVideoTracks().length
-        ? display.getVideoTracks()
-        : base.getVideoTracks();
-
-      try {
-        const ctx = ensureAudioContext();
-        const sources: MediaStream[] = [];
-        if (base.getAudioTracks().length) sources.push(base);
-        if (display?.getAudioTracks().length) sources.push(display);
-
-        if (!ctx || sources.length === 0) {
-          return new MediaStream([...video, ...base.getAudioTracks()]);
-        }
-
-        const dest = ctx.createMediaStreamDestination();
-        // Connected to the mix only, never to ctx.destination — routing these
-        // back to the speakers would echo the candidate at themselves and
-        // feed the interviewer's own voice into a loop.
-        const micSource = ctx.createMediaStreamSource(sources[0]);
-        micSource.connect(dest);
-        if (sources[1]) {
-          const tabSource = ctx.createMediaStreamSource(sources[1]);
-          tabSource.connect(dest);
-          tabSourceRef.current = tabSource;
-        }
-
-        const mixedAudio = dest.stream.getAudioTracks();
-        if (!mixedAudio.length) return new MediaStream([...video, ...base.getAudioTracks()]);
-
-        mixDestRef.current = dest;
-        micSourceRef.current = micSource;
-        return new MediaStream([...video, ...mixedAudio]);
-      } catch {
-        return new MediaStream([...video, ...base.getAudioTracks()]);
-      }
-    },
-    [ensureAudioContext],
-  );
-
-  const startRecording = useCallback(async () => {
-    if (recorderRef.current) return;
-    if (!recorderSupport.supported) { showNotice(t('meeting.recordUnsupported'), 'danger'); return; }
-    const base = streamRef.current;
-    if (!base) { showNotice(t('meeting.recordFailed'), 'danger'); return; }
-
-    try {
-      const MR = (window as any).MediaRecorder as typeof MediaRecorder;
-
-      // Capture the whole call, not just the webcam: getDisplayMedia records
-      // the tab/screen, so the interviewer, the live captions and the
-      // candidate's own picture-in-picture are all in the review file. The
-      // camera-only stream is the fallback when the browser has no screen
-      // capture or the user dismisses the picker.
-      let stream: MediaStream;
-      let display: MediaStream | null = null;
-      const md: any = navigator?.mediaDevices;
-      if (md?.getDisplayMedia) {
-        try {
-          display = await md.getDisplayMedia({
-            video: { frameRate: 30 },
-            // Tab audio where the browser offers it — that carries the
-            // interviewer's synthesised voice.
-            audio: true,
-          });
-        } catch {
-          display = null; // dismissed or blocked — fall back below
-        }
-      }
-
-      if (display) {
-        // Mix the microphone into the display capture so the candidate's own
-        // answers are audible; display audio alone would only carry the
-        // interviewer.
-        stream = buildRecordingStream(base, display);
-        displayStreamRef.current = display;
-        // Ending the share from the browser's own "Stop sharing" bar must stop
-        // our recorder too, or it keeps writing a frozen frame.
-        const track = display.getVideoTracks()[0];
-        if (track) track.onended = () => { stopRecording(true); };
-      } else {
-        stream = buildRecordingStream(base);
-        showNotice(t('meeting.recordCameraOnly'), 'info');
-      }
-      const rec = recorderSupport.mimeType
-        ? new MR(stream, { mimeType: recorderSupport.mimeType })
-        : new MR(stream);
-
-      chunksRef.current = [];
-      recSaveRef.current = true;
-
-      rec.ondataavailable = (e: BlobEvent) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      rec.onstop = () => { finalizeRecording(recSaveRef.current); };
-      rec.onerror = () => {
-        // Route through the one stop path rather than hand-rolling a second
-        // one: that is what arms the `onstop` grace timer, so a recorder that
-        // errors *and* never fires `onstop` still releases its buffer and its
-        // mixing nodes instead of pinning `recStoppingRef` on forever.
-        showNotice(t('meeting.recordFailed'), 'danger');
-        stopRecording(false); // a broken take is discarded, not handed over
-      };
-
-      rec.start(REC_TIMESLICE_MS);
-      recorderRef.current = rec;
-      recStartedAtRef.current = Date.now();
-      setRecElapsed(0);
-      setRecording(true);
-      showNotice(t('meeting.recordingStarted'), 'success');
-    } catch {
-      recorderRef.current = null;
-      showNotice(t('meeting.recordFailed'), 'danger');
-    }
-  }, [buildRecordingStream, finalizeRecording, recorderSupport, showNotice, stopRecording, t]);
-
-  const toggleRecording = useCallback(() => {
-    if (recording) stopRecording(true);
-    else void startRecording();
-  }, [recording, startRecording, stopRecording]);
+    void recorder.start();
+  }, [camOn, recorder, recording, showNotice, t]);
 
   /* -------------------- teardown -------------------- */
 
   /**
-   * The one place media is released. Everything that can hold the camera
-   * light on, keep a recognizer listening, or keep audio playing is stopped
-   * here, in an order that lets the recorder flush before its tracks die.
+   * The one place media is released. Everything that can hold the camera light
+   * on, keep a recognizer listening, or keep audio playing is stopped here, and
+   * the order is load-bearing: handlers off before anything is aborted, the
+   * recorder flushed before the source it is writing from disappears, the
+   * camera last because its light must not outlive the call.
    */
   const teardown = useCallback((opts?: { saveRecording?: boolean }) => {
     endedRef.current = true;
 
-    stopRecognition();
+    recognizer.release();
+    if (resumeRef.current) { clearTimeout(resumeRef.current); resumeRef.current = null; }
     if (noticeTimerRef.current) { clearTimeout(noticeTimerRef.current); noticeTimerRef.current = null; }
 
-    stopSpeech();
-    stopLevelMeter();
-
-    // Before the tracks: a recorder whose source tracks have ended cannot
-    // flush its final chunk.
-    stopRecording(opts?.saveRecording ?? true);
-
-    const stream = streamRef.current;
-    streamRef.current = null;
-    stream?.getTracks().forEach((track) => { try { track.stop(); } catch { /* noop */ } });
-
-    if (videoRef.current) {
-      try {
-        videoRef.current.pause();
-        videoRef.current.srcObject = null;
-      } catch { /* noop */ }
-    }
-
-    const ctx = audioCtxRef.current;
-    audioCtxRef.current = null;
-    analyserRef.current = null;
-    if (ctx && ctx.state !== 'closed') ctx.close().catch(() => {});
-  }, [stopLevelMeter, stopRecognition, stopRecording, stopSpeech]);
+    voice.release();
+    meter.release();
+    recorder.release({ save: opts?.saveRecording ?? true });
+    camera.release();
+  }, [camera, meter, recognizer, recorder, voice]);
 
   useEffect(() => { teardownRef.current = teardown; });
 
-  /* -------------------- media init -------------------- */
-
-  const acquireMedia = useCallback(async () => {
-    if (!isWeb) return;
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setMediaFault('unsupported');
-      return;
-    }
-    setMediaFault(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
-        audio: true,
-      });
-      if (endedRef.current) {
-        stream.getTracks().forEach((tr) => { try { tr.stop(); } catch { /* noop */ } });
-        return;
-      }
-      // Retry after a denial can race a stream that arrived late; releasing the
-      // previous one first is what keeps the camera light honest.
-      const previous = streamRef.current;
-      if (previous && previous !== stream) {
-        previous.getTracks().forEach((tr) => { try { tr.stop(); } catch { /* noop */ } });
-      }
-      streamRef.current = stream;
-      stream.getAudioTracks().forEach((tr) => { tr.enabled = micOnRef.current; });
-      setStreamReady(true);
-    } catch {
-      setMediaFault('denied');
-    }
-  }, [isWeb]);
-
-  useEffect(() => {
-    if (!isWeb) return undefined;
-    endedRef.current = false;
-    void acquireMedia();
-    return () => { teardownRef.current({ saveRecording: true }); };
-  }, [isWeb, acquireMedia]);
+  /* -------------------- media init -------------------- *
+   *
+   * Acquisition, the ended-while-prompting race and the retry that must not
+   * leave two captures live all belong to `useCamera` now. The unmount promise
+   * that used to live here has moved *above* the hook calls — see the "exit"
+   * block; its position is load-bearing.
+   * ------------------------------------------------------------------ */
 
   /**
    * Warm the voice list while the candidate is still reading the start screen.
-   * `getVoices()` is empty on a cold page and only fills after `voiceschanged`;
-   * paying that wait here rather than on the interviewer's opening line is the
+   * The list is empty on a cold engine and only fills asynchronously; paying
+   * that wait here rather than on the interviewer's opening line is the
    * difference between an instant greeting and a second of dead air.
    */
-  useEffect(() => {
-    if (!isWeb) return;
-    void loadVoices();
-  }, [isWeb]);
+  const { warmUp: warmUpVoice } = voice;
+  useEffect(() => { void warmUpVoice(); }, [warmUpVoice]);
 
-  // Attach / re-attach the preview whenever the stream or camera state changes.
+  /**
+   * A camera fault raised *after* the call started.
+   *
+   * Only native can reach this — `onMountError` fires whenever the device
+   * refuses to (re)open a session — and the answer there is a notice, not the
+   * full-screen wall: the interview is still running, the recognizer is still
+   * on the candidate's voice, and replacing the UI would strand all of it. The
+   * self-view drops to its placeholder by itself, since `Preview` renders no
+   * capture while `fault` is set. `stateRef` rather than `meetingState` so a
+   * later state change does not re-announce a fault already reported.
+   */
   useEffect(() => {
-    if (!isWeb || !streamReady) return;
-    const el = videoRef.current;
-    const stream = streamRef.current;
-    if (!el || !stream) return;
-    if (el.srcObject !== stream) el.srcObject = stream;
-    el.play().catch(() => {});
-  }, [isWeb, streamReady, camOn, meetingState]);
+    if (!mediaFault) return;
+    if (stateRef.current === 'preparing' || stateRef.current === 'ended') return;
+    showNotice(
+      t(mediaFault === 'denied' ? MEDIA_COPY.deniedBody : MEDIA_COPY.unsupportedBody),
+      'danger',
+    );
+  }, [mediaFault, showNotice, t]);
+
+  /**
+   * Speech recognition dying mid-call.
+   *
+   * `supported` is a constant on web but real state on native: the recognizer
+   * flips it false when the engine reports `service-not-allowed`, or when
+   * `start()` throws often enough to count as broken. Sampling it once in
+   * `startMeeting` therefore missed the only case that matters — the candidate
+   * loses the mic *during* the interview, the "Tap to talk" pill quietly
+   * disappears, and the LIVE chip keeps counting over a call they can no longer
+   * take part in. This reacts to the flip, and the banner below it stays on
+   * screen (a toast would be gone in 5.5s) with the way out.
+   */
+  const sttOk = recognizer.supported;
+  useEffect(() => {
+    if (sttOk) return;
+    if (stateRef.current === 'preparing' || stateRef.current === 'ended') return;
+    showNotice(t(MEDIA_COPY.sttUnsupported), 'danger');
+  }, [sttOk, showNotice, t]);
 
   // Elapsed timer only runs while the interview is actually running.
   useEffect(() => {
@@ -1535,15 +1037,6 @@ export function MeetingScreen({ route, navigation }: any) {
     const id = setInterval(() => setElapsed(Date.now() - startedAtRef.current), 1000);
     return () => clearInterval(id);
   }, [meetingState]);
-
-  useEffect(() => {
-    if (!recording) return undefined;
-    const id = setInterval(
-      () => setRecElapsed(Date.now() - (recStartedAtRef.current ?? Date.now())),
-      1000,
-    );
-    return () => clearInterval(id);
-  }, [recording]);
 
   /* -------------------- conversation -------------------- */
 
@@ -1576,7 +1069,7 @@ export function MeetingScreen({ route, navigation }: any) {
       // avatar never sits in a silent "speaking" state while TTS downloads.
       void speak(reply, () => {
         if (closing) concludeRef.current({ saveRecording: true });
-        else if (micOnRef.current) scheduleListen();
+        else scheduleListen();
       });
       return true;
     } catch (err: any) {
@@ -1599,17 +1092,19 @@ export function MeetingScreen({ route, navigation }: any) {
 
   const startMeeting = useCallback(async () => {
     if (startingRef.current || stateRef.current !== 'preparing') return;
-    if (!streamRef.current) { showNotice(t('meeting.mediaDeniedBody'), 'danger'); return; }
+    if (!camera.ready) { showNotice(t(MEDIA_COPY.deniedBody), 'danger'); return; }
     startingRef.current = true;
     startedAtRef.current = Date.now();
     setElapsed(0);
     setMeetingState('active');
-    if (!SR) showNotice(t('meeting.sttUnsupported'), 'danger');
+    // A device with no recognizer at all is a supported path, not an edge case:
+    // the interview still runs, the candidate just cannot answer out loud.
+    if (!recognizer.supported) showNotice(t(MEDIA_COPY.sttUnsupported), 'danger');
 
     const ok = await runTurn([], '');
     startingRef.current = false;
     if (!ok && !endedRef.current) setMeetingState('preparing');
-  }, [runTurn, showNotice, t]);
+  }, [camera.ready, recognizer.supported, runTurn, showNotice, t]);
 
   /* -------------------- ending -------------------- */
 
@@ -1653,6 +1148,10 @@ export function MeetingScreen({ route, navigation }: any) {
     endedRef.current = true;
 
     const hadTurns = turnsRef.current.length > 0;
+    // Remembered before teardown: with no turns the screen unmounts in this
+    // same tick, and the unmount cleanup would otherwise re-arm a save over the
+    // discard the candidate just chose.
+    saveOnExitRef.current = opts.saveRecording;
     teardownRef.current({ saveRecording: opts.saveRecording });
 
     if (!hadTurns) { leaveScreen(); return; }
@@ -1672,25 +1171,25 @@ export function MeetingScreen({ route, navigation }: any) {
   /* -------------------- media controls -------------------- */
 
   const toggleMic = useCallback(() => {
-    const next = !micOnRef.current;
-    micOnRef.current = next;
-    setMicOn(next);
-    streamRef.current?.getAudioTracks().forEach((track) => { track.enabled = next; });
+    const next = !micOn;
+    camera.setMicEnabled(next);
 
     if (!next) {
-      stopRecognition();
+      recognizer.stop();
       return;
     }
-    if (stateRef.current === 'active' && !aiSpeaking && !thinking) startRecognition();
-  }, [aiSpeaking, startRecognition, stopRecognition, thinking]);
+    if (stateRef.current === 'active' && !aiSpeaking && !thinking) recognizer.start();
+  }, [aiSpeaking, camera, micOn, recognizer, thinking]);
 
   const toggleCam = useCallback(() => {
-    setCamOn((prev) => {
-      const next = !prev;
-      streamRef.current?.getVideoTracks().forEach((track) => { track.enabled = next; });
-      return next;
-    });
-  }, []);
+    // Where the camera view *is* the recorder, switching it off ends the take —
+    // so the control explains itself instead of quietly losing the footage.
+    if (recording && !capabilities.camera.canToggleWhileRecording) {
+      showNotice(t('meeting.camLockedWhileRecording'), 'info');
+      return;
+    }
+    camera.setEnabled(!camOn);
+  }, [camOn, camera, recording, showNotice, t]);
 
   /* -------------------- derived -------------------- */
 
@@ -1701,7 +1200,18 @@ export function MeetingScreen({ route, navigation }: any) {
     : 'idle';
 
   const canTalkNow =
-    meetingState === 'active' && micOn && !listening && !thinking && !aiSpeaking && !!SR;
+    meetingState === 'active' && micOn && !listening && !thinking && !aiSpeaking
+    && recognizer.supported;
+
+  /**
+   * What the record button cannot say on its own. A recording that turns out to
+   * be silent is only acceptable if the candidate knew before they started it,
+   * so this sits under the control bar rather than in a dialog afterwards.
+   */
+  const recordFootnote =
+    !capabilities.recorder.available ? t('meeting.recordUnsupported')
+    : !capabilities.recorder.capturesMicAudio ? t('meeting.recordVideoOnly')
+    : null;
 
   const avatarSize = clamp(width * VIDEO.avatarRatio, VIDEO.avatarMin, VIDEO.avatarMax);
   const pipW = clamp(width * VIDEO.pipRatio, VIDEO.pipMin, VIDEO.pipMax);
@@ -1728,53 +1238,28 @@ export function MeetingScreen({ route, navigation }: any) {
   }, [meetingState, t]);
 
   /* ================================================================ *
-   * Render — native
+   * Render — no camera or microphone
    * ================================================================ */
 
-  if (!isWeb) {
-    return (
-      <Screen scroll edges={['top', 'bottom']} contentStyle={{ justifyContent: 'center', gap: theme.spacing.lg }}>
-        <View style={[styles.center, { gap: theme.spacing.md, paddingVertical: theme.spacing['5xl'] }]}>
-          <View
-            style={[
-              styles.center,
-              {
-                width: theme.layout.avatar.xl,
-                height: theme.layout.avatar.xl,
-                borderRadius: theme.radii.pill,
-                backgroundColor: theme.colors.primaryMuted,
-              },
-            ]}
-          >
-            <Ionicons name="desktop-outline" size={theme.layout.icon['2xl']} color={theme.colors.primary} />
-          </View>
-
-          <Badge label={t('home.meetingLive')} tone="primary" icon="videocam" />
-          <Text role="h2" weight="bold" align="center">{t('meeting.webOnlyTitle')}</Text>
-          <Text role="body" tone="muted" align="center" style={{ maxWidth: theme.layout.maxContentWidth / 2 }}>
-            {t('meeting.webOnlyBody')}
-          </Text>
-
-          <View style={{ alignSelf: 'stretch', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-            <Button
-              title={t('meeting.webOnlyCta')}
-              onPress={() => { Linking.openURL(WEB_APP_URL).catch(() => {}); }}
-              iconLeft={<Ionicons name="open-outline" size={theme.layout.icon.md} color={theme.colors.onPrimary} />}
-              accessibilityHint={WEB_APP_URL}
-              size="lg"
-            />
-            <Button title={t('meeting.webOnlyBack')} variant="ghost" onPress={leaveScreen} />
-          </View>
-        </View>
-      </Screen>
-    );
-  }
-
-  /* ================================================================ *
-   * Render — camera / browser fault
-   * ================================================================ */
-
-  if (mediaFault) {
+  /**
+   * Pre-call only, and that condition is the fix rather than a tidy-up.
+   *
+   * On web `fault` can only ever be set inside acquisition, so this wall was
+   * unreachable once the call was running. On native `onMountError` raises
+   * `unsupported` at *any* moment — CameraX failing to rebind after a
+   * background round trip, another app taking the camera, a remount after the
+   * candidate toggles the camera off and on. Rendering this branch then would
+   * replace the live call while tearing down nothing: a hot mic still
+   * listening, the interviewer still talking, `/meeting/turn` still billing.
+   * And because `camera.release()` deliberately leaves `fault` set, an
+   * unguarded branch here would also shadow `ResultView` forever — a finished,
+   * already-billed evaluation made unreachable by a camera hiccup twenty
+   * minutes earlier.
+   *
+   * A fault raised mid-call is surfaced as a notice instead (see the effect
+   * above) and the self-view falls back to its placeholder on its own.
+   */
+  if (mediaFault && meetingState === 'preparing') {
     const denied = mediaFault === 'denied';
     return (
       <Screen scroll edges={['top', 'bottom']} contentStyle={{ justifyContent: 'center' }}>
@@ -1794,21 +1279,21 @@ export function MeetingScreen({ route, navigation }: any) {
           </View>
 
           <Text role="h2" weight="bold" align="center">
-            {denied ? t('meeting.mediaDeniedTitle') : t('meeting.mediaUnsupportedTitle')}
+            {denied ? t('meeting.mediaDeniedTitle') : t(MEDIA_COPY.unsupportedTitle)}
           </Text>
           <Text role="body" tone="muted" align="center" style={{ maxWidth: theme.layout.maxContentWidth / 2 }}>
-            {denied ? t('meeting.mediaDeniedBody') : t('meeting.mediaUnsupportedBody')}
+            {denied ? t(MEDIA_COPY.deniedBody) : t(MEDIA_COPY.unsupportedBody)}
           </Text>
 
           <View style={{ alignSelf: 'stretch', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
             {denied ? (
               <Button
                 title={t('meeting.mediaRetry')}
-                onPress={() => { void acquireMedia(); }}
+                onPress={() => { void camera.retry(); }}
                 iconLeft={<Ionicons name="refresh" size={theme.layout.icon.md} color={theme.colors.onPrimary} />}
               />
             ) : null}
-            <Button title={t('meeting.webOnlyBack')} variant="ghost" onPress={leaveScreen} />
+            <Button title={t('common.back')} variant="ghost" onPress={leaveScreen} />
           </View>
         </View>
       </Screen>
@@ -1958,53 +1443,49 @@ export function MeetingScreen({ route, navigation }: any) {
           borderWidth: theme.spacing.xxs,
           borderColor: STAGE.border,
         }}
-        accessible
-        accessibilityLabel={`${t('meeting.you')}${camOn ? '' : ` — ${t('meeting.cameraOffLabel')}`}`}
       >
-        {/* Kept mounted at all times: remounting the element on every camera
-            toggle drops the srcObject and shows a black frame on re-enable. */}
-        {/* @ts-ignore — web-only HTMLVideoElement */}
-        <video
-          ref={videoRef as any}
-          autoPlay
-          muted
-          playsInline
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transform: 'scaleX(-1)',
-            display: camOn ? 'block' : 'none',
-          }}
+        {/* The camera-off artwork is a prop rather than a sibling so the
+            implementation decides what happens behind it: the browser hides a
+            still-mounted element (remounting it drops the stream and comes back
+            as a black frame), the device unmounts the capture — which is why
+            the camera control locks during a recording there. */}
+        <camera.Preview
+          style={styles.fill}
+          mirrored
+          accessibilityLabel={`${t('meeting.you')}${camOn ? '' : ` — ${t('meeting.cameraOffLabel')}`}`}
+          placeholder={(
+            <View style={[StyleSheet.absoluteFillObject, styles.center, { gap: theme.spacing.xs, backgroundColor: STAGE.tile }]}>
+              <View
+                style={[
+                  styles.center,
+                  {
+                    width: theme.layout.avatar.md,
+                    height: theme.layout.avatar.md,
+                    borderRadius: theme.radii.pill,
+                    backgroundColor: STAGE.chromeSoft,
+                    borderWidth: theme.layout.hairline,
+                    borderColor: STAGE.border,
+                  },
+                ]}
+              >
+                <Text role="h4" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
+                  {youInitial}
+                </Text>
+              </View>
+              {/* Only when the camera is genuinely off: the same artwork also
+                  covers the gap before the first frame arrives, and "camera
+                  off" would be a lie while the candidate is still granting it. */}
+              {camOn ? null : (
+                <View style={[styles.row, { gap: theme.spacing.xxs }]}>
+                  <Ionicons name="videocam-off" size={theme.layout.icon.xs} color={STAGE.inkFaint} />
+                  <Text role="micro" tone="inherit" style={{ color: STAGE.inkFaint }} numberOfLines={1}>
+                    {t('meeting.cameraOffLabel')}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         />
-
-        {!camOn ? (
-          <View style={[StyleSheet.absoluteFillObject, styles.center, { gap: theme.spacing.xs, backgroundColor: STAGE.tile }]}>
-            <View
-              style={[
-                styles.center,
-                {
-                  width: theme.layout.avatar.md,
-                  height: theme.layout.avatar.md,
-                  borderRadius: theme.radii.pill,
-                  backgroundColor: STAGE.chromeSoft,
-                  borderWidth: theme.layout.hairline,
-                  borderColor: STAGE.border,
-                },
-              ]}
-            >
-              <Text role="h4" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
-                {youInitial}
-              </Text>
-            </View>
-            <View style={[styles.row, { gap: theme.spacing.xxs }]}>
-              <Ionicons name="videocam-off" size={theme.layout.icon.xs} color={STAGE.inkFaint} />
-              <Text role="micro" tone="inherit" style={{ color: STAGE.inkFaint }} numberOfLines={1}>
-                {t('meeting.cameraOffLabel')}
-              </Text>
-            </View>
-          </View>
-        ) : null}
 
         <View
           style={[
@@ -2177,7 +1658,7 @@ export function MeetingScreen({ route, navigation }: any) {
             control. */}
         {canTalkNow ? (
           <Pressable
-            onPress={startRecognition}
+            onPress={() => recognizer.start()}
             accessibilityRole="button"
             accessibilityLabel={t('meeting.resumeListening')}
             style={({ pressed }) => [
@@ -2200,6 +1681,46 @@ export function MeetingScreen({ route, navigation }: any) {
             <Text role="bodySm" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
               {t('meeting.resumeListening')}
             </Text>
+          </Pressable>
+        ) : null}
+
+        {/* No recognizer — either the browser never had one, or the device's
+            engine died mid-call and the hook latched `supported` false. Either
+            way the candidate cannot answer out loud any more, so this stays on
+            screen instead of a 5.5s toast, and it carries the only useful
+            action left: end the call and collect the evaluation for the turns
+            that did happen. Mutually exclusive with the pill above, which
+            requires `recognizer.supported`. */}
+        {!recognizer.supported && (meetingState === 'active' || meetingState === 'closing') ? (
+          <Pressable
+            onPress={requestEnd}
+            accessibilityRole="button"
+            accessibilityLabel={t(MEDIA_COPY.sttUnsupported)}
+            accessibilityHint={t('meeting.ctrlEndHint')}
+            style={({ pressed }) => [
+              styles.row,
+              {
+                width: '100%',
+                maxWidth: theme.layout.maxContentWidth,
+                gap: theme.spacing.sm,
+                padding: theme.spacing.md,
+                borderRadius: theme.radii.md,
+                borderWidth: theme.layout.hairline,
+                backgroundColor: STAGE.dangerSoft,
+                borderColor: STAGE.dangerBorder,
+                opacity: pressed ? 0.75 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="mic-off" size={theme.layout.icon.md} color={STAGE.dangerInk} />
+            <View style={{ flex: 1, gap: theme.spacing.xxs }}>
+              <Text role="bodySm" tone="inherit" style={{ color: STAGE.ink }}>
+                {t(MEDIA_COPY.sttUnsupported)}
+              </Text>
+              <Text role="micro" weight="bold" tone="inherit" style={{ color: STAGE.dangerInk }}>
+                {t('meeting.endConfirm')}
+              </Text>
+            </View>
           </Pressable>
         ) : null}
       </View>
@@ -2254,12 +1775,12 @@ export function MeetingScreen({ route, navigation }: any) {
           <ControlButton
             icon={recording ? 'stop' : 'radio-button-on'}
             tone={recording ? 'recording' : 'default'}
-            label={recorderSupport.supported
+            label={capabilities.recorder.available
               ? (recording ? t('meeting.ctrlRecordStop') : t('meeting.ctrlRecord'))
               : t('meeting.ctrlRecordUnavailable')}
             a11yLabel={recording ? t('meeting.ctrlRecordSave') : t('meeting.ctrlRecordStart')}
-            a11yHint={recorderSupport.supported ? undefined : t('meeting.recordUnsupported')}
-            disabled={!recorderSupport.supported || !streamReady}
+            a11yHint={recordFootnote ?? undefined}
+            disabled={!capabilities.recorder.available || !streamReady}
             onPress={toggleRecording}
           />
           <ControlButton
@@ -2280,9 +1801,9 @@ export function MeetingScreen({ route, navigation }: any) {
           />
         </View>
 
-        {!recorderSupport.supported ? (
+        {recordFootnote ? (
           <Text role="micro" align="center" tone="inherit" style={{ color: STAGE.inkFaint }}>
-            {t('meeting.recordUnsupported')}
+            {recordFootnote}
           </Text>
         ) : null}
       </View>

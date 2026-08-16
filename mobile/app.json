@@ -103,7 +103,8 @@
         {
           "microphonePermission": "يستخدم \"ثقتي\" الميكروفون لقياس مستوى صوتك أثناء المقابلة."
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "extra": {
       "apiBaseUrl": "https://interview.khaledahmed.net/api",

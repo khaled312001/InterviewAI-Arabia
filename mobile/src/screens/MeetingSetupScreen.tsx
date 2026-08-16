@@ -20,6 +20,7 @@ import {
   View, StyleSheet, Pressable, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { MotiView } from 'moti';
 import { useTranslation } from 'react-i18next';
 
@@ -38,10 +39,23 @@ interface Category {
 
 /** Server-side limit on the CV upload, mirrored here so the user is told
  *  before a 5MB file crosses the wire only to be rejected. */
+/**
+ * A CV as picked on either platform. `file` is the browser's File object and is
+ * null on device, where FormData takes the {uri, name, type} shape instead.
+ */
+type PickedCv = {
+  uri: string;
+  name: string;
+  mimeType: string;
+  file: File | null;
+};
+
+/** What the server's multer filter accepts — keep the two in step. */
+const CV_MIME_TYPES = ['application/pdf', 'text/plain', 'text/markdown'];
+
 const MAX_CV_MB = 5;
 const MAX_CV_BYTES = MAX_CV_MB * 1024 * 1024;
 
-const CV_ACCEPT = '.pdf,application/pdf,text/plain,.txt';
 
 export function MeetingSetupScreen({ route, navigation }: any) {
   const theme = useAppTheme();
@@ -57,12 +71,11 @@ export function MeetingSetupScreen({ route, navigation }: any) {
    *  has already told us they read in is the best guess at the one they want
    *  to be interviewed in. */
   const [language, setLanguage] = useState<SpeechLang>(i18n.language === 'en' ? 'en' : 'ar');
-  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [cvFile, setCvFile] = useState<PickedCv | null>(null);
   const [cvName, setCvName] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data.categories)).catch(() => {});
@@ -73,33 +86,51 @@ export function MeetingSetupScreen({ route, navigation }: any) {
     [categories, categoryId],
   );
 
-  const pickFile = useCallback(() => {
-    if (Platform.OS !== 'web') {
-      setCvError(t('meetingSetup.cvWebOnly'));
-      return;
-    }
-    fileInputRef.current?.click();
-  }, [t]);
+  const pickFile = useCallback(async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: CV_MIME_TYPES,
+        copyToCacheDirectory: true, // the picker's own URI is not readable later
+        multiple: false,
+      });
+      if (res.canceled) return;
 
-  const onFilePicked = useCallback((e: any) => {
-    const file: File | undefined = e.target?.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_CV_BYTES) {
-      setCvError(t('meetingSetup.cvTooLarge', { mb: MAX_CV_MB }));
-      return;
+      const asset = res.assets?.[0];
+      if (!asset) return;
+
+      // The server accepts PDF and plain text only. The system picker honours
+      // `type` on both platforms, but a user can still reach a file through
+      // "recent"/cloud providers whose reported MIME type is generic, so the
+      // extension is checked too rather than trusted blindly.
+      const name = asset.name || 'cv';
+      if (!/\.(pdf|txt|md)$/i.test(name)) {
+        setCvError(t('meetingSetup.cvWrongType'));
+        return;
+      }
+      if (typeof asset.size === 'number' && asset.size > MAX_CV_BYTES) {
+        setCvError(t('meetingSetup.cvTooLarge', { mb: MAX_CV_MB }));
+        return;
+      }
+
+      setCvFile({
+        uri: asset.uri,
+        name,
+        mimeType: asset.mimeType || 'application/pdf',
+        // On web the picker hands back the real File, which FormData needs;
+        // on native there is no File and the {uri,name,type} shape is used.
+        file: (asset as { file?: File }).file ?? null,
+      });
+      setCvName(name);
+      setCvError(null);
+    } catch {
+      setCvError(t('meetingSetup.cvPickFailed'));
     }
-    setCvFile(file);
-    setCvName(file.name);
-    setCvError(null);
   }, [t]);
 
   const clearFile = useCallback(() => {
     setCvFile(null);
     setCvName('');
     setCvError(null);
-    // Without this the same file cannot be re-picked: the input keeps its
-    // value, so choosing it again fires no `change` event.
-    if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
   const analyzeAndStart = useCallback(async () => {
@@ -124,7 +155,13 @@ export function MeetingSetupScreen({ route, navigation }: any) {
       form.append('jobTitle', jobTitle.trim());
       form.append('jobDescription', jobDescription.trim());
       form.append('language', language);
-      if (cvFile) form.append('cv', cvFile);
+      if (cvFile) {
+        // React Native's FormData has no File/Blob: it serialises an
+        // {uri, name, type} object into a multipart part. On web the real File
+        // is required instead, which the picker gives us.
+        if (cvFile.file) form.append('cv', cvFile.file);
+        else form.append('cv', { uri: cvFile.uri, name: cvFile.name, type: cvFile.mimeType } as unknown as Blob);
+      }
 
       const res = await fetch(`${API_BASE}/meeting/prepare`, {
         method: 'POST',
@@ -379,19 +416,8 @@ export function MeetingSetupScreen({ route, navigation }: any) {
           hint={t('meetingSetup.cvHint', { mb: MAX_CV_MB })}
         />
 
-        {Platform.OS === 'web' ? (
-          // @ts-ignore — web-only hidden input; RN has no equivalent element
-          <input
-            type="file"
-            accept={CV_ACCEPT}
-            ref={fileInputRef as any}
-            onChange={onFilePicked}
-            style={{ display: 'none' }}
-          />
-        ) : null}
-
         <Pressable
-          onPress={pickFile}
+          onPress={() => { void pickFile(); }}
           accessibilityRole="button"
           accessibilityLabel={cvFile ? cvName : t('meetingSetup.cvPick')}
           accessibilityHint={t('meetingSetup.cvPickHint')}

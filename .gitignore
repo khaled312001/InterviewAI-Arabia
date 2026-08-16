@@ -73,3 +73,6 @@ release/
 # a stale checked-in copy silently overrides app.json.
 mobile/android/
 mobile/ios/
+
+# Local regression-test exports (scripts/serve-webtest.mjs)
+.webtest*/

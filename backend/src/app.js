@@ -193,7 +193,7 @@ export function createApp() {
   app.get('/', (req, res, next) => {
     if (req.accepts(['html', 'json']) === 'json') {
       return res.json({
-        app: 'InterviewAI Arabia',
+        app: 'Thiqty',
         api: '/api/health',
         web: '/app',
         admin: '/admin',

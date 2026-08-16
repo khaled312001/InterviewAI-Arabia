@@ -280,7 +280,7 @@ export default {
     noScore: 'Not scored',
     durationMinutes: '{{n}} min',
     durationSeconds: '{{n}} sec',
-    shareMessage: 'I scored {{score}} out of 10 in a "{{category}}" session on InterviewAI Arabia. Try it yourself!',
+    shareMessage: 'I scored {{score}} out of 10 in a "{{category}}" session on Thiqty — AI interview practice. Try it: https://interview.khaledahmed.net',
     shareFallbackTitle: 'Copy the text and share it',
     retrySame: 'New session in this field',
     goHome: 'Back to home',
@@ -523,9 +523,14 @@ export default {
 
     recordingStarted: 'Recording started',
     recordingSaved: 'Recording saved — check your downloads',
+    recordingSavedDevice: 'Your interview recording is saved on your device.',
     recordingEmpty: 'Nothing was captured.',
     recordUnsupported: 'This browser cannot record the session — use Chrome or Edge.',
     recordFailed: "Couldn't start recording. Check your camera and microphone permissions.",
+    /** Shown under the record button *before* the take, not after it. */
+    recordVideoOnly: 'Video only, no sound — the microphone is reserved for transcribing your answers.',
+    recordNeedsCamera: 'Turn the camera on first — the recording captures the camera.',
+    camLockedWhileRecording: 'The camera cannot be turned off while recording — stop the recording first.',
 
     endTitle: 'End the interview?',
     endBody: "We'll close the call now and show your evaluation.",
@@ -549,18 +554,19 @@ export default {
     evalFailedBody: 'Check your connection and try again.',
     backHome: 'Back to home',
 
+    /** Two wordings per fault: the place a permission is granted is genuinely
+     *  different on the web and on a phone. */
     mediaDeniedTitle: 'No access to your camera or microphone',
     mediaDeniedBody: 'Allow this site to use your camera and microphone in your browser settings, then try again.',
+    mediaDeniedBodyDevice: 'Allow the app to use your camera and microphone in your device settings, then try again.',
     mediaUnsupportedTitle: 'Unsupported browser',
     mediaUnsupportedBody: 'A live interview needs a modern browser with camera and microphone support, such as Chrome or Edge.',
+    mediaUnsupportedTitleDevice: "Couldn't open the camera",
+    mediaUnsupportedBodyDevice: 'The camera may be in use by another app, or unavailable on this device. Close other apps and try again.',
     mediaRetry: 'Try again',
     sttUnsupported: 'Speech recognition is not supported in this browser — use Chrome or Edge to answer out loud.',
+    sttUnsupportedDevice: 'Speech recognition is not available on this device — enable Google speech services to answer out loud.',
     turnFailed: "Couldn't send your answer. Check your connection and try again.",
-
-    webOnlyTitle: 'Available on the web for now',
-    webOnlyBody: 'The live interview relies on the camera, microphone and speech recognition inside a browser, which the mobile app does not support yet. Open Thiqty in your browser to try it now.',
-    webOnlyCta: 'Open the web app',
-    webOnlyBack: 'Go back',
   },
   /** Pre-call screen: language, interviewer, field, job details, CV. */
   meetingSetup: {
@@ -602,7 +608,8 @@ export default {
     cvPickHint: 'Analysed automatically before the interview starts',
     cvReady: 'Ready to analyse',
     cvRemove: 'Remove the file',
-    cvWebOnly: 'CV upload is available on the web version for now.',
+    cvWrongType: 'Unsupported format — upload a PDF or a text file.',
+    cvPickFailed: 'Could not open your files. Please try again.',
     cvTooLarge: 'That file is too large — the limit is {{mb}}MB.',
 
     pickCategory: 'Pick a job field first.',
@@ -650,7 +657,11 @@ export default {
     deleteConfirmTitle: 'Delete your account permanently?',
     deleteConfirmBody: 'We will send a deletion request to support and erase your data within 48 hours. This cannot be undone.',
     deleteConfirmCta: 'Send deletion request',
-    deleteRequestSubject: 'Account deletion request — InterviewAI Arabia',
+    deletePasswordPrompt: 'Enter your password to confirm. Deletion is permanent and cannot be undone.',
+    deletePasswordRequired: 'Enter your password first.',
+    deleteWrongPassword: 'That password is not correct.',
+    deleteFailed: 'Could not delete your account. Please try again.',
+    deleteRequestSubject: 'Account deletion request — Thiqty',
     deleteRequestBody: 'Please delete my account and all data associated with it.\n\nRegistered email: {{email}}',
 
     support: 'Support and contact',

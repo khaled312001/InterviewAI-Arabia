@@ -419,6 +419,17 @@ export const useInterviewerVoice: UseInterviewerVoice = ({ fetchServerTts }) => 
       if (spoken) return { heard: true, by: 'local-voice', analysable: null };
     }
 
+    // The local attempt is awaited, and the call can be torn down inside that
+    // window — every turn spends up to START_TIMEOUT_MS in it. `release()`
+    // cancels the queued utterance, which settles the promise `false`, so
+    // without this the fall-through would fetch server TTS and talk over the
+    // evaluation screen. Worse, `release()` has already closed the shared audio
+    // graph: `ensureAudioContext()` below would open a brand-new one that no
+    // `release()` will ever close. The session counter cannot catch this — the
+    // `mine` below is taken *after* the cancel bumped it — so the latch has to.
+    // The native twin guards the same seam (tts.native.ts, after speakLocally).
+    if (releasedRef.current) return SILENT;
+
     // Taken after the local attempt, which runs its own session bookkeeping.
     // From here it guards the round-trip: a cancel during the fetch must not
     // start playing a line the call has already moved past.
@@ -428,6 +439,10 @@ export const useInterviewerVoice: UseInterviewerVoice = ({ fetchServerTts }) => 
       const buffer = await fetchRef.current({
         text: req.text, gender: req.gender, language: req.lang,
       });
+      // Two different races, two different guards: `mine !== session` catches a
+      // `cancel()` (the interview moved on), the latch catches a `release()`
+      // (the call is gone and the audio graph with it).
+      if (releasedRef.current) { cancel(); return SILENT; }
       if (mine !== session) return SILENT;
 
       const url = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }));
