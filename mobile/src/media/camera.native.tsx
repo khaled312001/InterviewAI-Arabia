@@ -13,6 +13,15 @@ import type {
   UseCamera,
 } from './contract';
 
+/**
+ * How long a mounted `CameraView` may stay silent — no `onCameraReady`, no
+ * `onMountError` — before the preview is treated as live anyway. Long enough
+ * that a cold camera on a slow handset still reports for itself, short enough
+ * that a candidate who turned the camera on does not sit in front of an
+ * avatar wondering what went wrong.
+ */
+const PREVIEW_READY_FALLBACK_MS = 1500;
+
 /* ------------------------------------------------------------------ *
  * Snapshot store
  *
@@ -152,18 +161,51 @@ export const useCamera: UseCamera = ({ active, initialFacing = 'front', onFault 
   const faultRef = useRef(onFault);
   useEffect(() => { faultRef.current = onFault; });
 
+  /**
+   * The safety net under `onCameraReady`.
+   *
+   * That event is emitted from a `CameraState` observer on the CameraX
+   * lifecycle, and on some Android builds the OPEN transition is simply never
+   * delivered to it — the preview renders, the session is live, and the event
+   * never arrives. Because `previewReady` gates both the placeholder and the
+   * recorder handle, that turns a working camera into a permanently blank tile
+   * whose Record button then reports a permissions problem the candidate does
+   * not have. Nothing in the UI recovers from it, because from the app's point
+   * of view nothing failed.
+   *
+   * So the event is treated as an optimisation, not a precondition: once the
+   * view has been mounted this long without either `onCameraReady` or
+   * `onMountError`, we proceed as if it were ready. A genuine bind failure
+   * still comes back as `onMountError` and still wins — this only closes the
+   * case where no answer arrives at all.
+   */
+  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearReadyTimer = useCallback(() => {
+    if (readyTimerRef.current) { clearTimeout(readyTimerRef.current); readyTimerRef.current = null; }
+  }, []);
+
   const handlersRef = useRef<PreviewHandlers>({
-    onReady: () => { store.set({ previewReady: true }); },
+    onReady: () => { clearReadyTimer(); store.set({ previewReady: true }); },
     onMountError: () => {
       // The view mounted but the device refused to open a session — a camera
       // held by another app, or none at all. Reported as `unsupported` rather
       // than `denied` so the UI offers the right recovery.
+      clearReadyTimer();
       store.set({ previewReady: false, fault: 'unsupported' });
       faultRef.current?.('unsupported');
     },
     onViewRef: (view) => {
       viewRef.current = view;
-      if (!view) store.set({ previewReady: false });
+      clearReadyTimer();
+      if (!view) { store.set({ previewReady: false }); return; }
+      readyTimerRef.current = setTimeout(() => {
+        readyTimerRef.current = null;
+        const snapshot = store.getSnapshot();
+        // Anything that already settled the question wins: a refusal, a
+        // teardown, or a view that has since been unmounted.
+        if (snapshot.released || snapshot.fault !== null || !viewRef.current) return;
+        store.set({ previewReady: true });
+      }, PREVIEW_READY_FALLBACK_MS);
     },
   });
 
@@ -241,13 +283,14 @@ export const useCamera: UseCamera = ({ active, initialFacing = 'front', onFault 
 
   const release = useCallback(() => {
     if (store.getSnapshot().released) return;
+    clearReadyTimer();
     // Belt and braces: teardown calls the recorder first, but a recorder that
     // failed to stop would otherwise keep the encoder — and the camera light —
     // alive past the end of the call.
     try { viewRef.current?.stopRecording(); } catch { /* noop */ }
     viewRef.current = null;
     store.set({ released: true, enabled: false, previewReady: false });
-  }, [store]);
+  }, [clearReadyTimer, store]);
 
   // The camera must never outlive the screen, whatever path unmounted it.
   useEffect(() => () => { release(); }, [release]);

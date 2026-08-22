@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { qk } from '../../lib/queryKeys';
 
-export type CredentialGroup = 'payments' | 'ai';
+/** The `group` field of backend/src/services/secrets/registry.js. */
+export type CredentialGroup = 'payments' | 'ai' | 'push';
 export type CredentialType = 'secret' | 'text' | 'url' | 'path' | 'boolean' | 'select' | 'csv';
 
 /**

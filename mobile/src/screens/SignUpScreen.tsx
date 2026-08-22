@@ -8,7 +8,7 @@
  * never rendered at all on the web build.
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -18,6 +18,8 @@ import { MotiView } from 'moti';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../store/auth';
+import { useGoogleSignIn } from '../auth/useGoogleSignIn';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
 import { Badge, Button, Card, Input, Logo, Screen, Text } from '../components';
 import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -59,7 +61,9 @@ export function SignUpScreen({ navigation }: Props) {
   const { chevronBack } = useDirection();
 
   const register = useAuth((s) => s.register);
+  const signInWithGoogle = useAuth((s) => s.signInWithGoogle);
   const loading = useAuth((s) => s.loading);
+
 
   const nameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -117,6 +121,24 @@ export function SignUpScreen({ navigation }: Props) {
       setFormError(t(authErrorKey(err)));
     }
   }, [email, emailProblem, i18n.language, name, nameProblem, password, passwordProblem, register, t]);
+
+  const onGoogleToken = useCallback(async (idToken: string) => {
+    setFormError(null);
+    try {
+      // Same endpoint as signing in. A Google account that has never been here
+      // before is created on first use, so there is no separate "register"
+      // call to make and no way for the two buttons to disagree.
+      await signInWithGoogle(idToken, i18n.language === 'en' ? 'en' : 'ar');
+    } catch (err) {
+      setFormError(t(authErrorKey(err)));
+    }
+  }, [i18n.language, signInWithGoogle, t]);
+
+  const google = useGoogleSignIn(onGoogleToken);
+
+  useEffect(() => {
+    if (google.failed) { setFormError(t('auth.googleFailed')); google.clearFailure(); }
+  }, [google, t]);
 
   const goLogin = useCallback(() => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -369,6 +391,14 @@ export function SignUpScreen({ navigation }: Props) {
               size="lg"
               accessibilityLabel={t('auth.register')}
               testID="signup-submit"
+            />
+
+            <GoogleSignInButton
+              available={google.available}
+              busy={google.busy}
+              disabled={loading}
+              onPress={google.start}
+              variant="signUp"
             />
 
             <Text role="micro" tone="muted" align="center">{t('auth.terms')}</Text>

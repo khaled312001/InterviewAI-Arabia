@@ -60,7 +60,7 @@ function pad2(n: number) {
 }
 
 /**
- * `thiqty-interview-2026-08-16-1435.webm`
+ * `interprova-interview-2026-08-16-1435.webm`
  *
  * The container is the caller's, because it is the one thing that genuinely
  * differs: browsers give us WebM, the native camera writes MPEG-4.
@@ -68,5 +68,5 @@ function pad2(n: number) {
 export function recordingFileName(extension: string = 'webm') {
   const d = new Date();
   const stamp = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
-  return `thiqty-interview-${stamp}.${extension}`;
+  return `interprova-interview-${stamp}.${extension}`;
 }

@@ -45,6 +45,7 @@ import {
   startMeeting, advanceMeeting, endMeeting, resolveTurnMeeting, reverseTurnFloor,
   latestMeetingFor, readMeeting, alreadyClosed, meetingExpired,
 } from '../services/billing/meetings.js';
+import { notifyEvaluationReady } from '../services/push/notify.js';
 
 const router = Router();
 
@@ -283,9 +284,6 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
     history = [history[0], ...history.slice(-(MAX_TURNS - 1))];
   }
 
-  // The opening turn is free — nobody should pay for "hello".
-  const isOpening = history.length === 0 && !body.userMessage;
-
   // No meeting id is the legacy path. It resolves to the user's own live
   // meeting when there is one — so a modern client that drops the field is
   // metered exactly as if it had not — and otherwise opens a real, balance-
@@ -312,6 +310,21 @@ router.post('/turn', requireUser, aiLimiter, asyncHandler(async (req, res) => {
       'QUOTA_EXCEEDED',
     );
   }
+
+  // The opening turn is free — nobody should pay for "hello".
+  //
+  // What "opening" means has to be decided from the meeting row, not from the
+  // request. `history` and `userMessage` are supplied by the client, so the
+  // original test — an empty history and no message — was a free-model switch
+  // any caller could flip: post `{history: [], userMessage: ''}` on a loop and
+  // every turn bills as an opening while the interviewer keeps answering. The
+  // model was still called each time, and paid for.
+  //
+  // `turn_count` is the server's own count, incremented under the meeting's row
+  // lock on every billed turn, and it is the same field /finish already trusts.
+  // The client's shape is kept in the test as well: an opening with a question
+  // in it is not an opening, however new the meeting is.
+  const isOpening = current.turnCount === 0 && history.length === 0 && !body.userMessage;
 
   const { billing } = await advanceMeeting(meetingId, req.userId, { isTurn: !isOpening });
 
@@ -541,6 +554,30 @@ router.post('/finish', requireUser, aiLimiter, asyncHandler(async (req, res) => 
     await prisma.$executeRaw`
       UPDATE meeting_sessions SET session_id = ${session.id} WHERE id = ${meeting.id}
     `;
+
+    // "Your evaluation is ready" — the one notification users are actually
+    // waiting for, because evaluating a thirty-minute interview takes long
+    // enough that they leave the app.
+    //
+    // AFTER THE COMMIT, NEVER INSIDE IT. The session and its answers are
+    // already durable; a push that failed inside that transaction would roll
+    // back the evaluation the user just spent an interview's worth of minutes
+    // on. Not awaited either, so a slow FCM token exchange cannot hold the
+    // response open — the payload below is what the app renders right now, and
+    // the push is only for the copy that is no longer in the foreground.
+    //
+    // EXACTLY ONE PER MEETING, and not because of anything written here: the
+    // conditional claim above (`session_id IS NULL AND end_reason <> 'evaluated'`)
+    // is the sole route to this line, so a retried /finish is refused with 409
+    // ALREADY_EVALUATED before the evaluator is even called.
+    //
+    // `overall` is the evaluator's 0-10 scale; notifyEvaluationReady() renders
+    // "من 100". Passing it unscaled would tell someone who interviewed
+    // excellently that they scored 8 out of 100.
+    notifyEvaluationReady(req.userId, { sessionId: session.id, score: overall * 10 })
+      .catch((err) => logger.warn('evaluation-ready notification failed', {
+        sessionId: session.id.toString(), message: err.message,
+      }));
 
     res.json({
       evaluation,

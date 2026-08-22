@@ -224,7 +224,13 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
     const view = cameraFromHandle(handle);
     // No permission work here: `useCamera` already holds CAMERA, and the
     // recorder deliberately never asks for the microphone.
-    if (!view) { notice('recordFailed', 'danger'); return; }
+    //
+    // A missing handle therefore is not a permissions problem and must not
+    // claim to be one: it means there is no live preview to record from —
+    // the camera is off, or its first frame has not landed yet. Sending a
+    // candidate to check permissions they already granted is the single most
+    // confusing thing this screen can say, so it says the true thing instead.
+    if (!view) { notice('recordNeedsCamera', 'info'); return; }
 
     settledRef.current = false;
     deliveredRef.current = false;

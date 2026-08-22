@@ -4,7 +4,9 @@ import CreditCardRounded from '@mui/icons-material/CreditCardRounded';
 import FlagRounded from '@mui/icons-material/FlagRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
 import InsightsRounded from '@mui/icons-material/InsightsRounded';
+import NotificationsActiveRounded from '@mui/icons-material/NotificationsActiveRounded';
 import PaymentsRounded from '@mui/icons-material/PaymentsRounded';
+import PhonelinkRingRounded from '@mui/icons-material/PhonelinkRingRounded';
 import PeopleRounded from '@mui/icons-material/PeopleRounded';
 import QuestionAnswerRounded from '@mui/icons-material/QuestionAnswerRounded';
 import SettingsRounded from '@mui/icons-material/SettingsRounded';
@@ -50,6 +52,21 @@ export const navSections: NavSection[] = [
     id: 'people',
     labelAr: 'المستخدمون',
     items: [{ path: '/users', labelAr: 'المستخدمون', icon: <PeopleRounded />, roles: ALL }],
+  },
+  {
+    // Its own section rather than an item under المستخدمون: this is the one
+    // place in the panel that writes to a customer's device, and burying it
+    // among the read-only user views is how it gets clicked by accident.
+    id: 'engagement',
+    labelAr: 'التواصل',
+    items: [
+      {
+        path: '/notifications',
+        labelAr: 'الإشعارات',
+        icon: <NotificationsActiveRounded />,
+        roles: ['super_admin'],
+      },
+    ],
   },
   {
     id: 'content',
@@ -116,6 +133,12 @@ export const navSections: NavSection[] = [
         path: '/integrations/ai',
         labelAr: 'تكامل الذكاء الاصطناعي',
         icon: <InsightsRounded />,
+        roles: ['super_admin'],
+      },
+      {
+        path: '/integrations/push',
+        labelAr: 'تكامل الإشعارات',
+        icon: <PhonelinkRingRounded />,
         roles: ['super_admin'],
       },
       {

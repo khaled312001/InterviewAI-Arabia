@@ -1,7 +1,7 @@
 {
-  "name": "ثقتي — Thiqty",
-  "short_name": "ثقتي",
-  "description": "أول مدرّب مقابلات عربي بالذكاء الاصطناعي — تدرّب، اتقيّم، واتوظّف.",
+  "name": "Interprova",
+  "short_name": "Interprova",
+  "description": "تدريب على مقابلات العمل بالذكاء الاصطناعي، بالعربية والإنجليزية — أسئلة مخصّصة وتقييم فوري.",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "/app",

@@ -43,7 +43,7 @@ page.on('request', (req) => {
     const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
     if (req.method() === 'OPTIONS') return req.respond({ status: 204, headers: cors, body: '' });
     let body = {};
-    if (u.pathname.endsWith('/auth/me')) body = { admin: { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role: 'super_admin' } };
+    if (u.pathname.endsWith('/auth/me')) body = { admin: { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role: 'super_admin' } };
     else if (u.pathname.endsWith('/admin/categories')) body = { categories: CATS };
     else if (u.pathname.endsWith('/admin/reports')) body = { reports: [], page: 1, limit: 1, total: 0, openCount: 7 };
     return req.respond({ status: 200, headers: cors, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });

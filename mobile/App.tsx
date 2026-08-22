@@ -6,6 +6,8 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import './src/i18n';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { navigationRef, onNavigationReady } from './src/navigation/navigationRef';
+import { usePushNotifications } from './src/push';
 import { useAuth } from './src/store/auth';
 import { colors } from './src/theme/tokens';
 
@@ -14,6 +16,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function App() {
   const [ready, setReady] = useState(false);
   const hydrate = useAuth((s) => s.hydrate);
+
+  // Above the `!ready` early return on purpose — hooks cannot be conditional,
+  // and the notification listeners have to be attached before the first render
+  // anyway: a tap that launched the app is delivered while the splash screen is
+  // still up. Nothing here prompts for permission; see src/push/registration.ts
+  // for the two moments where we are allowed to ask.
+  usePushNotifications();
 
   useEffect(() => {
     (async () => {
@@ -72,7 +81,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
         <RootNavigator />
       </NavigationContainer>
     </SafeAreaProvider>

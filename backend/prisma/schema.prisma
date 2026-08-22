@@ -148,12 +148,24 @@ model User {
   /// The free trial's lock. Set exactly once, by an atomic conditional UPDATE.
   trialGrantedAt      DateTime? @map("trial_granted_at")
   trialSeconds        Int       @default(0) @map("trial_seconds")
+  /// The "your free minutes are waiting" reminder's lock, and the same shape as
+  /// the one above for the same reason: the job that sends it runs from two
+  /// schedulers at once, so the claim has to be the UPDATE's WHERE clause. NULL
+  /// means never reminded; it is written once and never cleared.
+  trialRemindedAt     DateTime? @map("trial_reminded_at")
 
-  isDisabled         Boolean   @default(false) @map("is_disabled")
-  emailVerifiedAt    DateTime? @map("email_verified_at")
-  lastLoginAt        DateTime? @map("last_login_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  /// Google's stable subject id for this account, when they signed in with
+  /// Google. NOT the email: a Google account's address can change and this
+  /// cannot, so matching on it is what stops a rename creating a second user.
+  googleSub String? @unique @map("google_sub") @db.VarChar(64)
+  /// Profile picture URL from the identity provider. Display only.
+  avatarUrl String? @map("avatar_url") @db.VarChar(512)
+
+  isDisabled      Boolean   @default(false) @map("is_disabled")
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   sessions        Session[]
   subscriptions   Subscription[]
@@ -164,24 +176,29 @@ model User {
   timeLedger      TimeLedgerEntry[]
   meetingSessions MeetingSession[]
   trialClaims     TrialClaim[]
+  deviceTokens    DeviceToken[]
+  notifications   Notification[]
 
   @@index([plan, premiumUntil])
   @@index([createdAt])
   @@index([subSecondsExpiresAt])
+  /// The daily trial-reminder sweep's selection: "never reminded, granted a
+  /// while ago". Without it that is a full table scan once a day.
+  @@index([trialRemindedAt, trialGrantedAt], map: "users_trial_reminder_idx")
   @@map("users")
 }
 
 model Category {
-  id          Int      @id @default(autoincrement())
-  nameAr      String   @map("name_ar") @db.VarChar(120)
-  nameEn      String   @map("name_en") @db.VarChar(120)
-  descriptionAr String? @map("description_ar") @db.VarChar(500)
-  descriptionEn String? @map("description_en") @db.VarChar(500)
-  icon        String?  @db.VarChar(64)
-  isPremium   Boolean  @default(false) @map("is_premium")
-  isActive    Boolean  @default(true) @map("is_active")
-  sortOrder   Int      @default(0) @map("sort_order")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id            Int      @id @default(autoincrement())
+  nameAr        String   @map("name_ar") @db.VarChar(120)
+  nameEn        String   @map("name_en") @db.VarChar(120)
+  descriptionAr String?  @map("description_ar") @db.VarChar(500)
+  descriptionEn String?  @map("description_en") @db.VarChar(500)
+  icon          String?  @db.VarChar(64)
+  isPremium     Boolean  @default(false) @map("is_premium")
+  isActive      Boolean  @default(true) @map("is_active")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
 
   questions Question[]
   sessions  Session[]
@@ -209,22 +226,22 @@ model Question {
 }
 
 model Session {
-  id         BigInt      @id @default(autoincrement())
-  userId     BigInt      @map("user_id")
-  categoryId Int         @map("category_id")
-  kind       SessionKind @default(practice)
-  totalScore Int         @default(0) @map("total_score")
+  id            BigInt      @id @default(autoincrement())
+  userId        BigInt      @map("user_id")
+  categoryId    Int         @map("category_id")
+  kind          SessionKind @default(practice)
+  totalScore    Int         @default(0) @map("total_score")
   // Denormalised so History/Stats never need a COUNT subquery per row.
-  answerCount Int        @default(0) @map("answer_count")
+  answerCount   Int         @default(0) @map("answer_count")
   /// Denormalised from meeting_sessions, in the same spirit as answerCount, so
   /// History can render "٧ دقائق" without joining the billing table.
-  billedSeconds Int      @default(0) @map("billed_seconds")
-  startedAt  DateTime    @default(now()) @map("started_at")
-  endedAt    DateTime?   @map("ended_at")
+  billedSeconds Int         @default(0) @map("billed_seconds")
+  startedAt     DateTime    @default(now()) @map("started_at")
+  endedAt       DateTime?   @map("ended_at")
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
-  answers  Answer[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        Category         @relation(fields: [categoryId], references: [id])
+  answers         Answer[]
   meetingSessions MeetingSession[]
 
   @@index([userId, startedAt])
@@ -233,18 +250,18 @@ model Session {
 }
 
 model Answer {
-  id         BigInt   @id @default(autoincrement())
-  sessionId  BigInt   @map("session_id")
+  id           BigInt   @id @default(autoincrement())
+  sessionId    BigInt   @map("session_id")
   // Nullable: live "meeting" answers are free-form and have no row in
   // `questions`. The old code pointed these at a hardcoded question id 1,
   // which is a foreign key lie that corrupts per-question usage stats.
-  questionId BigInt?  @map("question_id")
-  questionText String? @map("question_text") @db.Text
-  userAnswer String   @map("user_answer") @db.Text
-  aiScore    Int?     @map("ai_score")
-  aiFeedback String?  @map("ai_feedback") @db.LongText
-  tokensUsed Int?     @map("tokens_used")
-  createdAt  DateTime @default(now()) @map("created_at")
+  questionId   BigInt?  @map("question_id")
+  questionText String?  @map("question_text") @db.Text
+  userAnswer   String   @map("user_answer") @db.Text
+  aiScore      Int?     @map("ai_score")
+  aiFeedback   String?  @map("ai_feedback") @db.LongText
+  tokensUsed   Int?     @map("tokens_used")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   session  Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   question Question?      @relation(fields: [questionId], references: [id], onDelete: SetNull)
@@ -309,8 +326,8 @@ model Payment {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   timeLedger   TimeLedgerEntry[]
 
   @@index([userId, createdAt])
@@ -536,21 +553,21 @@ model AnswerReport {
 /// spent the tokens and what it cost, which is what makes per-user cost caps
 /// and margin reporting possible.
 model AiUsageLog {
-  id            BigInt   @id @default(autoincrement())
-  userId        BigInt?  @map("user_id")
-  provider      String   @default("claude") @db.VarChar(32)
-  model         String   @db.VarChar(64)
-  feature       String   @default("evaluate") @db.VarChar(32)
-  inputTokens   Int      @map("input_tokens")
-  outputTokens  Int      @map("output_tokens")
-  cacheReadTokens  Int   @default(0) @map("cache_read_tokens")
-  cacheWriteTokens Int   @default(0) @map("cache_write_tokens")
+  id               BigInt   @id @default(autoincrement())
+  userId           BigInt?  @map("user_id")
+  provider         String   @default("claude") @db.VarChar(32)
+  model            String   @db.VarChar(64)
+  feature          String   @default("evaluate") @db.VarChar(32)
+  inputTokens      Int      @map("input_tokens")
+  outputTokens     Int      @map("output_tokens")
+  cacheReadTokens  Int      @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int      @default(0) @map("cache_write_tokens")
   /// Cost in micro-USD (1e-6 USD) — integer maths, no float drift.
-  costMicroUsd  Int      @default(0) @map("cost_micro_usd")
-  latencyMs     Int      @map("latency_ms")
-  success       Boolean  @default(true)
-  errorMessage  String?  @map("error_message") @db.VarChar(500)
-  createdAt     DateTime @default(now()) @map("created_at")
+  costMicroUsd     Int      @default(0) @map("cost_micro_usd")
+  latencyMs        Int      @map("latency_ms")
+  success          Boolean  @default(true)
+  errorMessage     String?  @map("error_message") @db.VarChar(500)
+  createdAt        DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([userId, createdAt])
@@ -585,4 +602,59 @@ model ProviderCredential {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("provider_credentials")
+}
+
+/// One row per (device, account). See migration 006.
+///
+/// The FCM registration token is the id, not an autoincrement: it is globally
+/// unique and is what FCM addresses, so "the same device signed in again" is an
+/// upsert instead of a second live row pointing at one handset.
+model DeviceToken {
+  token      String    @id @db.VarChar(255)
+  /// Nullable so a token survives sign-out — the device is still reachable, it
+  /// just is not anybody's any more. Deleting on sign-out is why "notify me
+  /// when I log back in" quietly stops working.
+  userId     BigInt?   @map("user_id")
+  platform   String    @default("android") @db.VarChar(16)
+  /// Per DEVICE, not per account: the same person may read Arabic on a phone
+  /// and English on the web.
+  language   String    @default("ar") @db.VarChar(8)
+  installId  String?   @map("install_id") @db.VarChar(191)
+  appVersion String?   @map("app_version") @db.VarChar(32)
+  /// Set when FCM reports the token dead. Soft-retired, so a broadcast's
+  /// denominator stays honest.
+  disabledAt DateTime? @map("disabled_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, disabledAt])
+  @@index([disabledAt, platform])
+  @@map("device_tokens")
+}
+
+/// What was sent, to whom, and whether it landed. See migration 006.
+model Notification {
+  id          BigInt   @id @default(autoincrement())
+  titleAr     String   @map("title_ar") @db.VarChar(200)
+  bodyAr      String   @map("body_ar") @db.VarChar(500)
+  titleEn     String?  @map("title_en") @db.VarChar(200)
+  bodyEn      String?  @map("body_en") @db.VarChar(500)
+  /// Where a tap lands, e.g. 'Subscription'. Read by the app from the payload.
+  route       String?  @db.VarChar(64)
+  audience    String   @default("all") @db.VarChar(32)
+  userId      BigInt?  @map("user_id")
+  /// 'manual' for an operator broadcast, or the event name for an automatic one.
+  kind        String   @default("manual") @db.VarChar(48)
+  sentCount   Int      @default(0) @map("sent_count")
+  failedCount Int      @default(0) @map("failed_count")
+  createdBy   BigInt?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+  @@map("notifications")
 }

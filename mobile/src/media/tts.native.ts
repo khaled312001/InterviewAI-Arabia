@@ -416,7 +416,7 @@ export const useInterviewerVoice: UseInterviewerVoice = ({ fetchServerTts }) => 
         });
         if (mine !== sessionRef.current) return SILENT;
 
-        uri = `${cache}thiqty-tts-${mine}.mp3`;
+        uri = `${cache}interprova-tts-${mine}.mp3`;
         await FileSystem.writeAsStringAsync(uri, toBase64(audio), {
           encoding: FileSystem.EncodingType.Base64,
         });

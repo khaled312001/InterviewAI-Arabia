@@ -17,7 +17,7 @@
 
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Pressable, Platform, ActivityIndicator,
+  View, StyleSheet, Pressable, Platform, ActivityIndicator, ScrollView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -30,7 +30,7 @@ import { Screen, Text, Button, Card, Input } from '../components';
 import { useBalance } from '../store/balance';
 import { useAppTheme } from '../theme/useTheme';
 import { categoryName, durationLabel } from './mainShared';
-import { PERSONA, personaAvatarUrl } from './interviewerPersona';
+import { PERSONA, personaPortrait } from './interviewerPersona';
 import type { InterviewerGender } from './interviewerPersona';
 import type { SpeechLang } from '../speech/webSpeech';
 
@@ -80,6 +80,17 @@ export function MeetingSetupScreen({ route, navigation }: any) {
   /** Set by a 402 from /meeting/prepare — the CV analysis could not be paid
    *  for. The interview itself is still startable without a CV. */
   const [outOfMinutes, setOutOfMinutes] = useState(false);
+
+  /**
+   * Where the "field" card sits, and how to get there.
+   *
+   * The CTA lives below the fold, and the one thing it requires — the field —
+   * is three cards above it. A submit that reports "pick a field" without
+   * moving the page leaves the user staring at an error whose cause is off
+   * screen, which reads as a broken button rather than an unfinished form.
+   */
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldCardY = useRef(0);
 
   const balance = useBalance((s) => s.balance);
   const refreshBalance = useBalance((s) => s.refresh);
@@ -152,6 +163,10 @@ export function MeetingSetupScreen({ route, navigation }: any) {
   const analyzeAndStart = useCallback(async () => {
     if (!categoryId) {
       setFormError(t('meetingSetup.pickCategory'));
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, fieldCardY.current - 24),
+        animated: true,
+      });
       return;
     }
     setAnalyzing(true);
@@ -239,6 +254,7 @@ export function MeetingSetupScreen({ route, navigation }: any) {
   return (
     <Screen
       scroll
+      scrollRef={scrollRef}
       keyboardAvoiding
       edges={['bottom']}
       contentStyle={{ gap: theme.spacing.lg, paddingTop: theme.spacing.lg }}
@@ -329,11 +345,24 @@ export function MeetingSetupScreen({ route, navigation }: any) {
       </Card>
 
       {/* Field */}
-      <Card padding="md" style={{ gap: theme.spacing.md }}>
+      <Card
+        padding="md"
+        style={{
+          gap: theme.spacing.md,
+          // The only card on this screen that can block the CTA, so it is the
+          // only one that ever draws a state border.
+          ...(formError && !categoryId
+            ? { borderWidth: 1.5, borderColor: theme.colors.danger }
+            : null),
+        }}
+        onLayout={(e) => { fieldCardY.current = e.nativeEvent.layout.y; }}
+      >
         <FieldHeader
           icon="briefcase-outline"
           title={t('meetingSetup.field')}
           hint={t('meetingSetup.fieldHint')}
+          required={!categoryId}
+          requiredLabel={t('meetingSetup.required')}
         />
         <View
           style={[styles.chipsWrap, { gap: theme.spacing.sm }]}
@@ -507,7 +536,6 @@ export function MeetingSetupScreen({ route, navigation }: any) {
         title={analyzing ? t('meetingSetup.ctaLoading') : t('meetingSetup.cta')}
         onPress={analyzeAndStart}
         loading={analyzing}
-        disabled={!categoryId}
         iconLeft={<Ionicons name="videocam" size={theme.layout.icon.md} color={theme.colors.onPrimary} />}
         size="lg"
       />
@@ -525,8 +553,14 @@ export function MeetingSetupScreen({ route, navigation }: any) {
 
 /** Card heading: icon, label, and the one line explaining why it matters. */
 function FieldHeader({
-  icon, title, hint,
-}: { icon: keyof typeof Ionicons.glyphMap; title: string; hint?: string }) {
+  icon, title, hint, required, requiredLabel,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  hint?: string;
+  required?: boolean;
+  requiredLabel?: string;
+}) {
   const theme = useAppTheme();
 
   return (
@@ -545,7 +579,23 @@ function FieldHeader({
         <Ionicons name={icon} size={theme.layout.icon.md} color={theme.colors.primary} />
       </View>
       <View style={{ flex: 1, gap: theme.spacing.xxs }}>
-        <Text role="h4" weight="bold">{title}</Text>
+        <View style={[styles.row, { gap: theme.spacing.sm, alignItems: 'center' }]}>
+          <Text role="h4" weight="bold">{title}</Text>
+          {required && requiredLabel ? (
+            <View
+              style={{
+                paddingHorizontal: theme.spacing.sm,
+                paddingVertical: theme.spacing.xxs,
+                borderRadius: theme.radii.pill,
+                backgroundColor: theme.colors.dangerMuted,
+              }}
+            >
+              <Text role="micro" weight="bold" tone="inherit" style={{ color: theme.colors.danger }}>
+                {requiredLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         {hint ? <Text role="caption" tone="muted">{hint}</Text> : null}
       </View>
     </View>
@@ -657,7 +707,15 @@ function LanguageGlyph({ label, selected }: { label: string; selected: boolean }
   );
 }
 
-/** The DiceBear avatar, with an initial-circle fallback where `img` has no home. */
+/**
+ * The interviewer's portrait in the picker.
+ *
+ * The same bundled asset the call stage paints, through the same `<Image>`, so
+ * the person the candidate picks is the person they meet. The previous version
+ * rendered a remote `<img>` on web and a coloured initial on device, which
+ * meant the two platforms — and the two screens — showed three different
+ * things for one choice.
+ */
 function PersonaAvatar({ gender }: { gender: InterviewerGender }) {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -665,20 +723,6 @@ function PersonaAvatar({ gender }: { gender: InterviewerGender }) {
   // Same token as the language tile's glyph circle, so the two selectors read
   // as one control rather than two differently-sized ones.
   const size = theme.layout.avatar.lg;
-
-  if (Platform.OS === 'web') {
-    return (
-      // @ts-ignore — the avatar is an SVG over HTTP; a plain <img> renders it
-      // without pulling in an SVG loader.
-      <img
-        src={personaAvatarUrl(gender)}
-        alt={name}
-        width={size}
-        height={size}
-        style={{ width: size, height: size, borderRadius: '50%', display: 'block' }}
-      />
-    );
-  }
 
   return (
     <View
@@ -689,12 +733,16 @@ function PersonaAvatar({ gender }: { gender: InterviewerGender }) {
           height: size,
           borderRadius: theme.radii.pill,
           backgroundColor: PERSONA[gender].color,
+          overflow: 'hidden',
         },
       ]}
     >
-      <Text role="h2" weight="bold" tone="inherit" style={{ color: theme.colors.onBrandText }}>
-        {name.slice(0, 1)}
-      </Text>
+      <Image
+        source={personaPortrait(gender)}
+        accessibilityLabel={name}
+        resizeMode="cover"
+        style={{ width: size, height: size }}
+      />
     </View>
   );
 }

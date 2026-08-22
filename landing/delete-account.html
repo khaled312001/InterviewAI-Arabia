@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>حذف الحساب والبيانات — ثقتي (Thiqty) | Delete your account</title>
-<meta name="description" content="كيف تحذف حسابك في تطبيق ثقتي وكل البيانات المرتبطة به — How to delete your Thiqty account and all associated data.">
+<title>حذف الحساب والبيانات — Interprova | Delete your account</title>
+<meta name="description" content="كيف تحذف حسابك في تطبيق Interprova وكل البيانات المرتبطة به — How to delete your Interprova account and all associated data.">
 <link rel="canonical" href="https://interview.khaledahmed.net/delete-account">
 <meta name="robots" content="index,follow">
 <link rel="icon" href="/favicon.png">
-<meta property="og:title" content="حذف الحساب والبيانات — ثقتي">
-<meta property="og:description" content="كيف تحذف حسابك في ثقتي وكل بياناتك.">
+<meta property="og:title" content="حذف الحساب والبيانات — Interprova">
+<meta property="og:description" content="كيف تحذف حسابك في Interprova وكل بياناتك.">
 <meta property="og:url" content="https://interview.khaledahmed.net/delete-account">
 <meta property="og:image" content="https://interview.khaledahmed.net/og-image.png">
 <meta property="og:type" content="website">
@@ -74,7 +74,7 @@ html[lang="en"] ul{padding-inline-start:24px}
 <header>
   <a class="brand" href="/">
     <img src="/logo-mark.png" alt="">
-    <span data-l="ar">ثقتي</span><span data-l="en">Thiqty</span>
+    <span>Interprova</span>
   </a>
   <div class="lang" role="group" aria-label="Language">
     <button type="button" id="b-ar" aria-pressed="true">العربية</button>
@@ -84,8 +84,8 @@ html[lang="en"] ul{padding-inline-start:24px}
 
 <h1><span data-l="ar">حذف الحساب والبيانات</span><span data-l="en">Delete your account and data</span></h1>
 <p class="sub">
-  <span data-l="ar">تطبيق ثقتي — <code>com.thiqty.app</code> — من بَرمَجلي، القاهرة، مصر.</span>
-  <span data-l="en">Thiqty — <code>com.thiqty.app</code> — by Barmagly, Cairo, Egypt.</span>
+  <span data-l="ar">تطبيق Interprova — <code>com.interprova.app</code> — من بَرمَجلي، القاهرة، مصر.</span>
+  <span data-l="en">Interprova — <code>com.interprova.app</code> — by Barmagly, Cairo, Egypt.</span>
 </p>
 
 <h2><span class="n">١</span><span data-l="ar">اطلب الحذف</span><span data-l="en">Request deletion</span></h2>
@@ -191,13 +191,13 @@ html[lang="en"] ul{padding-inline-start:24px}
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
     ar.setAttribute('aria-pressed', String(lang === 'ar'));
     en.setAttribute('aria-pressed', String(lang === 'en'));
-    try { localStorage.setItem('thiqty-lang', lang); } catch (e) {}
+    try { localStorage.setItem('interprova-lang', lang); } catch (e) {}
   }
   ar.addEventListener('click', function () { set('ar'); });
   en.addEventListener('click', function () { set('en'); });
   // A Play reviewer arrives with an English browser; meet them in their language.
   var saved = null;
-  try { saved = localStorage.getItem('thiqty-lang'); } catch (e) {}
+  try { saved = localStorage.getItem('interprova-lang'); } catch (e) {}
   set(saved || ((navigator.language || 'ar').toLowerCase().indexOf('ar') === 0 ? 'ar' : 'en'));
 })();
 </script>

@@ -79,3 +79,19 @@ mobile/ios/
 
 # Local regression-test exports (scripts/serve-webtest.mjs)
 .webtest*/
+
+# Firebase
+#
+# google-services.json is not a secret (it ships inside the APK and only
+# identifies the project), but it is environment-specific — committing it means
+# a fork or a second Firebase project silently builds against the wrong one.
+google-services.json
+mobile/google-services.json
+GoogleService-Info.plist
+mobile/GoogleService-Info.plist
+
+# The Admin SDK service account IS a secret: its private key can send a push to
+# every installed app, read the database and mint custom auth tokens. It must
+# never be committed, and it must never be served from the web root.
+*-firebase-adminsdk-*.json
+firebase-service-account.json

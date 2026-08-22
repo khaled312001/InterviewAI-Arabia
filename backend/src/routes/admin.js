@@ -8,7 +8,7 @@ import { query, queryOne } from '../db/mysql.js';
 import { authLimiter, integrationTestLimiter } from '../middleware/rateLimit.js';
 import { requireAdmin, signAdminToken } from '../middleware/auth.js';
 import { auditAdminMutations, clientIp } from '../middleware/auditLog.js';
-import { writeAudit } from '../services/audit.js';
+import { writeAudit, logAudit } from '../services/audit.js';
 import { cairoToday } from '../services/quota.js';
 import { PLANS, computeExpiry } from '../services/payments/plans.js';
 import {
@@ -21,6 +21,13 @@ import {
   credentialStatus, writeCredential, deleteCredential, reloadCredentials, isCryptoAvailable,
 } from '../services/secrets/store.js';
 import { probeCredential } from '../services/secrets/probe.js';
+import {
+  isConfigured as pushConfigured, serviceAccount, buildMessage, sendToTokens,
+} from '../services/push/fcm.js';
+import {
+  AUDIENCES, tokensForAudience, retireToken, deviceCounts,
+} from '../services/push/audience.js';
+import { pushEnabled, sendNotification } from '../services/push/notify.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 
 const router = Router();
@@ -2637,6 +2644,400 @@ router.post(
     // row per keystroke-driven retry would bury the writes that matter.
     req.skipAutoAudit = true;
     res.json({ key: def.key, checkedAt: new Date().toISOString(), ...result });
+  }),
+);
+
+/* ------------------------  push notifications  ---------------------- */
+
+/**
+ * The operator side of Firebase Cloud Messaging.
+ *
+ * A broadcast is the only action in this file that cannot be undone, cannot be
+ * narrowed after the fact, and is read by people who are not looking at the
+ * admin panel: the moment it is accepted it is on tens of thousands of lock
+ * screens. A refund can be re-issued and a deleted question can be re-added; a
+ * notification that went to every install with a typo in it is permanent.
+ * Everything below follows from that.
+ *
+ *  - super_admin only, and the send itself takes the same step-up as a
+ *    credential write. A session left open on an unlocked laptop must not be
+ *    enough to address the entire user base.
+ *  - "Push is switched off" is a refusal with its own code, never a 200 saying
+ *    `sent: 0`. Those two are indistinguishable to an operator, and the second
+ *    one teaches them to press send again.
+ *  - The same announcement twice in a few minutes is refused, not delivered
+ *    twice. The fan-out outlives the browser tab that started it, so "press
+ *    send again" is what an operator does to a send that is still running.
+ *  - No response here contains the service account. The panel is given the
+ *    project id — which already ships inside the APK — and nothing else.
+ */
+
+/**
+ * Titles and bodies are capped at the column widths from migration 006
+ * (VARCHAR(200) / VARCHAR(500)). Rejecting here rather than at INSERT time is
+ * the difference between a 400 naming the field and either a 500 from strict
+ * MySQL or, with strict mode off, a message silently cut mid-word on every
+ * device it reached.
+ */
+const broadcastSchema = z.object({
+  titleAr: z.string().trim().min(1).max(200),
+  bodyAr: z.string().trim().min(1).max(500),
+  titleEn: z.string().trim().max(200).optional(),
+  bodyEn: z.string().trim().max(500).optional(),
+  route: z.string().trim().max(64).optional(),
+  audience: z.enum(AUDIENCES).default('all'),
+  userId: z.union([z.string(), z.number()]).optional(),
+});
+
+/**
+ * How long an identical broadcast is refused as a repeat.
+ *
+ * Nothing on the server ever made a send idempotent: there is no idempotency
+ * key and no unique key on `notifications` (migration 006 declares a primary
+ * key and two non-unique indexes), so every POST inserts a fresh row and fans
+ * out again. The only guard was in the browser — a disabled button and a typed
+ * confirmation — and neither survives the case that actually happens: the
+ * fan-out is a sequential walk in batches (see fcm.sendToTokens) that can run
+ * for minutes, the operator's tab or a proxy gives up waiting, and they press
+ * إرسال again on a send that is still walking the token table. Everyone it has
+ * already reached gets the announcement twice, and this is the one action in
+ * this file that cannot be taken back.
+ *
+ * Five minutes is measured against that failure, not against a deliberate
+ * resend: an operator who really does want the same text on the same audience
+ * again can send it once the window passes, and the refusal says so.
+ */
+const BROADCAST_REPEAT_WINDOW_MINUTES = 5;
+
+/**
+ * The two ways push can be unavailable, told apart because the repair differs:
+ * one needs a service account pasted into /integrations, the other needs the
+ * PUSH_ENABLED switch flipped back on. Collapsing them into one "push is off"
+ * sends the operator to look in the wrong place.
+ */
+function requirePushSendable() {
+  if (!pushConfigured()) {
+    throw new HttpError(
+      503, 'Firebase service account is not configured', undefined, 'PUSH_NOT_CONFIGURED',
+    );
+  }
+  if (!pushEnabled()) {
+    throw new HttpError(409, 'Push notifications are switched off', undefined, 'PUSH_DISABLED');
+  }
+}
+
+router.get('/push/overview', requireAdmin('super_admin'), asyncHandler(async (_req, res) => {
+  const sa = serviceAccount();
+  const [devices, recent] = await Promise.all([
+    deviceCounts(),
+    query(
+      `SELECT n.id, n.title_ar AS titleAr, n.audience, n.kind, n.user_id AS userId,
+              n.sent_count AS sentCount, n.failed_count AS failedCount,
+              n.created_at AS createdAt
+       FROM notifications n
+       ORDER BY n.id DESC
+       LIMIT 5`
+    ),
+  ]);
+
+  res.json({
+    configured: pushConfigured(),
+    enabled: pushEnabled(),
+    // The project id and nothing else from the service account. It is already
+    // public — it ships in the app's google-services.json — and it is the one
+    // field that answers "which Firebase project is this box pointed at" after
+    // a rotation. `client_email` and `private_key` are absent by construction,
+    // not by redaction, so a future edit cannot reintroduce them by accident.
+    projectId: sa?.projectId ?? null,
+    devices,
+    recent,
+  });
+}));
+
+/**
+ * The send history, keyset-paginated rather than LIMIT/OFFSET like every other
+ * list in this file. `notifications` is append-only and read newest-first, so
+ * with OFFSET a page-2 request made after a new broadcast landed would re-show
+ * the last row of page 1 and hide one entirely. `cursor` is the id of the last
+ * row already seen; ids are monotonic, so `id < cursor` is a stable window.
+ */
+router.get('/push/notifications', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const cursorRaw = (req.query.cursor || '').toString().trim();
+  const cursor = cursorRaw ? bigId(cursorRaw, 'cursor').toString() : null;
+
+  const where = cursor ? 'WHERE n.id < ?' : '';
+  const params = cursor ? [cursor] : [];
+
+  const [rows, countRow] = await Promise.all([
+    query(
+      `SELECT n.id, n.title_ar AS titleAr, n.body_ar AS bodyAr,
+              n.title_en AS titleEn, n.body_en AS bodyEn, n.route,
+              n.audience, n.user_id AS userId, n.kind,
+              n.sent_count AS sentCount, n.failed_count AS failedCount,
+              n.created_by AS createdBy, n.created_at AS createdAt,
+              a.name AS createdByName, a.email AS createdByEmail,
+              u.email AS userEmail
+       FROM notifications n
+       LEFT JOIN admin_users a ON a.id = n.created_by
+       LEFT JOIN users u ON u.id = n.user_id
+       ${where}
+       ORDER BY n.id DESC
+       LIMIT ?`,
+      // One row past the limit, purely to answer "is there another page"
+      // without a second COUNT over the same window.
+      [...params, limit + 1]
+    ),
+    queryOne('SELECT COUNT(*) AS n FROM notifications'),
+  ]);
+
+  const hasMore = rows.length > limit;
+  const notifications = hasMore ? rows.slice(0, limit) : rows;
+
+  for (const n of notifications) {
+    // Automatic notifications have no author. Say the author is unknown rather
+    // than rendering a blank name beside a row no human ever touched.
+    n.createdByAdmin = n.createdByName || n.createdByEmail
+      ? { id: n.createdBy, name: n.createdByName, email: n.createdByEmail }
+      : null;
+    n.user = n.userId ? { id: n.userId, email: n.userEmail } : null;
+    delete n.createdByName; delete n.createdByEmail; delete n.userEmail;
+  }
+
+  res.json({
+    notifications,
+    limit,
+    total: Number(countRow?.n || 0),
+    nextCursor: hasMore ? String(notifications[notifications.length - 1].id) : null,
+  });
+}));
+
+router.post('/push/broadcast', requireAdmin('super_admin'), asyncHandler(async (req, res) => {
+  const body = broadcastSchema.parse(req.body ?? {});
+
+  if (body.audience === 'user' && !body.userId) {
+    throw new HttpError(400, 'audience "user" requires a userId', undefined, 'USER_ID_REQUIRED');
+  }
+
+  // Half a translation is worse than none: services/push/notify.js falls back
+  // to the Arabic copy field by field, so a title in English with no body in
+  // English reaches an English reader as a mixed-language notification.
+  if (Boolean(body.titleEn) !== Boolean(body.bodyEn)) {
+    throw new HttpError(
+      400, 'titleEn and bodyEn must be supplied together', undefined, 'INCOMPLETE_TRANSLATION',
+    );
+  }
+
+  const userId = body.userId ? bigId(body.userId, 'user id') : null;
+  if (userId) {
+    const target = await queryOne('SELECT id FROM users WHERE id = ?', [userId.toString()]);
+    // Without this a mistyped id is a send that reports total 0 and reads as a
+    // delivery fault, so the operator retries the same wrong number.
+    if (!target) throw new HttpError(404, 'User not found', undefined, 'USER_NOT_FOUND');
+  }
+
+  // Both checks run before the step-up on purpose. Being asked to retype a
+  // password and only then told that push is switched off is how an operator
+  // concludes the password was the problem.
+  requirePushSendable();
+
+  // The repeat guard, for the same reason and in the same place: "you already
+  // sent this" is the answer the operator needs before being asked for
+  // anything else. `notifications` is written by sendNotification() BEFORE the
+  // fan-out starts, which is what makes this catch a send that is still in
+  // flight and not only one that finished. `notifications_kind_idx` is
+  // (kind, created_at), so this is one indexed read over a few rows.
+  //
+  // It is not a substitute for a unique key: two identical requests that pass
+  // this SELECT before either INSERTs still both send. That is a simultaneous
+  // double-submit, which the panel's own disabled button already covers; the
+  // gap this closes is the human who waits, gives up, and presses send again.
+  const repeatUserClause = userId ? 'n.user_id = ?' : 'n.user_id IS NULL';
+  const repeatParams = [BROADCAST_REPEAT_WINDOW_MINUTES, body.audience, body.titleAr, body.bodyAr];
+  if (userId) repeatParams.push(userId.toString());
+  const repeat = await queryOne(
+    `SELECT n.id, n.created_at AS createdAt, n.sent_count AS sentCount
+       FROM notifications n
+      WHERE n.kind = 'manual'
+        AND n.created_at >= (NOW(3) - INTERVAL ? MINUTE)
+        AND n.audience = ?
+        AND n.title_ar = ?
+        AND n.body_ar = ?
+        AND ${repeatUserClause}
+      ORDER BY n.id DESC
+      LIMIT 1`,
+    repeatParams,
+  );
+  if (repeat) {
+    throw new HttpError(
+      409,
+      `أُرسل هذا الإشعار نفسه خلال آخر ${BROADCAST_REPEAT_WINDOW_MINUTES} دقائق — راجع السجل قبل إعادة الإرسال`
+      + ` / An identical broadcast was sent in the last ${BROADCAST_REPEAT_WINDOW_MINUTES} minutes`,
+      // Enough for the history row to be named without a second request: the
+      // panel can link to it and say when it went out and how many it reached.
+      {
+        notificationId: repeat.id === null || repeat.id === undefined ? null : String(repeat.id),
+        createdAt: repeat.createdAt,
+        sentCount: Number(repeat.sentCount || 0),
+      },
+      'DUPLICATE_BROADCAST',
+    );
+  }
+
+  // The step-up this route promises is only as strong as the field that
+  // carries it, and the panel sends no such field: BroadcastDrawer's
+  // buildBody() puts copy, audience, route and userId in the body and nothing
+  // else. Left to requireStepUp() that arrives as REAUTH_FAILED, which
+  // admin/src/lib/errors.ts renders as «كلمة المرور غير صحيحة» — a verdict on a
+  // password the form never asked for, and one that sends the operator off to
+  // reset a credential that was never the problem. Name the missing field
+  // instead, with its own code, so the panel can grow the input.
+  if (!req.body?.currentPassword) {
+    throw new HttpError(
+      422,
+      'يتطلب إرسال الإشعار تأكيد كلمة مرور حسابك / Password confirmation is required to broadcast',
+      undefined,
+      'REAUTH_REQUIRED',
+    );
+  }
+  await requireStepUp(req);
+
+  const result = await sendNotification({
+    titleAr: body.titleAr,
+    bodyAr: body.bodyAr,
+    titleEn: body.titleEn || null,
+    bodyEn: body.bodyEn || null,
+    route: body.route || null,
+    audience: body.audience,
+    userId,
+    kind: 'manual',
+    createdBy: req.admin.id,
+  });
+
+  // The automatic row would record `push.broadcast` with a null entity id —
+  // there is no id in the path — losing the one field that ties "an admin sent
+  // a broadcast" to what was actually sent. Same blind spot POST /users and
+  // POST /admins work around, handled the same way.
+  req.skipAutoAudit = true;
+  // logAudit, not writeAudit: the transactional writer exists so an action
+  // rolls back when its trail cannot be written, and there is nothing left to
+  // roll back here — the messages are already on the devices. Failing the
+  // response after a successful send would be a lie, and the operator would
+  // send it a second time.
+  await logAudit({
+    adminId: req.admin.id,
+    action: 'push.broadcast',
+    entityType: 'notification',
+    entityId: result?.id ?? null,
+    metadata: {
+      audience: body.audience,
+      userId: userId ? userId.toString() : null,
+      route: body.route || null,
+      translated: Boolean(body.titleEn),
+      // The title only, as the human-readable handle on "which announcement
+      // was this". The body is deliberately not copied: it is already stored
+      // verbatim in `notifications` under the id above, and duplicating up to
+      // 500 characters into a 4000-character metadata column crowds out the
+      // fields that make the row worth keeping — who sent it, to whom, and how
+      // it landed. For an audience of one that text is also somebody's private
+      // business, and it belongs in exactly one table.
+      titleAr: body.titleAr.slice(0, 120),
+      total: result?.total ?? 0,
+      sent: result?.sent ?? 0,
+      failed: result?.failed ?? 0,
+      dead: result?.dead ?? 0,
+    },
+    ip: clientIp(req),
+  });
+
+  res.json(result);
+}));
+
+/**
+ * Prove delivery to one device.
+ *
+ * Deliberately NOT routed through sendNotification(). That writes a
+ * `notifications` row, and that table is both the answer to "did we already
+ * announce this" and the source of every user's in-app inbox — a smoke test
+ * that turns up in forty thousand inboxes is worse than no smoke test. So this
+ * calls FCM directly and leaves no history.
+ *
+ * The token is optional. With none, it goes to every live device of the user
+ * account sharing this admin's email address, which is the only link between
+ * an admin row and an app install that exists — admin_users has no user_id.
+ *
+ * No step-up, unlike the broadcast: this reaches one device the operator names
+ * or their own, it is rate-limited, and a delivery check that costs a password
+ * is a delivery check nobody runs before the announcement that matters.
+ */
+router.post(
+  '/push/test',
+  requireAdmin('super_admin'),
+  integrationTestLimiter,
+  asyncHandler(async (req, res) => {
+    const body = z.object({
+      titleAr: z.string().trim().min(1).max(200).default('اختبار الإشعارات'),
+      bodyAr: z.string().trim().min(1).max(500).default('رسالة تجريبية من لوحة التحكم.'),
+      token: z.string().trim().min(10).max(255).optional(),
+    }).parse(req.body ?? {});
+
+    requirePushSendable();
+
+    let tokens;
+    if (body.token) {
+      tokens = [body.token];
+    } else {
+      const linked = await queryOne('SELECT id FROM users WHERE email = ?', [req.admin.email]);
+      if (!linked) {
+        throw new HttpError(
+          400,
+          'Supply a device token, or sign into the app with this admin email first',
+          undefined,
+          'NO_TEST_TARGET',
+        );
+      }
+      const rows = await tokensForAudience('user', { userId: bigId(linked.id, 'user id') });
+      tokens = rows.map((r) => r.token);
+    }
+
+    if (!tokens.length) {
+      // Distinct from "sent 0 of 0": nothing is wrong with the credential, the
+      // device simply never registered a token.
+      throw new HttpError(409, 'No live device token to send to', undefined, 'NO_DEVICE_TOKEN');
+    }
+
+    const result = await sendToTokens(
+      tokens,
+      buildMessage({
+        title: body.titleAr,
+        body: body.bodyAr,
+        // No `route`. There is no notifications screen in the app —
+        // RootStackParamList has no such key, the client's deep-link handler
+        // ignores any name outside its two allow-lists
+        // (mobile/src/push/usePushNotifications.ts), and services/push/notify.js
+        // keeps the same allow-list and would have dropped it. A name invented
+        // here makes the one notification an operator sends to prove the
+        // pipeline works the one whose tap does nothing, which is exactly the
+        // symptom they are testing for. With no route the tap opens the app,
+        // which is all a delivery check has to prove.
+        //
+        // `test` and not 'admin_test': that is the kind the panel's KIND_LABEL_AR
+        // already names (admin/src/features/push/api.ts), and one vocabulary for
+        // this notification is worth more than none.
+        data: { kind: 'test' },
+      }),
+      // A token FCM rejects as dead during a test is retired here too.
+      // Otherwise the operator's own stale token fails every future test and
+      // reads as a broken service account.
+      retireToken,
+    );
+
+    // The automatic audit row is kept here, unlike POST /integrations/:key/test
+    // which skips it. That one only asks a provider whether a string is valid;
+    // this one delivers a real notification to a device the caller chose, so it
+    // must leave a trace. The token in the body is redacted by the middleware's
+    // own key regex before the row is written.
+    res.json({ ok: result.sent > 0, ...result });
   }),
 );
 

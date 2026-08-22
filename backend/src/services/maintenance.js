@@ -8,6 +8,7 @@ import { logger } from '../utils/logger.js';
 import { expireSubscriptionBucket } from './billing/minutes.js';
 import { grantCycle } from './billing/cycles.js';
 import { sweepAbandonedMeetings } from './billing/meetings.js';
+import { notifyTrialReminder } from './push/notify.js';
 
 export { sweepAbandonedMeetings };
 
@@ -267,4 +268,112 @@ export async function reconcileBalances() {
   }
 
   return { balanceDrifts: (drift ?? []).length, holdsRepaired: repaired };
+}
+
+/* ==================================================================== *
+ * Trial reminders
+ * ==================================================================== */
+
+/**
+ * The age window in which a dormant trial is worth a nudge.
+ *
+ * THE CEILING IS NOT TIDINESS, IT IS THE FIRST-RUN GUARD. Without it the very
+ * first execution of this job selects every account ever registered that never
+ * opened an interview — the whole back catalogue — and pushes all of them in
+ * one batch, months late, several of them to people who deleted the app long
+ * ago. Reminding someone three days after they signed up is a nudge; reminding
+ * them eight months later is spam with a backlog behind it, and it arrives as
+ * one burst that looks exactly like a compromised push key.
+ *
+ * The floor is the other half: fire it the same day and it lands on someone who
+ * is still deciding whether to open the app this evening.
+ */
+const TRIAL_REMINDER_AFTER_DAYS = 3;
+const TRIAL_REMINDER_UNTIL_DAYS = 30;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Remind the accounts that were granted the free trial and never spent a
+ * second of it.
+ *
+ * WHY THIS IS A CRON JOB AND NOT A HOOK ON ensureTrialGranted(): the thing
+ * worth notifying about is an ABSENCE — "you still have not started" — and an
+ * absence has no moment to hang a hook on. The grant is the wrong trigger
+ * twice over: it happens on /user/balance while the user is looking at the
+ * home screen that just granted it, and it says nothing whatsoever about
+ * whether they went on to use it.
+ *
+ * "UNTOUCHED" IS READ FROM THE LEDGER, NEVER FROM THE BALANCE. `balance_seconds
+ * = trial_seconds` looks like the obvious test and is wrong in both directions:
+ * an admin grant lifts the balance above the trial without the user having done
+ * anything, and a user who ran an interview that was later refunded lands back
+ * on the same number. One `consumption` row is proof they started; no such row
+ * is proof they did not.
+ *
+ * ONE REMINDER PER ACCOUNT, EVER, and it is claimed rather than looked up. This
+ * job runs from two places on purpose — the in-process scheduler and an
+ * external pinger on /api/cron/trial-reminders, because a Passenger recycle
+ * kills the first — so "SELECT who has no reminder yet, then send" is a
+ * read-then-write that two runners in the same minute both win. The conditional
+ * UPDATE on `trial_reminded_at` has no such window: the WHERE clause IS the
+ * check, exactly as `trial_granted_at IS NULL` is for the grant itself.
+ *
+ * THE CLAIM IS TAKEN BEFORE THE SEND AND IS NOT ROLLED BACK IF THE SEND FAILS.
+ * That is the deliberate direction to fail in: a reminder nobody receives costs
+ * one conversion, a reminder delivered twice costs the notification permission
+ * for everything else this app will ever need to say.
+ *
+ * AND IT ONLY CONSIDERS ACCOUNTS WITH A LIVE DEVICE TOKEN. Without that clause
+ * the claim is burned on every account that registered on the web and never
+ * installed the app: `sendNotification()` writes its audit row and reports
+ * sent=0, the column says "reminded", and the one reminder those users were
+ * owed was spent on nobody. With it, the claim is only ever spent on a handset
+ * that could actually have rung.
+ */
+export async function remindDormantTrials(now = new Date()) {
+  const after = new Date(now.getTime() - TRIAL_REMINDER_AFTER_DAYS * DAY_MS);
+  const until = new Date(now.getTime() - TRIAL_REMINDER_UNTIL_DAYS * DAY_MS);
+
+  const due = await prisma.$queryRaw`
+    SELECT u.id AS userId
+      FROM users u
+     WHERE u.is_disabled = 0
+       AND u.trial_reminded_at IS NULL
+       AND u.trial_granted_at IS NOT NULL
+       AND u.trial_granted_at < ${after}
+       AND u.trial_granted_at > ${until}
+       AND u.trial_seconds > 0
+       AND NOT EXISTS (SELECT 1 FROM time_ledger l
+                        WHERE l.user_id = u.id AND l.kind = 'consumption')
+       AND EXISTS (SELECT 1 FROM device_tokens d
+                    WHERE d.user_id = u.id AND d.disabled_at IS NULL)
+     LIMIT 200
+  `;
+
+  let sent = 0;
+  let claimed = 0;
+
+  for (const row of due ?? []) {
+    // The claim is the check. Zero rows means another runner took this user
+    // between the SELECT above and now, and we send nothing at all.
+    const won = await prisma.$executeRaw`
+      UPDATE users SET trial_reminded_at = ${now}
+       WHERE id = ${row.userId} AND trial_reminded_at IS NULL
+    `;
+    if (won === 0) continue;
+    claimed += 1;
+
+    // Awaited, because nothing here is inside a transaction and a sequential
+    // walk is what fcm.js expects — but never allowed to throw: one unreachable
+    // user must not abandon the rest of the batch, and the claim above already
+    // stands whatever happens next.
+    const out = await notifyTrialReminder(row.userId).catch((err) => {
+      logger.warn('trial reminder failed', { userId: String(row.userId), message: err.message });
+      return null;
+    });
+    if (out?.sent > 0) sent += 1;
+  }
+
+  return { trialRemindersClaimed: claimed, trialRemindersSent: sent };
 }

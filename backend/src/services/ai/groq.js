@@ -37,7 +37,11 @@ export async function callGroq({
   messages,
   schema,
   maxTokens = 2048,
-  model = cfg('AI_MODEL') || 'llama-3.3-70b-versatile',
+  // Verified against GET /openai/v1/models on 2026-08-22: `llama-3.3-70b-versatile`
+  // is no longer served and 404s. `openai/gpt-oss-120b` is the strongest chat
+  // model on the account, answers Arabic well, honours `response_format:
+  // json_object`, and returned a schema-shaped meeting turn in ~1.5s.
+  model = cfg('AI_MODEL') || 'openai/gpt-oss-120b',
 }) {
   if (!isConfigured()) throw new Error('GROQ_API_KEY is not set');
 

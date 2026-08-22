@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, RefObject } from 'react';
 import {
   View, ScrollView, StyleSheet, RefreshControl, ViewStyle,
   KeyboardAvoidingView, Platform, StyleProp,
@@ -10,6 +10,15 @@ interface Props {
   children: ReactNode;
   /** Wrap content in a ScrollView. Off for screens that own a FlatList. */
   scroll?: boolean;
+  /**
+   * Handle on the ScrollView this shell owns.
+   *
+   * Exposed for one reason only: a form whose submit button reports a missing
+   * field further up the page has to be able to take the user *to* that field.
+   * Printing an error under a button the user cannot see the cause of is how a
+   * screen ends up looking broken rather than incomplete.
+   */
+  scrollRef?: RefObject<ScrollView>;
   refreshing?: boolean;
   onRefresh?: () => void;
   /** Remove the default horizontal padding (for edge-to-edge heroes). */
@@ -40,6 +49,7 @@ interface Props {
 export function Screen({
   children,
   scroll = false,
+  scrollRef,
   refreshing,
   onRefresh,
   bleed = false,
@@ -72,6 +82,7 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      ref={scrollRef}
       style={styles.fill}
       contentContainerStyle={[
         styles.scrollContent,

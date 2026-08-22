@@ -35,8 +35,8 @@ const VH = Number(process.env.SHOT_H || 960);
 const DSF = Number(process.env.SHOT_DSF || 2);
 const EDGE = process.env.EDGE_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const APP = process.env.APP_URL || 'https://interview.khaledahmed.net/app';
-const EMAIL = process.env.SHOT_EMAIL || 'reviewer@thiqty.app';
-const PASS = process.env.SHOT_PASS || 'ThiqtyReview#2026';
+const EMAIL = process.env.SHOT_EMAIL || 'reviewer@interprova.app';
+const PASS = process.env.SHOT_PASS || 'InterprovaReview#2026';
 const EXPLORE = process.argv.includes('--explore');
 // The live meeting consumes AI quota; skip it to re-shoot only the rest.
 const SKIP_MEETING = process.argv.includes('--no-meeting');

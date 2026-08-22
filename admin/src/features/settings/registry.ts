@@ -14,7 +14,19 @@
  * cannot drift.
  */
 
-export type SettingType = 'int' | 'text' | 'multiline';
+/**
+ * `bool` is stored as the STRING "true"/"false", because app_settings holds
+ * text and backend/src/services/appSettings.js parses it back with a bool()
+ * whose unrecognised values fall back to the default — which for every switch
+ * in this product is ON. So a mistyped "نعم" saves, reports "تم الحفظ", and
+ * leaves the notification firing. `validateSetting` rejects anything that
+ * parser would not recognise, so the typo is caught in the form instead.
+ */
+export type SettingType = 'int' | 'bool' | 'text' | 'multiline';
+
+/** The tokens appSettings.js bool() accepts. Kept in sync with it by hand. */
+const BOOL_TRUE = /^(true|1|yes|on)$/i;
+const BOOL_FALSE = /^(false|0|no|off)$/i;
 
 export interface SettingDef {
   key: string;
@@ -38,6 +50,45 @@ export interface SettingGroup {
 }
 
 export const SETTING_GROUPS: SettingGroup[] = [
+  {
+    id: 'google-signin',
+    labelAr: 'تسجيل الدخول بجوجل',
+    description:
+      'مُعرّفات OAuth من Google Cloud Console. اتركها فارغة ليختفي زر «تسجيل الدخول بجوجل» '
+      + 'من التطبيق والموقع تمامًا — لا يظهر زر لا يعمل.',
+    settings: [
+      {
+        key: 'google_client_id_web',
+        labelAr: 'مُعرّف العميل — الويب (Web client ID)',
+        help:
+          'من Google Cloud Console ← APIs & Services ← Credentials ← OAuth client ID من نوع '
+          + '«Web application». يجب إضافة نطاق الموقع في Authorized JavaScript origins. '
+          + 'هذا المُعرّف علني ويظهر داخل صفحة الموقع — ليس سرًّا، ولا يُكتب هنا أي Client Secret.',
+        type: 'text',
+        defaultValue: '',
+        effect: 'live',
+      },
+      {
+        key: 'google_client_id_android',
+        labelAr: 'مُعرّف العميل — أندرويد (Android client ID)',
+        help:
+          'OAuth client ID من نوع «Android»، ويحتاج اسم الحزمة com.interprova.app وبصمة '
+          + 'SHA-1 لمفتاح التوقيع. مفتاح الرفع ومفتاح Play للتوقيع مختلفان: أضِف بصمة المفتاحين '
+          + 'وإلا نجح الدخول في نسختك المحلية وفشل في النسخة المنشورة من المتجر.',
+        type: 'text',
+        defaultValue: '',
+        effect: 'live',
+      },
+      {
+        key: 'google_client_id_ios',
+        labelAr: 'مُعرّف العميل — آيفون (iOS client ID)',
+        help: 'اتركه فارغًا حتى يصدر تطبيق iOS. وجوده أو غيابه لا يؤثر على أندرويد أو الويب.',
+        type: 'text',
+        defaultValue: '',
+        effect: 'live',
+      },
+    ],
+  },
   {
     id: 'trial',
     labelAr: 'التجربة المجانية',
@@ -220,28 +271,79 @@ export const SETTING_GROUPS: SettingGroup[] = [
       // "مفاتيح غير معروفة", which is the honest place for a value nothing owns.
     ],
   },
+  // Per-kind kill switches for the automatic notifications, seeded ON by
+  // migration 006 and read by services/push/notify.js through flag(). They were
+  // missing from this file, so `isKnownSetting` returned false and the page
+  // filed all three under "مفاتيح غير معروفة" — rendered read-only. Meanwhile
+  // the PUSH_ENABLED caution on the integrations page tells the operator to
+  // silence one notification "بمفتاحه في صفحة الإعدادات": an instruction to use
+  // a switch that had no editable surface anywhere in the panel.
+  {
+    id: 'notifications',
+    labelAr: 'الإشعارات التلقائية',
+    description:
+      'مفتاح إيقاف مستقل لكل إشعار تلقائي. اكتب false لإيقاف نوع واحد و true لإعادته. '
+      + 'هذا ليس مفتاح الإشعارات العام — ذاك «تفعيل الإشعارات» في صفحة تكامل الإشعارات، '
+      + 'وإيقافه يوقف الإرسال كلّه بما فيه البث اليدوي.',
+    settings: [
+      {
+        key: 'push_low_balance_enabled',
+        labelAr: 'تنبيه اقتراب نفاد الرصيد',
+        help:
+          'يُرسَل عند هبوط الرصيد تحت «حد التنبيه قبل النفاد». هو أكثر الإشعارات تكرارًا '
+          + 'وأولها إثارةً للشكوى، ولذلك يُوقَف وحده بدل إيقاف الإشعارات كلها.',
+        type: 'bool',
+        defaultValue: 'true',
+        effect: 'live',
+      },
+      {
+        key: 'push_evaluation_ready_enabled',
+        labelAr: 'إشعار جاهزية التقييم',
+        help:
+          'يُرسَل عند اكتمال تقييم المقابلة. التقييم غير فوري وقد يغادر المستخدم التطبيق أثناءه، '
+          + 'فإيقاف هذا الإشعار يعني أن يعود بنفسه ليتفقّد النتيجة.',
+        type: 'bool',
+        defaultValue: 'true',
+        effect: 'live',
+      },
+      {
+        key: 'push_trial_reminder_enabled',
+        labelAr: 'تذكير بالتجربة المجانية',
+        help: 'يُرسَل لحساب مُنحت له دقائق التجربة ولم يبدأ بها مقابلة.',
+        type: 'bool',
+        defaultValue: 'true',
+        effect: 'live',
+      },
+    ],
+  },
   {
     id: 'messaging',
     labelAr: 'الرسائل',
-    description: 'نصوص تُستخدم في إشعارات الترحيب.',
+    description: 'نص ترحيبي محفوظ لا يرسله الخادم بعد.',
     settings: [
       {
         key: 'push_welcome_ar',
         labelAr: 'رسالة ترحيب (عربي)',
         help: 'نص الإشعار الترحيبي للمستخدم الجديد.',
         type: 'multiline',
-        defaultValue: 'أهلًا بك في ثقتي! ابدأ أول مقابلة تدريبية الآن.',
+        defaultValue: 'أهلًا بك في Interprova! ابدأ أول مقابلة تدريبية الآن.',
         effect: 'not-wired',
-        effectNote: 'لا يوجد مُرسِل إشعارات في الخادم بعد، فلا جهة تقرأ هذا النص.',
+        effectNote:
+          'صار في الخادم مُرسِل إشعارات، لكن لا يوجد إشعار ترحيب بين ما يرسله '
+          + '(تنبيه الرصيد، جاهزية التقييم، تذكير التجربة) ونصوص هذه الثلاثة مكتوبة في الكود. '
+          + 'البث اليدوي يأخذ نصه من نموذج صفحة «الإشعارات» — لا من هنا.',
       },
       {
         key: 'push_welcome_en',
         labelAr: 'رسالة ترحيب (إنجليزي)',
         help: 'The welcome notification for a new user.',
         type: 'multiline',
-        defaultValue: 'Welcome to Thiqty! Start your first practice interview.',
+        defaultValue: 'Welcome to Interprova! Start your first practice interview.',
         effect: 'not-wired',
-        effectNote: 'لا يوجد مُرسِل إشعارات في الخادم بعد، فلا جهة تقرأ هذا النص.',
+        effectNote:
+          'صار في الخادم مُرسِل إشعارات، لكن لا يوجد إشعار ترحيب بين ما يرسله '
+          + '(تنبيه الرصيد، جاهزية التقييم، تذكير التجربة) ونصوص هذه الثلاثة مكتوبة في الكود. '
+          + 'البث اليدوي يأخذ نصه من نموذج صفحة «الإشعارات» — لا من هنا.',
       },
     ],
   },
@@ -262,6 +364,10 @@ export function isKnownSetting(key: string): boolean {
 export function validateSetting(def: SettingDef, value: string): string | null {
   const v = value.trim();
   if (!v) return 'لا يمكن ترك الحقل فارغًا';
+
+  if (def.type === 'bool') {
+    if (!BOOL_TRUE.test(v) && !BOOL_FALSE.test(v)) return 'اكتب true للتفعيل أو false للإيقاف';
+  }
 
   if (def.type === 'int') {
     if (!/^\d+$/.test(v)) return 'يجب إدخال رقم صحيح';

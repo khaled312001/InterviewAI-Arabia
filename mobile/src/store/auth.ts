@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { secureStorage } from '../storage/secureStorage';
 import { api, AuthEvents } from '../api/client';
+// Deep import, not the `../push` barrel: the barrel re-exports the root hook,
+// which imports this store, and the round trip is an import cycle Metro
+// resolves by handing one of the two modules a half-initialised copy of the
+// other. `registration` imports nothing from `store/`.
+import { unregisterPush } from '../push/registration';
 import { useBalance } from './balance';
 
 export interface AppUser {
@@ -15,6 +20,17 @@ export interface AppUser {
    * nothing in this app reads it any more. Use `useBalance()` instead.
    */
   dailyQuestionsUsed?: number;
+  /** Profile picture from the identity provider, when they used one. */
+  avatarUrl?: string | null;
+  /**
+   * Whether this account can be signed into with a password.
+   *
+   * False for an account created through Google, which has none. Optional
+   * because an older backend does not send it, and the safe reading of a
+   * missing value is "there is a password" — that keeps the confirmation step
+   * for every existing account.
+   */
+  hasPassword?: boolean;
 }
 
 interface AuthState {
@@ -25,9 +41,22 @@ interface AuthState {
   hydrate: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, language: 'ar' | 'en') => Promise<void>;
+  /** Exchange a verified Google ID token for our own session. */
+  signInWithGoogle: (idToken: string, language: 'ar' | 'en') => Promise<void>;
   logout: () => Promise<void>;
   refreshMe: () => Promise<void>;
 }
+
+/**
+ * Re-entrancy guard for `logout`.
+ *
+ * Sign-out now makes a network call (detaching the push token) *before* it
+ * clears the credentials. When sign-out was triggered by an expired session,
+ * that call comes back 401 too — which fires `AuthEvents.on401`, which calls
+ * `logout` again, which detaches again. Without this flag that is an unbounded
+ * recursion, and the app spins instead of returning to the login screen.
+ */
+let signingOut = false;
 
 async function persistTokens(token: string | null, refreshToken: string | null) {
   if (token) await secureStorage.setItem('access_token', token);
@@ -79,12 +108,36 @@ export const useAuth = create<AuthState>((set, get) => ({
     }
   },
 
+  signInWithGoogle: async (idToken, language) => {
+    set({ loading: true });
+    try {
+      const { data } = await api.post('/auth/google', { idToken, language });
+      await persistTokens(data.token, data.refreshToken);
+      set({ token: data.token, refreshToken: data.refreshToken, user: data.user });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   logout: async () => {
-    await persistTokens(null, null);
-    set({ token: null, refreshToken: null, user: null });
-    // The balance belongs to the account, not to the app. Leaving it behind
-    // would show the next person to sign in the previous one's minutes.
-    useBalance.getState().clear();
+    if (signingOut) return;
+    signingOut = true;
+    try {
+      // Before the credentials are cleared, never after: the server decides
+      // whose device_tokens row to detach from the bearer token on the request,
+      // so a detach sent afterwards detaches nothing and this device keeps
+      // receiving the departing user's notifications once the next person signs
+      // in. `unregisterPush` swallows its own failures — it must not be able to
+      // strand someone on a screen they asked to leave.
+      await unregisterPush();
+      await persistTokens(null, null);
+      set({ token: null, refreshToken: null, user: null });
+      // The balance belongs to the account, not to the app. Leaving it behind
+      // would show the next person to sign in the previous one's minutes.
+      useBalance.getState().clear();
+    } finally {
+      signingOut = false;
+    }
   },
 
   refreshMe: async () => {

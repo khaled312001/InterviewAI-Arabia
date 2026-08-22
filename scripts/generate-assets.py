@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate every raster brand asset for Thiqty (ثقتي) from the supplied logo art.
+Generate every raster brand asset for Interprova from the supplied logo art.
 
 Source of truth is `logo/` — the designed PNGs — rather than shapes drawn in
 code, so the app icon, splash, favicon and social card are the *same* mark the
@@ -33,11 +33,14 @@ LANDING = os.path.join(ROOT, "landing")
 STORE = os.path.join(ROOT, "store-assets")
 FONT_BOLD = os.path.join(ASSETS, "fonts", "Cairo-Bold.ttf")
 
-# Source art
-SRC_ICON = os.path.join(LOGO, "2889bf33-9e42-4545-8cb5-f677b94855d6.png")  # icon, white mark on blue
-SRC_MARK = os.path.join(LOGO, "f2286abe-97a7-4f18-8d1b-ca60a395cabb.png")  # mark only, blue on white
-SRC_STACK = os.path.join(LOGO, "1405c6e7-f287-4e07-9a9c-924438d55c12.png")  # stacked lockup
-SRC_HORIZ = os.path.join(LOGO, "ed93488b-5479-4ce0-a8df-2a5809db7ce4.png")  # horizontal lockup
+# Source art — the Interprova set: two overlapping speech bubbles, the back one
+# a gold outline (the rehearsal), the front one solid blue (the real interview).
+SRC_ICON = os.path.join(LOGO, "95638c0f-2714-4c67-928c-8aa920c41b00.png")   # app icon, white mark on blue
+SRC_MARK = os.path.join(LOGO, "4349a99f-df1a-4177-93a7-b561d6ba2e9d.png")   # mark only, on near-white
+SRC_HORIZ = os.path.join(LOGO, "a5d70e5d-d6f5-4261-bb2d-51dea8fcac0c.png")  # horizontal lockup
+# There is no stacked lockup in the supplied set, so it is composed from the
+# horizontal one: see make_stacked().
+SRC_STACK = SRC_HORIZ
 
 # Brand colours sampled from the artwork itself.
 BRAND_DEEP = (7, 54, 168)     # #0736A8 wordmark / bubble outline
@@ -85,16 +88,53 @@ def trim_white(img, tol=248):
     return img.crop((left, top, right + 1, bottom + 1))
 
 
-def whites_to_alpha(img, tol=245):
-    """Make the near-white background transparent, keeping the coloured mark."""
+def whites_to_alpha(img, keep_below=214, drop_above=240):
+    """
+    Knock out the flat background, keeping the coloured mark.
+
+    A hard threshold is not enough here. The supplied art sits on a very light
+    grey (#F5F7FB) that carries a faint texture, so a single cutoff either left
+    a field of speckles behind the mark — visible as a noisy square once the
+    result was recoloured white for the feature graphic — or ate the mark's
+    antialiased edges and left it jagged.
+
+    So: a RAMP on the pixel's own brightness. Fully opaque below `keep_below`,
+    fully clear above `drop_above`, linear between. The band spans the mark's
+    edge pixels, which is exactly where partial alpha belongs, and the textured
+    background is comfortably above it.
+    """
+    img = img.convert("RGBA")
+    grey = img.convert("L")
+    span = max(1, drop_above - keep_below)
+    alpha = grey.point(lambda v: 255 if v <= keep_below
+                       else (0 if v >= drop_above
+                             else int(255 * (drop_above - v) / span)))
+    img.putalpha(alpha)
+    return img
+
+
+def mark_on_dark(img):
+    """
+    The mark as it must appear on the brand blue.
+
+    Flattening the whole thing to white — which is what `filter: brightness(0)
+    invert(1)` in the CSS renderer did — merges the two bubbles into one blob
+    and throws away the idea the mark is *about*: the gold outline behind is
+    the rehearsal, the solid one in front is the real interview. So only the
+    blue is recoloured, and the gold is left alone.
+
+    "Blue" is decided by channel order rather than a hex distance, because the
+    front bubble is a gradient from #2D73FD to #0736A8 and no single colour
+    matches it.
+    """
     img = img.convert("RGBA")
     px = img.load()
     w, h = img.size
     for y in range(h):
         for x in range(w):
             r, g, b, a = px[x, y]
-            if r >= tol and g >= tol and b >= tol:
-                px[x, y] = (r, g, b, 0)
+            if a and b > r + 24 and b > g + 12:
+                px[x, y] = (255, 255, 255, a)
     return img
 
 
@@ -187,8 +227,9 @@ def make_splash(w=1242, h=2688):
         d = ImageDraw.Draw(img)
         f_ar = ImageFont.truetype(FONT_BOLD, int(w * 0.105))
         f_la = ImageFont.truetype(FONT_BOLD, int(w * 0.052))
-        for raw, font, dy, alpha in (("ثقتي", f_ar, 0.10, 255), ("Thiqty", f_la, 0.175, 200)):
-            text = ar(raw)
+        for raw, font, dy, alpha in (("Interprova", f_ar, 0.10, 255),
+                                     ("تدريب مقابلات العمل", f_la, 0.185, 200)):
+            text = ar(raw) if any("؀" <= c <= "ۿ" for c in raw) else raw
             bb = d.textbbox((0, 0), text, font=font)
             d.text(((w - (bb[2] - bb[0])) // 2 - bb[0], int(h * (0.5 + dy))),
                    text, font=font, fill=WHITE + (alpha,))
@@ -215,16 +256,52 @@ def make_og(w=1200, h=630):
         f_big = ImageFont.truetype(FONT_BOLD, 68)
         f_sm = ImageFont.truetype(FONT_BOLD, 32)
         right = int(w * 0.66)
-        for i, raw in enumerate(("ثقتي — أول مدرّب مقابلات", "عربي بالذكاء الاصطناعي")):
-            line = ar(raw)
+        for i, raw in enumerate(("Interprova", "تدريب مقابلات العمل بالذكاء الاصطناعي")):
+            line = ar(raw) if any("؀" <= c <= "ۿ" for c in raw) else raw
             bb = d.textbbox((0, 0), line, font=f_big)
             d.text((right - (bb[2] - bb[0]), 200 + i * 92), line, font=f_big, fill=WHITE)
-        sub = ar("تدرّب · اتقيّم · اتوظّف")
+        sub = ar("بالعربية والإنجليزية")
         bb = d.textbbox((0, 0), sub, font=f_sm)
         d.text((right - (bb[2] - bb[0]), 400), sub, font=f_sm, fill=(191, 215, 254, 255))
     except OSError:
         pass
     return img
+
+
+def make_stacked(width=1024):
+    """
+    A stacked lockup, composed rather than supplied.
+
+    The horizontal art is one flat image, so the two halves are separated by
+    finding the widest run of blank columns — the gap the designer left between
+    the mark and the wordmark. Splitting on that is stable against the exact
+    pixel positions changing in a re-export.
+    """
+    art = whites_to_alpha(trim_white(load(SRC_HORIZ)))
+    alpha = art.getchannel("A")
+    w, h = art.size
+    cols = [alpha.crop((x, 0, x + 1, h)).getbbox() is None for x in range(w)]
+
+    best = (0, 0)
+    run = 0
+    for x, blank in enumerate(cols):
+        run = run + 1 if blank else 0
+        if run > best[1]:
+            best = (x - run + 1, run)
+    split = best[0] + best[1] // 2 if best[1] else w // 4
+
+    mark = art.crop((0, 0, split, h))
+    word = art.crop((split, 0, w, h))
+    mark = mark.crop(mark.getbbox())
+    word = word.crop(word.getbbox())
+
+    mark = fit(mark, width * 0.42)
+    word = fit(word, width * 0.86)
+    gap = int(width * 0.07)
+    canvas = Image.new("RGBA", (width, mark.height + gap + word.height), (0, 0, 0, 0))
+    canvas.alpha_composite(mark, ((width - mark.width) // 2, 0))
+    canvas.alpha_composite(word, ((width - word.width) // 2, mark.height + gap))
+    return canvas
 
 
 def save(img, path, **kw):
@@ -256,10 +333,13 @@ def main():
     # Wordmark for the landing header, transparent so it sits on any surface.
     save(fit(whites_to_alpha(trim_white(load(SRC_HORIZ))), 640), os.path.join(LANDING, "logo-horizontal.png"))
     save(fit(whites_to_alpha(trim_white(load(SRC_MARK))), 256), os.path.join(LANDING, "logo-mark.png"))
+    # The same mark for dark grounds: blue becomes white, gold stays gold.
+    save(fit(mark_on_dark(whites_to_alpha(trim_white(load(SRC_MARK)))), 256),
+         os.path.join(LANDING, "logo-mark-ondark.png"))
 
     print("store-assets:")
     save(make_og(1024, 500), os.path.join(STORE, "feature-graphic.png"))
-    save(fit(whites_to_alpha(trim_white(load(SRC_STACK))), 1024), os.path.join(STORE, "logo-stacked.png"))
+    save(make_stacked(1024), os.path.join(STORE, "logo-stacked.png"))
 
     print("done")
 

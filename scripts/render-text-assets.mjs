@@ -28,7 +28,9 @@ const EDGE = process.env.EDGE_PATH
 
 const FONT_REG = path.join(ROOT, 'mobile/assets/fonts/Cairo-Regular.ttf');
 const FONT_BOLD = path.join(ROOT, 'mobile/assets/fonts/Cairo-Bold.ttf');
-const MARK = path.join(ROOT, 'landing/logo-mark.png');
+// The dark-ground variant: white front bubble, gold outline behind. Painting
+// the flat mark white instead would merge the two bubbles into one shape.
+const MARK = path.join(ROOT, 'landing/logo-mark-ondark.png');
 
 const b64 = (p) => fs.readFileSync(p).toString('base64');
 
@@ -57,24 +59,36 @@ ${extra}
 </style></head><body>${body}</body></html>`;
 }
 
+/**
+ * The social card and the Play feature graphic.
+ *
+ * Centred, not split left/right. Play crops the feature graphic differently
+ * across surfaces, and anything pushed to an edge can be cut; the safe area is
+ * the middle. The copy is descriptive only — the previous version read
+ * "ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي" and Google rejected the
+ * app under the Metadata policy for the superlative "أول" (first). No claim
+ * about rank, popularity or outcome may appear in this file again.
+ */
 const OG = ({ w, h }) => page({
   w, h,
   extra: `
-  .wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 ${Math.round(w * 0.075)}px;gap:${Math.round(w * 0.05)}px}
-  .copy{text-align:right;flex:1}
-  h1{font-weight:700;font-size:${Math.round(w * 0.058)}px;line-height:1.35;letter-spacing:-.02em}
-  h1 .gold{color:${GOLD}}
-  p{margin-top:${Math.round(h * 0.05)}px;font-size:${Math.round(w * 0.027)}px;color:#BFD7FE;letter-spacing:.02em}
-  img{width:${Math.round(h * 0.5)}px;filter:brightness(0) invert(1);flex:0 0 auto}
+  .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${Math.round(h * 0.045)}px;padding:0 ${Math.round(w * 0.08)}px}
+  .lockup{display:flex;direction:ltr;align-items:center;gap:${Math.round(w * 0.028)}px}
+  img{width:${Math.round(h * 0.30)}px}
+  h1{font-weight:700;font-size:${Math.round(h * 0.185)}px;line-height:1;letter-spacing:-.025em;direction:ltr}
+  p{font-size:${Math.round(h * 0.072)}px;color:#CFE0FE;line-height:1.5;text-align:center;font-weight:600}
+  .rule{width:${Math.round(w * 0.10)}px;height:${Math.max(3, Math.round(h * 0.010))}px;background:${GOLD};border-radius:99px}
   `,
   body: `
   <div class="glow" style="width:${w * 0.42}px;height:${w * 0.42}px;background:${GOLD};top:${-h * 0.35}px;left:${-w * 0.08}px"></div>
+  <div class="glow" style="width:${w * 0.34}px;height:${w * 0.34}px;background:#4F8BFF;bottom:${-h * 0.30}px;right:${-w * 0.06}px"></div>
   <div class="wrap">
-    <div class="copy">
-      <h1><span class="gold">ثقتي</span> — أول مدرّب مقابلات<br>عربي بالذكاء الاصطناعي</h1>
-      <p>تدرّب · اتقيّم · اتوظّف</p>
+    <div class="lockup">
+      <img src="${markSrc}" alt="">
+      <h1>Interprova</h1>
     </div>
-    <img src="${markSrc}" alt="">
+    <div class="rule"></div>
+    <p>تدريب على مقابلات العمل بالذكاء الاصطناعي<br>بالعربية والإنجليزية</p>
   </div>`,
 });
 
@@ -82,15 +96,15 @@ const SPLASH = ({ w, h }) => page({
   w, h,
   extra: `
   .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:${Math.round(h * 0.035)}px}
-  img{width:${Math.round(w * 0.42)}px;filter:brightness(0) invert(1)}
-  .ar{font-weight:700;font-size:${Math.round(w * 0.13)}px;line-height:1.2}
-  .la{font-weight:700;font-size:${Math.round(w * 0.055)}px;color:rgba(255,255,255,.72);letter-spacing:.08em}
+  img{width:${Math.round(w * 0.42)}px}
+  .ar{font-weight:700;font-size:${Math.round(w * 0.125)}px;line-height:1.15;letter-spacing:-.025em;direction:ltr}
+  .la{font-weight:600;font-size:${Math.round(w * 0.048)}px;color:rgba(255,255,255,.76)}
   `,
   body: `
   <div class="wrap">
     <img src="${markSrc}" alt="">
-    <div class="ar">ثقتي</div>
-    <div class="la">Thiqty</div>
+    <div class="ar">Interprova</div>
+    <div class="la">تدريب مقابلات العمل</div>
   </div>`,
 });
 

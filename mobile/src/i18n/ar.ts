@@ -4,7 +4,7 @@
 
 export default {
   app: {
-    name: 'ثقتي',
+    name: 'Interprova',
     tagline: 'تدرّب على المقابلات الوظيفية بذكاء اصطناعي',
   },
   /**
@@ -112,6 +112,11 @@ export default {
     resetTitle: 'إعادة تعيين كلمة المرور',
     resetDescription: 'أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة التعيين.',
     resetSent: 'إذا كان البريد موجودًا، سنرسل رسالة.',
+
+    orDivider: 'أو',
+    googleSignIn: 'تسجيل الدخول بجوجل',
+    googleSignUp: 'المتابعة بحساب جوجل',
+    googleFailed: 'تعذّر تسجيل الدخول عبر جوجل. حاول مرة أخرى أو استخدم بريدك الإلكتروني.',
 
     loginTitle: 'أهلاً بعودتك',
     loginSubtitle: 'سجّل الدخول لاستكمال رحلتك التدريبية.',
@@ -336,7 +341,7 @@ export default {
     noScore: 'بلا درجة',
     durationMinutes: '{{n}} دقيقة',
     durationSeconds: '{{n}} ثانية',
-    shareMessage: 'حصلت على {{score}} من 10 في جلسة "{{category}}" على ثقتي — تدرّب على مقابلات العمل بالذكاء الاصطناعي. جرّبها: https://interview.khaledahmed.net',
+    shareMessage: 'حصلت على {{score}} من 10 في جلسة "{{category}}" على Interprova — تدرّب على مقابلات العمل بالذكاء الاصطناعي. جرّبها: https://interview.khaledahmed.net',
     shareFallbackTitle: 'انسخ النص وشاركه',
     retrySame: 'جلسة جديدة في نفس المجال',
     goHome: 'العودة للرئيسية',
@@ -706,6 +711,10 @@ export default {
     sttUnsupported: 'التعرّف على الكلام غير مدعوم في هذا المتصفح — استخدم Chrome أو Edge للتحدّث بصوتك.',
     sttUnsupportedDevice: 'خدمة التعرّف على الكلام غير متاحة على هذا الجهاز — فعّل خدمة الصوت من Google لتتحدّث بصوتك.',
     turnFailed: 'تعذّر إرسال إجابتك. تحقّق من اتصالك ثم حاول مجددًا.',
+    // Separate from `turnFailed` on purpose: "تحقّق من اتصالك" sends the
+    // candidate to fix a connection that is perfectly fine, and the seconds
+    // line is the part that actually calms someone mid-interview.
+    aiUnavailable: 'المُحاوِر غير متاح مؤقتًا — خدمة الذكاء الاصطناعي لا تستجيب الآن. لم تُحتسب ثوانٍ على هذه المحاولة. أعد المحاولة بعد قليل.',
   },
   /** شاشة ما قبل المكالمة: اللغة، المحاور، المجال، تفاصيل الوظيفة، السيرة. */
   meetingSetup: {
@@ -752,6 +761,7 @@ export default {
     cvTooLarge: 'الملف كبير — الحد الأقصى {{mb}} ميجابايت.',
 
     pickCategory: 'اختر مجال الوظيفة أولًا.',
+    required: 'مطلوب',
     startFailed: 'تعذّر بدء المقابلة. تحقّق من اتصالك ثم حاول مجددًا.',
     defaultCategoryName: 'مقابلة',
 
@@ -804,6 +814,19 @@ export default {
     },
   },
 
+  /**
+   * Push notifications. `channelDefault` / `channelDefaultHint` are read by
+   * Android's own notification settings for the app, not by any screen here —
+   * they are the only strings in this file the OS renders on our behalf.
+   */
+  push: {
+    channelDefault: 'تنبيهات Interprova',
+    channelDefaultHint: 'نتيجة تقييمك، رصيد دقائقك، وأخبار التطبيق.',
+    askTitle: 'نُعلمك عندما يجهز تقييمك؟',
+    askBody: 'إشعار واحد عند جاهزية تقييم مقابلتك، وتنبيه قبل نفاد رصيدك من الدقائق. بدون رسائل ترويجية.',
+    askAccept: 'فعّل الإشعارات',
+    askLater: 'ليس الآن',
+  },
   settings: {
     title: 'الإعدادات',
     language: 'اللغة',
@@ -820,6 +843,13 @@ export default {
     themeHint: 'خيار "حسب النظام" يتبع إعدادات جهازك تلقائيًا.',
     languageHint: 'قد تحتاج إلى إعادة فتح التطبيق حتى يتغيّر اتجاه الكتابة بالكامل.',
     languages: { ar: 'العربية', en: 'English' },
+
+    pushEnabled: 'إشعارات',
+    pushEnabledHint: 'تنبيه عند جاهزية تقييمك أو قرب نفاد رصيدك',
+    pushBlockedTitle: 'الإشعارات موقوفة من إعدادات الجهاز',
+    pushBlockedBody: 'سبق أن أوقفت الإشعارات لـ Interprova، ولا يمكن تفعيلها من داخل التطبيق. افتح إعدادات النظام واسمح بالإشعارات.',
+    pushOpenSettings: 'فتح إعدادات النظام',
+    pushFailed: 'تعذّر تفعيل الإشعارات الآن. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى.',
 
     notifyPractice: 'تذكير التدريب اليومي',
     notifyPracticeHint: 'إشعار واحد يوميًا يذكّرك بجلستك',
@@ -844,10 +874,11 @@ export default {
     deleteConfirmBody: 'سنرسل طلب الحذف لفريق الدعم وتُمسح بياناتك خلال 48 ساعة. لا يمكن التراجع عن هذه الخطوة.',
     deleteConfirmCta: 'إرسال طلب الحذف',
     deletePasswordPrompt: 'اكتب كلمة المرور لتأكيد الحذف. الحذف نهائي ولا يمكن التراجع عنه.',
+    deleteNoPasswordPrompt: 'حسابك مرتبط بجوجل ولا توجد به كلمة مرور. اضغط «حذف نهائي» لتأكيد حذف الحساب وكل بياناتك.',
     deletePasswordRequired: 'اكتب كلمة المرور أولاً.',
     deleteWrongPassword: 'كلمة المرور غير صحيحة.',
     deleteFailed: 'تعذّر حذف الحساب. حاول مرة أخرى.',
-    deleteRequestSubject: 'طلب حذف حساب — ثقتي',
+    deleteRequestSubject: 'طلب حذف حساب — Interprova',
     deleteRequestBody: 'أرجو حذف حسابي وجميع البيانات المرتبطة به.\n\nالبريد المسجّل: {{email}}',
 
     support: 'الدعم والتواصل',

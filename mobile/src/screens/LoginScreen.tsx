@@ -8,7 +8,7 @@
  * renders server failures as an in-page banner mapped to friendly copy.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -18,6 +18,8 @@ import { MotiView } from 'moti';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../store/auth';
+import { useGoogleSignIn } from '../auth/useGoogleSignIn';
+import { GoogleSignInButton } from '../auth/GoogleSignInButton';
 import { Button, Card, Input, Logo, Screen, Text } from '../components';
 import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -45,14 +47,16 @@ function authErrorKey(err: any): string {
 }
 
 export function LoginScreen({ navigation }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const { maxWidth, screenPadding } = useResponsive();
   const { chevronBack } = useDirection();
 
   const login = useAuth((s) => s.login);
+  const signInWithGoogle = useAuth((s) => s.signInWithGoogle);
   const loading = useAuth((s) => s.loading);
+
 
   const passwordRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -90,6 +94,24 @@ export function LoginScreen({ navigation }: Props) {
       setFormError(t(authErrorKey(err)));
     }
   }, [email, emailProblem, login, password, passwordProblem, t]);
+
+  const onGoogleToken = useCallback(async (idToken: string) => {
+    setFormError(null);
+    try {
+      await signInWithGoogle(idToken, i18n.language === 'en' ? 'en' : 'ar');
+      // No navigation call: RootNavigator swaps stacks once a token exists.
+    } catch (err) {
+      setFormError(t(authErrorKey(err)));
+    }
+  }, [i18n.language, signInWithGoogle, t]);
+
+  const google = useGoogleSignIn(onGoogleToken);
+
+  // Google's own failures are reported through the hook, not thrown, so the
+  // form's single error line has to pick them up.
+  useEffect(() => {
+    if (google.failed) { setFormError(t('auth.googleFailed')); google.clearFailure(); }
+  }, [google, t]);
 
   const goSignUp = useCallback(() => navigation.navigate('SignUp'), [navigation]);
   const goForgot = useCallback(() => navigation.navigate('ForgotPassword'), [navigation]);
@@ -319,6 +341,14 @@ export function LoginScreen({ navigation }: Props) {
               size="lg"
               accessibilityLabel={t('auth.login')}
               testID="login-submit"
+            />
+
+            <GoogleSignInButton
+              available={google.available}
+              busy={google.busy}
+              disabled={loading}
+              onPress={google.start}
+              variant="signIn"
             />
           </View>
 

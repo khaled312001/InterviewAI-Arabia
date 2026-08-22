@@ -33,6 +33,53 @@ const int = (def, min, max) => ({
   fallback: () => def,
 });
 
+/**
+ * A boolean setting — in practice always a kill switch, always defaulting ON.
+ *
+ * `Boolean("false") === true`, so the naive parser turns every switch an
+ * operator has thrown back into "enabled" and the panel reports a change that
+ * did nothing. Same trap config/env.js documents; same fix. An unrecognised
+ * value returns null and therefore falls back to the default rather than
+ * reading as off, because a typo must not silently switch a feature off.
+ */
+const bool = (def) => ({
+  parse: (raw) => {
+    const s = String(raw).trim().toLowerCase();
+    if (/^(true|1|yes|on)$/.test(s)) return true;
+    if (/^(false|0|no|off)$/.test(s)) return false;
+    return null;
+  },
+  fallback: () => def,
+});
+
+/**
+ * One or more OAuth client ids: `<digits>-<hash>.apps.googleusercontent.com`.
+ *
+ * A LIST, comma-separated, because Android needs one per signing certificate.
+ * Google Cloud Console's Android client holds a single SHA-1, and a published
+ * app has two fingerprints that matter — the upload key you sign with, and the
+ * Play App Signing key Google re-signs with. That means two Android OAuth
+ * clients, two client ids, and two possible `aud` values for the same human.
+ * Accepting only one is why sign-in works in a locally-installed build and
+ * fails for everyone who installs from the Store.
+ *
+ * Shape-checked rather than free text: a mistyped id fails at the `aud`
+ * comparison inside a rejected login — a silent "Google sign-in failed" with
+ * nothing on screen pointing at the setting that caused it. One bad entry
+ * rejects the whole value rather than silently dropping it, so a typo is
+ * visible in the admin panel instead of halving the accepted audiences.
+ */
+const CLIENT_ID_RE = /^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/;
+
+const clientId = () => ({
+  parse: (raw) => {
+    const parts = String(raw).split(',').map((v) => v.trim()).filter(Boolean);
+    if (!parts.length) return null;
+    return parts.every((v) => CLIENT_ID_RE.test(v)) ? parts.join(',') : null;
+  },
+  fallback: () => null,
+});
+
 /** key -> { parse, fallback } — the contract the admin registry mirrors. */
 export const WIRED_KEYS = {
   free_daily_question_limit: {
@@ -42,6 +89,20 @@ export const WIRED_KEYS = {
     },
     fallback: () => env.FREE_DAILY_QUESTION_LIMIT,
   },
+
+  /* -------------------------- Google sign-in ---------------------------
+   * PUBLIC client ids, not secrets — they ship inside the browser bundle and
+   * the APK. They live here rather than in env so they can be pasted into the
+   * admin panel the day the Google Cloud project is created, without a deploy.
+   *
+   * Google issues one per platform and the ID token's `aud` is whichever
+   * client started the flow, so all three are accepted audiences. Leaving them
+   * blank disables Google sign-in and hides the button — never "accept any
+   * audience", which would let a token minted for any other Google app in.
+   * ------------------------------------------------------------------- */
+  google_client_id_web: clientId(),
+  google_client_id_android: clientId(),
+  google_client_id_ios: clientId(),
 
   /* ---------------------- minute metering (seconds) ---------------------
    * Every constant the meter reads lives here so pricing and generosity are
@@ -88,6 +149,20 @@ export const WIRED_KEYS = {
   practice_answer_seconds: int(30, 0, 3600),
   /** Subscription allowance granted per 30-day cycle. 300 minutes. */
   subscription_cycle_seconds: int(18_000, 0, 1_000_000),
+
+  /* ------------------ automatic push kill switches -------------------
+   * Seeded ON by migration 006. One per automatic notification rather than
+   * one for all of them, because the failure they exist for is per-kind: the
+   * low-balance nudge is the one that fires most often and is therefore the
+   * one that gets called spam, and silencing it must not also silence "your
+   * evaluation is ready" — which users are waiting for.
+   *
+   * These do NOT gate operator broadcasts, and they do not gate push as a
+   * whole; PUSH_ENABLED (services/secrets) is the master switch.
+   * ------------------------------------------------------------------- */
+  push_low_balance_enabled: bool(true),
+  push_evaluation_ready_enabled: bool(true),
+  push_trial_reminder_enabled: bool(true),
 };
 
 /**
@@ -160,4 +235,17 @@ export function freeDailyLimit() {
 export function seconds(key) {
   const v = setting(key);
   return Number.isInteger(v) ? v : 0;
+}
+
+/**
+ * Boolean accessor for the kill switches. ON unless something says otherwise.
+ *
+ * Only an explicit stored `false` turns a feature off: an unknown key, an
+ * unparseable value or a cache that has not warmed yet all read as enabled.
+ * That is the right bias for a switch whose default is ON — a database hiccup
+ * must not silently stop the "your evaluation is ready" notification, which is
+ * a failure nobody would notice for weeks.
+ */
+export function flag(key) {
+  return setting(key) !== false;
 }

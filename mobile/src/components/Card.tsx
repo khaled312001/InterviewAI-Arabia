@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { View, Pressable, StyleSheet, StyleProp, ViewStyle, Platform } from 'react-native';
+import { View, Pressable, StyleSheet, StyleProp, ViewStyle, Platform, LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useAppTheme } from '../theme/useTheme';
 
@@ -13,6 +13,8 @@ interface Props {
   onPress?: () => void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Passed straight through, so a form can find this card's offset. */
+  onLayout?: (event: LayoutChangeEvent) => void;
   accessibilityLabel?: string;
   accessibilityHint?: string;
   testID?: string;
@@ -35,6 +37,7 @@ export function Card({
   onPress,
   disabled,
   style,
+  onLayout,
   accessibilityLabel,
   accessibilityHint,
   testID,
@@ -74,11 +77,12 @@ export function Card({
     style,
   ];
 
-  if (!onPress) return <View style={base} testID={testID}>{children}</View>;
+  if (!onPress) return <View style={base} onLayout={onLayout} testID={testID}>{children}</View>;
 
   return (
     <Pressable
       testID={testID}
+      onLayout={onLayout}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

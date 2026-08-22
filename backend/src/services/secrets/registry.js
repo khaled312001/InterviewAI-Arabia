@@ -18,7 +18,7 @@
  * @typedef {'secret'|'text'|'url'|'path'|'boolean'|'select'|'csv'} CredentialType
  * @typedef {Object} CredentialDef
  * @property {string} key            Also the env var name — the value falls back to env[key].
- * @property {'payments'|'ai'} group
+ * @property {'payments'|'ai'|'push'} group
  * @property {CredentialType} type
  * @property {boolean} secret        Secrets are encrypted and never returned by any GET.
  * @property {string[]} [options]    For type 'select'.
@@ -80,6 +80,22 @@ export const CREDENTIALS = [
   { key: 'ANTHROPIC_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
   { key: 'GEMINI_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
   { key: 'GROQ_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
+
+  /* ------------------------------- Push ------------------------------- */
+  /**
+   * The Firebase service account, base64-encoded JSON.
+   *
+   * Base64 because the private key is multi-line PEM and neither a `.env` line
+   * nor a single-line form field can carry a newline. Encoding it makes it one
+   * opaque token, which is also what stops an operator from pasting half of it.
+   *
+   * SECRET, and more dangerous than it looks: this key can push a notification
+   * to every install, read the Realtime Database and mint custom auth tokens
+   * for any user. It is write-only here like every other secret — no endpoint
+   * returns it, and the panel shows only the last four characters.
+   */
+  { key: 'FIREBASE_SERVICE_ACCOUNT_B64', group: 'push', type: 'secret', secret: true, testable: true },
+  { key: 'PUSH_ENABLED', group: 'push', type: 'boolean', secret: false },
 ];
 
 const BY_KEY = new Map(CREDENTIALS.map((c) => [c.key, c]));

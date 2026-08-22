@@ -203,7 +203,7 @@ export function createApp() {
   app.get('/', (req, res, next) => {
     if (req.accepts(['html', 'json']) === 'json') {
       return res.json({
-        app: 'Thiqty',
+        app: 'Interprova',
         api: '/api/health',
         web: '/app',
         admin: '/admin',

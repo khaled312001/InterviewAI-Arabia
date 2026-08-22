@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import {
   expireSubscriptions, purgeExpiredTokens, sweepAbandonedMeetings,
   grantSubscriptionCycles, expireSubscriptionMinutes, reconcileBalances,
+  remindDormantTrials,
 } from './maintenance.js';
 
 /**
@@ -98,6 +99,25 @@ export function startCronJobs() {
       logger.info('Balance reconciliation complete', result);
     } catch (err) {
       logger.error('Balance reconciliation failed', { message: err.message });
+    }
+  }, { timezone: 'Africa/Cairo' });
+
+  // Daily, AT AN HOUR A PHONE MAY REASONABLY RING. Every other job in this file
+  // is scheduled for whenever it is cheapest — 03:30, 03:45, on the hour —
+  // because nobody is woken by a token purge. This one is the only job here
+  // that lights up a handset, so it deliberately does NOT join them at half
+  // past three: a "your free minutes are waiting" notification that arrives at
+  // 03:30 is uninstalled at 03:31.
+  //
+  // Safe to run beside the external pinger on /api/cron/trial-reminders: the
+  // reminder is claimed with a conditional UPDATE, so whichever runner gets
+  // there first is the only one that sends. See remindDormantTrials().
+  cron.schedule('0 18 * * *', async () => {
+    try {
+      const result = await remindDormantTrials();
+      if (result.trialRemindersClaimed > 0) logger.info('Trial reminders sent', result);
+    } catch (err) {
+      logger.error('Trial reminder job failed', { message: err.message });
     }
   }, { timezone: 'Africa/Cairo' });
 

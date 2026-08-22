@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build a signed release APK (and optionally an AAB) for ثقتي / Thiqty, locally.
+# Build a signed release APK (and optionally an AAB) for Interprova, locally.
 #
 #   ./scripts/build-android.sh            # APK
 #   ./scripts/build-android.sh --aab      # Play Store bundle
@@ -182,7 +182,7 @@ say "Artifacts"
 mkdir -p "$ROOT/release"
 for f in $(find "$BUILD_DIR/android/app/build/outputs" \( -name '*.apk' -o -name '*.aab' \) 2>/dev/null); do
   base="$(basename "$f")"
-  out="$ROOT/release/thiqty-${base}"
+  out="$ROOT/release/interprova-${base}"
   cp "$f" "$out"
   echo "  $out  ($(du -h "$out" | cut -f1))"
 done

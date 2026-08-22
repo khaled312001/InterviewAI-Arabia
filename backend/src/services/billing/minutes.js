@@ -54,6 +54,7 @@ import { HttpError } from '../../utils/asyncHandler.js';
 import { logger } from '../../utils/logger.js';
 import { env } from '../../config/env.js';
 import { PACK_CODES } from '../payments/plans.js';
+import { notifyLowBalance } from '../push/notify.js';
 
 /**
  * True when the user currently holds premium access.
@@ -354,6 +355,60 @@ export async function refundLocked(tx, state, receipt, opts = {}) {
 }
 
 /* ------------------------------------------------------------------ *
+ * The low-balance nudge
+ * ------------------------------------------------------------------ */
+
+/**
+ * Push "your minutes are running low" on the DOWNWARD CROSSING of the
+ * low-water mark, and only then.
+ *
+ * AN EDGE, NOT A LEVEL, and that distinction is the whole feature. The meter
+ * deducts every fifteen seconds, so a plain `remaining <= lowWater` test would
+ * push on every tick from the two-minute mark down to zero — eight identical
+ * notifications inside one interview, on top of the screen that is already
+ * showing the same number. That is not a warning, it is an uninstall.
+ * `before > mark && after <= mark` is true for exactly one deduction per
+ * descent, and can only become true again after the balance has climbed back
+ * ABOVE the mark — which means a top-up, and a second warning after a top-up
+ * is the one case where a second warning is honest.
+ *
+ * THE EDGE IS ALSO THE DE-DUPLICATION, so there is no marker column and no
+ * lookup against the notifications table here. Every caller computes `before`
+ * and `after` from the same user row it holds locked in the transaction that
+ * moved it, so the two numbers straddle exactly one committed deduction. A
+ * retried request — the client timed out, the server had already committed —
+ * reads `before` from the ALREADY-lowered balance and the edge is false. A
+ * trigger whose own precondition can be satisfied only once needs nothing
+ * bolted on to make it idempotent.
+ *
+ * CALL IT AFTER THE TRANSACTION COMMITS, never inside one. It talks to the
+ * notifications table and to FCM; a courtesy push has no business holding a
+ * row lock, and a push for a deduction that then rolled back is a lie.
+ *
+ * @param {string|number|bigint} userId
+ * @param {number} beforeSeconds spendable seconds before the deduction
+ * @param {number} afterSeconds  spendable seconds after it
+ */
+export function notifyLowBalanceOnCrossing(userId, beforeSeconds, afterSeconds) {
+  const mark = CFG.lowWater();
+  // 0 disables the client's low-balance banner; it disables this too, rather
+  // than turning it into "warn at exactly zero", which nobody asked for.
+  if (mark <= 0) return;
+
+  const before = clamp0(beforeSeconds);
+  const after = clamp0(afterSeconds);
+  if (before <= mark || after > mark) return;
+
+  // Fire and forget. notify.js is written never to throw, and this .catch() is
+  // the second belt rather than trust in the first: an unhandled rejection
+  // escaping here would take the process down under Node's default, long after
+  // the charge that produced it, with nothing in the log to connect the two.
+  notifyLowBalance(userId, after).catch((err) => logger.warn(
+    'low-balance notification failed', { userId: String(userId), message: err.message },
+  ));
+}
+
+/* ------------------------------------------------------------------ *
  * Flat charges — practice answers and CV analysis
  * ------------------------------------------------------------------ */
 
@@ -370,7 +425,11 @@ export async function chargeFlat({ userId, seconds, kind = 'consumption', note, 
   const want = clamp0(seconds);
   const now = new Date();
 
-  return prisma.$transaction(async (tx) => {
+  // Recorded under the lock, acted on only after the commit. See
+  // notifyLowBalanceOnCrossing().
+  let crossing = null;
+
+  const out = await prisma.$transaction(async (tx) => {
     const state = await lockUser(tx, userId);
     if (state.isDisabled) {
       throw new HttpError(403, 'هذا الحساب موقوف / This account is suspended', undefined, 'ACCOUNT_DISABLED');
@@ -389,8 +448,12 @@ export async function chargeFlat({ userId, seconds, kind = 'consumption', note, 
     }
 
     const receipt = await chargeLocked(tx, state, want, { now, kind, note, meetingSessionId });
+    crossing = { before: available, after: availableSeconds(receipt.state, now) };
     return { ...receipt, exempt: false, userId };
   });
+
+  if (crossing) notifyLowBalanceOnCrossing(userId, crossing.before, crossing.after);
+  return out;
 }
 
 /** Undo a `chargeFlat()` after the work it paid for failed. Never throws. */

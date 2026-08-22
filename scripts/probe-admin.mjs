@@ -30,7 +30,7 @@ const { default: mod } = await import('node:module');
 // overkill; the probe only needs the shell + one grid, so a tiny mock suffices.
 const mocks = JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8')) && null;
 
-const ADMIN = { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role: 'super_admin' };
+const ADMIN = { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role: 'super_admin' };
 const USERS = Array.from({ length: 20 }, (_, i) => ({
   id: `usr_${String(i + 1).padStart(4, '0')}`, email: `candidate${i + 1}@example.com`, name: 'أحمد محمد',
   phone: null, language: 'ar', plan: i % 3 ? 'free' : 'premium', dailyQuestionsUsed: i % 6,
@@ -64,7 +64,7 @@ async function open(route, height = 900) {
   });
   await page.evaluateOnNewDocument(() => {
     localStorage.setItem('admin_token', 't');
-    localStorage.setItem('admin_auth', JSON.stringify({ state: { token: 't', admin: { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role: 'super_admin' } }, version: 0 }));
+    localStorage.setItem('admin_auth', JSON.stringify({ state: { token: 't', admin: { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role: 'super_admin' } }, version: 0 }));
   });
   await page.goto(`http://localhost:${PORT}/admin${route}`, { waitUntil: 'networkidle0' });
   await new Promise((r) => setTimeout(r, 900));

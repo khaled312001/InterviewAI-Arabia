@@ -75,7 +75,7 @@ const day = (i) => new Date(Date.now() - (29 - i) * 86400000).toISOString().slic
 
 const ADMIN = {
   id: 'adm_1',
-  email: 'super@thiqty.app',
+  email: 'super@interprova.app',
   name: 'خالد أحمد',
   role: 'super_admin',
 };
@@ -387,7 +387,7 @@ function mockFor(pathname, search) {
         subscription_monthly_price_egp: '199',
         subscription_yearly_price_egp: '1799',
         push_welcome_ar: 'أهلًا بك في ثقتي! ابدأ أول مقابلة تدريبية الآن.',
-        push_welcome_en: 'Welcome to Thiqty! Start your first mock interview.',
+        push_welcome_en: 'Welcome to Interprova! Start your first mock interview.',
       },
       updatedAt: {
         free_daily_question_limit: iso(3),
@@ -466,9 +466,9 @@ function mockFor(pathname, search) {
   if (pathname.endsWith('/admin/admins'))
     return {
       admins: [
-        { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role: 'super_admin', isActive: true, lastLoginAt: iso(0), createdAt: iso(200) },
-        { id: 'adm_2', email: 'mod@thiqty.app', name: 'منى صلاح', role: 'moderator', isActive: true, lastLoginAt: iso(4), createdAt: iso(120) },
-        { id: 'adm_3', email: 'editor@thiqty.app', name: 'طارق فؤاد', role: 'content_editor', isActive: false, lastLoginAt: null, createdAt: iso(60) },
+        { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role: 'super_admin', isActive: true, lastLoginAt: iso(0), createdAt: iso(200) },
+        { id: 'adm_2', email: 'mod@interprova.app', name: 'منى صلاح', role: 'moderator', isActive: true, lastLoginAt: iso(4), createdAt: iso(120) },
+        { id: 'adm_3', email: 'editor@interprova.app', name: 'طارق فؤاد', role: 'content_editor', isActive: false, lastLoginAt: null, createdAt: iso(60) },
       ],
       total: 3,
     };
@@ -579,7 +579,7 @@ for (const route of ROUTES) {
           JSON.stringify({
             state: {
               token: 'mock.jwt.token',
-              admin: { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role },
+              admin: { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role },
             },
             version: 0,
           }),

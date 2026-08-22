@@ -20,6 +20,7 @@ import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import {
   expireSubscriptions, purgeExpiredTokens, sweepAbandonedMeetings,
   grantSubscriptionCycles, expireSubscriptionMinutes, reconcileBalances,
+  remindDormantTrials,
 } from '../services/maintenance.js';
 
 const router = Router();
@@ -65,7 +66,14 @@ router.all('/daily', asyncHandler(async (_req, res) => {
   const cycles = await grantSubscriptionCycles();
   const swept = await sweepAbandonedMeetings();
   const reconciled = await reconcileBalances();
-  const result = { ...expired, ...tokens, ...cycles, ...lapsed, ...swept, ...reconciled };
+  // Folded in for the same reason as the rest: a deployment whose only
+  // scheduler is a once-a-day pinger must still send them. WHEN it sends them
+  // is then the operator's choice of hour, not ours — schedule this route for
+  // the middle of the day, not the middle of the night.
+  const reminded = await remindDormantTrials();
+  const result = {
+    ...expired, ...tokens, ...cycles, ...lapsed, ...swept, ...reconciled, ...reminded,
+  };
   logger.info('Cron: daily', { ...result, ms: Date.now() - started });
   res.json({ ok: true, ...result });
 }));
@@ -98,6 +106,25 @@ router.all('/subscription-minutes', asyncHandler(async (_req, res) => {
 /** Nightly. Reports counter/ledger drift; repairs only the derived hold. */
 router.all('/reconcile-balances', asyncHandler(async (_req, res) => {
   const result = await reconcileBalances();
+  res.json({ ok: true, ...result });
+}));
+
+/* ---------------------------- notifications ---------------------------- *
+ * The ONE automatic notification that has no request to hang off. Low balance
+ * fires from the deduction that caused it and "evaluation ready" from the
+ * evaluation itself; "your free minutes are waiting" is about something that
+ * did NOT happen, so a scheduler is the only honest trigger for it.
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Daily, at an hour a phone may reasonably ring — NOT with the nightly jobs.
+ *
+ * Safe to call as often as you like and safe to call alongside the in-process
+ * scheduler: each account is claimed with a conditional UPDATE before anything
+ * is sent, so a second caller finds nothing left to claim.
+ */
+router.all('/trial-reminders', asyncHandler(async (_req, res) => {
+  const result = await remindDormantTrials();
   res.json({ ok: true, ...result });
 }));
 

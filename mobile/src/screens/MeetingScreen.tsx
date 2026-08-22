@@ -40,14 +40,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Modal,
+  View, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Modal, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
-import { SvgUri } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import { api, API_BASE } from '../api/client';
 import { secureStorage } from '../storage/secureStorage';
@@ -61,8 +61,9 @@ import {
   useSessionRecorder, useSpeechRecognizer,
 } from '../media';
 import type { SpeechLang } from '../media';
+import type { ImageSourcePropType } from 'react-native';
 import { RESUME_LISTEN_MS, SILENCE_MS } from '../media/tuning';
-import { PERSONA, personaAvatarUrl } from './interviewerPersona';
+import { PERSONA, personaPortrait } from './interviewerPersona';
 
 /* ------------------------------------------------------------------ *
  * 1. Stage palette
@@ -117,9 +118,9 @@ const VIDEO = {
   pipMin: 96,
   pipMax: 132,
   pipAspect: 4 / 3, // height / width
-  avatarRatio: 0.40,
-  avatarMin: 128,
-  avatarMax: 208,
+  avatarRatio: 0.46,
+  avatarMin: 136,
+  avatarMax: 236,
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -221,8 +222,28 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function apiErrorMessage(err: any, fallback: string): string {
-  return err?.response?.data?.error || err?.message || fallback;
+/**
+ * The sentence the candidate reads when a call fails.
+ *
+ * The server answers in one language — English — because it has no business
+ * guessing who is reading. Printing that string verbatim is what put "The
+ * interviewer is temporarily unavailable" in the middle of an Arabic
+ * interview, in Latin script, left-to-right, mid-sentence with the rest of the
+ * screen in Arabic.
+ *
+ * So anything the app has its own words for is said in the app's own words,
+ * and the server's sentence is kept only for the failures we cannot name —
+ * where an English sentence still beats a generic one. `apiErrorKind` is
+ * already the map from wire code to meaning; this just gives each meaning a
+ * translated line.
+ */
+function apiErrorMessage(err: any, t: TFunction, fallbackKey: string): string {
+  switch (apiErrorKind(err)) {
+    case 'ai':      return t('meeting.aiUnavailable');
+    case 'quota':   return t('meeting.quotaBody');
+    case 'expired': return t('meeting.expired');
+    default:        return err?.response?.data?.error || err?.message || t(fallbackKey);
+  }
 }
 
 /**
@@ -486,13 +507,13 @@ function StageBanner({
  * ------------------------------------------------------------------ */
 
 function InterviewerStage({
-  name, role, gender, categoryName, avatarUrl, accent, presence, awaitingStart, level, size,
+  name, role, gender, categoryName, portrait, accent, presence, awaitingStart, level, size,
 }: {
   name: string;
   role: string;
   gender: 'male' | 'female';
   categoryName?: string;
-  avatarUrl: string;
+  portrait: ImageSourcePropType;
   accent: string;
   presence: Presence;
   awaitingStart: boolean;
@@ -535,46 +556,34 @@ function InterviewerStage({
 
   return (
     <View style={[styles.center, { gap: theme.spacing.md }]}>
-      <View style={[styles.center, { width: halo, height: halo }]}>
+      <View style={[styles.center, { width: halo, height: halo * 1.15 }]}>
         {/* Ambient glow — always present so the stage never looks like a
             cut-out circle pasted on a flat background. */}
         <View
           style={{
             position: 'absolute',
             width: halo,
-            height: halo,
-            borderRadius: theme.radii.pill,
+            height: halo * 1.15,
+            borderRadius: theme.radii.xl,
             backgroundColor: accent,
-            opacity: 0.10,
+            opacity: 0.07,
           }}
         />
 
-        {/* Speaking: rings driven by the live voice envelope. */}
+        {/* Speaking: one stroked ring, breathing with the live voice envelope. */}
         {presence === 'speaking' ? (
-          <>
-            <MotiView
-              animate={{ scale: 1 + level * 0.22, opacity: 0.16 + level * 0.24 }}
-              transition={{ type: 'timing', duration: theme.motion.duration.instant }}
-              style={{
-                position: 'absolute',
-                width: size * 1.42,
-                height: size * 1.42,
-                borderRadius: theme.radii.pill,
-                backgroundColor: accent,
-              }}
-            />
-            <MotiView
-              animate={{ scale: 1 + level * 0.12, opacity: 0.28 + level * 0.32 }}
-              transition={{ type: 'timing', duration: theme.motion.duration.instant }}
-              style={{
-                position: 'absolute',
-                width: size * 1.16,
-                height: size * 1.16,
-                borderRadius: theme.radii.pill,
-                backgroundColor: accent,
-              }}
-            />
-          </>
+          <MotiView
+            animate={{ scale: 1 + level * 0.06, opacity: 0.35 + level * 0.5 }}
+            transition={{ type: 'timing', duration: theme.motion.duration.instant }}
+            style={{
+              position: 'absolute',
+              width: size * 1.09,
+              height: size * 1.33,
+              borderRadius: theme.radii.xl,
+              borderWidth: theme.spacing.xxs,
+              borderColor: accent,
+            }}
+          />
         ) : null}
 
         {/* Listening: a slow, calm breath so the screen never feels frozen. */}
@@ -585,9 +594,9 @@ function InterviewerStage({
             transition={{ type: 'timing', duration: theme.motion.duration.deliberate * 4, loop: true, repeatReverse: false }}
             style={{
               position: 'absolute',
-              width: size * 1.12,
-              height: size * 1.12,
-              borderRadius: theme.radii.pill,
+              width: size * 1.10,
+              height: size * 1.34,
+              borderRadius: theme.radii.xl,
               borderWidth: theme.spacing.xxs,
               borderColor: STAGE.live,
             }}
@@ -599,42 +608,33 @@ function InterviewerStage({
             styles.center,
             {
               width: size,
-              height: size,
-              borderRadius: theme.radii.pill,
+              // 4:5 — the portrait ratio a person is framed in, not a square.
+              height: size * 1.25,
+              borderRadius: theme.radii.xl,
               backgroundColor: accent,
-              borderWidth: theme.spacing.xs,
+              borderWidth: theme.spacing.xxs,
               borderColor: ringColor,
               overflow: 'hidden',
             },
           ]}
         >
-          {/* The only platform branch left in this file, and it is not a media
-              one: it is how a single remote SVG gets painted. The browser
-              renders it with its own <img>, which is what the live build
-              already ships and what no SVG parser can be guaranteed to match
-              pixel for pixel; native has no <img>, so it fetches and parses the
-              same URL, and falls back to the initial if the network says no. */}
-          {Platform.OS === 'web' ? (
-            // @ts-ignore — web-only HTMLImageElement
-            <img
-              src={avatarUrl}
-              alt={name}
-              width={size}
-              height={size}
-              style={{ width: size, height: size, display: 'block' }}
-            />
-          ) : (
-            <SvgUri
-              uri={avatarUrl}
-              width={size}
-              height={size}
-              fallback={(
-                <Text role="display" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
-                  {name.slice(0, 1)}
-                </Text>
-              )}
-            />
-          )}
+          {/* One <Image> for both platforms. The portrait ships in the bundle,
+              so there is no request to fail and no platform branch to keep in
+              step — see interviewerPersona.ts for why that matters here. */}
+          <Image
+            source={portrait}
+            accessibilityLabel={name}
+            resizeMode="cover"
+            style={{ width: size, height: size * 1.25 }}
+          />
+
+          {/* A bottom scrim, so the name plate below reads against a portrait
+              of any brightness rather than only against this one. */}
+          <LinearGradient
+            colors={['transparent', 'rgba(6,12,28,0.55)']}
+            style={[StyleSheet.absoluteFillObject, { top: '55%' }]}
+            pointerEvents="none"
+          />
         </View>
       </View>
 
@@ -818,7 +818,7 @@ export function MeetingScreen({ route, navigation }: any) {
   const persona = PERSONA[hrGender];
   const hrName = t(hrGender === 'male' ? 'meeting.hrMaleName' : 'meeting.hrFemaleName');
   const hrRole = t(hrGender === 'male' ? 'meeting.hrMaleRole' : 'meeting.hrFemaleRole');
-  const hrAvatar = personaAvatarUrl(hrGender);
+  const hrPortrait = personaPortrait(hrGender);
 
   const youInitial = (userName?.trim()?.[0] ?? '?').toUpperCase();
 
@@ -1323,12 +1323,12 @@ export function MeetingScreen({ route, navigation }: any) {
           setMeetingState('preparing');
           return false;
         }
-        showNotice(apiErrorMessage(err, t('meeting.quotaBody')), 'danger');
+        showNotice(apiErrorMessage(err, t, 'meeting.quotaBody'), 'danger');
         concludeRef.current({ saveRecording: true });
         return false;
       }
 
-      showNotice(apiErrorMessage(err, t('meeting.turnFailed')), 'danger');
+      showNotice(apiErrorMessage(err, t, 'meeting.turnFailed'), 'danger');
       return false;
     }
   }, [applyBilling, categoryId, context, language, pushTurn, rememberMeeting,
@@ -1385,7 +1385,7 @@ export function MeetingScreen({ route, navigation }: any) {
       // a metered meeting when it receives no id — with the same balance check
       // this call just failed to reach — so the interview still goes ahead.
       rememberMeeting(null);
-      showNotice(apiErrorMessage(err, t('meeting.turnFailed')), 'danger');
+      showNotice(apiErrorMessage(err, t, 'meeting.turnFailed'), 'danger');
     }
 
     startedAtRef.current = Date.now();
@@ -1457,7 +1457,7 @@ export function MeetingScreen({ route, navigation }: any) {
       refreshBalance().catch(() => {});
     } catch (err: any) {
       setEvalErrorKind(apiErrorKind(err));
-      setEvalError(apiErrorMessage(err, t('meeting.evalFailedBody')));
+      setEvalError(apiErrorMessage(err, t, 'meeting.evalFailedBody'));
       setEvalPhase('error');
     } finally {
       evaluatingRef.current = false;
@@ -1727,7 +1727,7 @@ export function MeetingScreen({ route, navigation }: any) {
           role={hrRole}
           gender={hrGender}
           categoryName={categoryName}
-          avatarUrl={hrAvatar}
+          portrait={hrPortrait}
           accent={persona.color}
           presence={presence}
           awaitingStart={meetingState === 'preparing'}

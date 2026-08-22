@@ -22,6 +22,7 @@ import { MotiView } from 'moti';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { api } from '../api/client';
+import { maybeAskForPush } from '../push';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
 import { scoreTone } from '../theme/tokens';
 import {
@@ -267,6 +268,27 @@ export function SessionSummaryScreen({ route, navigation }: Props) {
 
   // A finished session is immutable — load once, never on focus.
   useEffect(() => { load(); }, [load]);
+
+  /**
+   * The notification permission is asked for here and nowhere near first launch.
+   *
+   * This is the first screen where the app has actually delivered something: the
+   * user finished an interview and is looking at their score, so "we'll tell you
+   * when your evaluation is ready" is a promise about a thing they have already
+   * been given. Prompting on launch instead spends the one system prompt an
+   * install ever gets before any value has changed hands, and a denial there is
+   * permanent — no release can re-ask it.
+   *
+   * `maybeAskForPush` decides whether to show anything at all (already decided,
+   * already blocked, asked too recently, asked twice already → it returns
+   * silently). The delay lets the score render first, so the prompt lands on top
+   * of the result rather than on a loading skeleton.
+   */
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    const timer = setTimeout(() => { void maybeAskForPush(); }, 1200);
+    return () => clearTimeout(timer);
+  }, [phase]);
 
   const answers = useMemo(() => session?.answers ?? [], [session]);
 

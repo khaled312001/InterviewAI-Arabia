@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((r) => server.listen(PORT, r));
 
-const ADMIN = { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role: 'super_admin' };
+const ADMIN = { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role: 'super_admin' };
 const CATS = [{ id: 1, nameAr: 'الهندسة البرمجية', nameEn: 'Software Engineering', icon: '💻', isPremium: false }];
 const QUESTIONS = Array.from({ length: 3 }, (_, i) => ({
   id: String(1000 + i), categoryId: 1,

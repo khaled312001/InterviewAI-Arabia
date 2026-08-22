@@ -19,6 +19,8 @@ import { ReportsPage } from './pages/ReportsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { PaymentsIntegrationPage } from './pages/PaymentsIntegrationPage';
 import { AiIntegrationPage } from './pages/AiIntegrationPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { PushIntegrationPage } from './pages/PushIntegrationPage';
 import { AdminsPage } from './pages/AdminsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { ForbiddenPage } from './pages/ForbiddenPage';
@@ -60,6 +62,10 @@ export function AppRoutes() {
         <Route path="/subscriptions" element={guard(['super_admin'], <SubscriptionsPage />)} />
         <Route path="/payments" element={guard(['super_admin'], <PaymentsPage />)} />
 
+        {/* Sending reaches every install at once, so it is super_admin only —
+            the same role the backend requires on every /admin/push route. */}
+        <Route path="/notifications" element={guard(['super_admin'], <NotificationsPage />)} />
+
         <Route path="/ai-usage" element={guard(ALL, <AIUsagePage />)} />
         <Route path="/reports" element={guard(['super_admin', 'moderator'], <ReportsPage />)} />
 
@@ -71,6 +77,10 @@ export function AppRoutes() {
         <Route
           path="/integrations/ai"
           element={guard(['super_admin'], <AiIntegrationPage />)}
+        />
+        <Route
+          path="/integrations/push"
+          element={guard(['super_admin'], <PushIntegrationPage />)}
         />
         <Route path="/admins" element={guard(['super_admin'], <AdminsPage />)} />
         {/* No longer flagged: GET /admin/audit exists and middleware/auditLog.js

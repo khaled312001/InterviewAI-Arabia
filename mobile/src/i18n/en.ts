@@ -1,5 +1,5 @@
 export default {
-  app: { name: 'Thiqty', tagline: 'Practice interviews with AI' },
+  app: { name: 'Interprova', tagline: 'Practice interviews with AI' },
   /** Mirrors the Arabic tab label set — short forms, not the screen titles. */
   tabs: {
     home: 'Home',
@@ -83,6 +83,11 @@ export default {
     resetTitle: 'Reset password',
     resetDescription: "Enter your email and we'll send you a reset link.",
     resetSent: "If that email exists, we've sent a message.",
+
+    orDivider: 'or',
+    googleSignIn: 'Sign in with Google',
+    googleSignUp: 'Continue with Google',
+    googleFailed: 'Google sign-in failed. Try again, or use your email address.',
 
     loginTitle: 'Welcome back',
     loginSubtitle: 'Log in to pick up your practice where you left off.',
@@ -298,7 +303,7 @@ export default {
     noScore: 'Not scored',
     durationMinutes: '{{n}} min',
     durationSeconds: '{{n}} sec',
-    shareMessage: 'I scored {{score}} out of 10 in a "{{category}}" session on Thiqty — AI interview practice. Try it: https://interview.khaledahmed.net',
+    shareMessage: 'I scored {{score}} out of 10 in a "{{category}}" session on Interprova — AI interview practice. Try it: https://interview.khaledahmed.net',
     shareFallbackTitle: 'Copy the text and share it',
     retrySame: 'New session in this field',
     goHome: 'Back to home',
@@ -637,6 +642,7 @@ export default {
     sttUnsupported: 'Speech recognition is not supported in this browser — use Chrome or Edge to answer out loud.',
     sttUnsupportedDevice: 'Speech recognition is not available on this device — enable Google speech services to answer out loud.',
     turnFailed: "Couldn't send your answer. Check your connection and try again.",
+    aiUnavailable: 'The interviewer is unavailable for a moment — the AI service is not responding. No seconds were charged for this attempt. Please try again shortly.',
   },
   /** Pre-call screen: language, interviewer, field, job details, CV. */
   meetingSetup: {
@@ -685,6 +691,7 @@ export default {
     cvTooLarge: 'That file is too large — the limit is {{mb}}MB.',
 
     pickCategory: 'Pick a job field first.',
+    required: 'Required',
     startFailed: "Couldn't start the interview. Check your connection and try again.",
     defaultCategoryName: 'Interview',
 
@@ -738,6 +745,19 @@ export default {
     },
   },
 
+  /**
+   * Push notifications. `channelDefault` / `channelDefaultHint` are read by
+   * Android's own notification settings for the app, not by any screen here —
+   * they are the only strings in this file the OS renders on our behalf.
+   */
+  push: {
+    channelDefault: 'Interprova alerts',
+    channelDefaultHint: 'Your evaluation results, your minute balance, and app news.',
+    askTitle: 'Tell you when your evaluation is ready?',
+    askBody: 'One notification when your interview evaluation is ready, and a heads-up before your minutes run out. No marketing.',
+    askAccept: 'Turn on notifications',
+    askLater: 'Not now',
+  },
   settings: {
     title: 'Settings', language: 'Language', notifications: 'Notifications',
     darkMode: 'Dark mode', system: 'System', light: 'Light', dark: 'Dark',
@@ -748,6 +768,13 @@ export default {
     themeHint: '"System" follows your device settings automatically.',
     languageHint: 'You may need to reopen the app for the writing direction to fully change.',
     languages: { ar: 'العربية', en: 'English' },
+
+    pushEnabled: 'Notifications',
+    pushEnabledHint: 'An alert when your evaluation is ready or your balance runs low',
+    pushBlockedTitle: 'Notifications are turned off in system settings',
+    pushBlockedBody: 'You previously turned notifications off for Interprova, and they cannot be turned back on from inside the app. Open your system settings and allow notifications.',
+    pushOpenSettings: 'Open system settings',
+    pushFailed: 'Could not turn notifications on right now. Check your connection and try again.',
 
     notifyPractice: 'Daily practice reminder',
     notifyPracticeHint: 'One nudge a day about your session',
@@ -772,10 +799,11 @@ export default {
     deleteConfirmBody: 'We will send a deletion request to support and erase your data within 48 hours. This cannot be undone.',
     deleteConfirmCta: 'Send deletion request',
     deletePasswordPrompt: 'Enter your password to confirm. Deletion is permanent and cannot be undone.',
+    deleteNoPasswordPrompt: "Your account is linked to Google and has no password. Press 'Delete permanently' to confirm deleting it and all your data.",
     deletePasswordRequired: 'Enter your password first.',
     deleteWrongPassword: 'That password is not correct.',
     deleteFailed: 'Could not delete your account. Please try again.',
-    deleteRequestSubject: 'Account deletion request — Thiqty',
+    deleteRequestSubject: 'Account deletion request — Interprova',
     deleteRequestBody: 'Please delete my account and all data associated with it.\n\nRegistered email: {{email}}',
 
     support: 'Support and contact',

@@ -1,10 +1,12 @@
-# ثقتي (Thiqty) — Handover
+# Interprova — Handover
 
-Arabic-first AI interview coach, branded **ثقتي / Thiqty**. Landing page +
+Arabic-first AI interview coach, branded **Interprova** (formerly ثقتي / Thiqty — see
+release/RELEASE-INTERPROVA-1.0.0.md for what the rename touched and why the package id
+changed). Landing page +
 Expo web/Android app + admin dashboard + Express API, all served by one Node
 process on Hostinger.
 
-Android package: `com.thiqty.app` · Expo slug: `thiqty`
+Android package: `com.interprova.app` · Expo slug: `interprova`
 
 **Live:** https://interview.khaledahmed.net
 
@@ -171,8 +173,8 @@ build script missed silently. That replacement is now a structural regex with an
 
 ```bash
 BT=/f/android-toolchain/sdk/build-tools/36.0.0
-"$BT/apksigner.bat" verify --print-certs release/thiqty-v1.0.0.apk | grep -E "DN|SHA-1"
-"$BT/aapt2.exe" dump badging release/thiqty-v1.0.0.apk | grep -E "^package|application-label"
+"$BT/apksigner.bat" verify --print-certs release/interprova-app-release.apk | grep -E "DN|SHA-1"
+"$BT/aapt2.exe" dump badging release/interprova-app-release.apk | grep -E "^package|application-label"
 ```
 
 The SHA-1 must equal the keystore's, and the DN must read
@@ -187,8 +189,8 @@ bundle. It didn't. Search for the UTF-16 encoding instead:
 
 ```python
 raw = open('index.android.bundle','rb').read()
-'ثقتي'.encode('utf-16-le') in raw   # True
-'ثقتي'.encode('utf-8')     in raw   # False — means nothing
+'مقابلة'.encode('utf-16-le') in raw   # True
+'مقابلة'.encode('utf-8')     in raw   # False — means nothing
 ```
 
 ### Brand assets

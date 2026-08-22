@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "ثقتي",
-    "slug": "thiqty",
-    "version": "1.1.0",
+    "name": "Interprova",
+    "slug": "interprova",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "thiqty",
+    "scheme": "interprova",
     "userInterfaceStyle": "automatic",
     "primaryColor": "#2D73FD",
     "splash": {
@@ -18,7 +18,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.thiqty.app",
+      "bundleIdentifier": "com.interprova.app",
       "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "نحتاج الميكروفون لتسجيل إجاباتك أثناء المقابلة التدريبية.",
@@ -27,8 +27,9 @@
       }
     },
     "android": {
-      "package": "com.thiqty.app",
-      "versionCode": 4,
+      "package": "com.interprova.app",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2D73FD",
@@ -40,7 +41,8 @@
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",
         "CAMERA",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -48,7 +50,9 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.READ_MEDIA_AUDIO"
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"
       ],
       "softwareKeyboardLayoutMode": "pan",
       "allowBackup": false
@@ -56,13 +60,13 @@
     "web": {
       "bundler": "metro",
       "output": "single",
-      "name": "ثقتي — Thiqty",
-      "shortName": "ثقتي",
+      "name": "Interprova",
+      "shortName": "Interprova",
       "lang": "ar",
       "themeColor": "#2D73FD",
       "backgroundColor": "#F7F9FC",
       "favicon": "./assets/favicon.png",
-      "description": "ثقتي — أول مدرّب مقابلات عربي بالذكاء الاصطناعي. تدرّب، اتقيّم، واتوظّف."
+      "description": "Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي بالعربية والإنجليزية."
     },
     "plugins": [
       "expo-localization",
@@ -79,16 +83,16 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "يستخدم \"ثقتي\" الكاميرا لعرض صورتك أثناء المقابلة التدريبية ولتسجيلها لمراجعتك أنت فقط.",
-          "microphonePermission": "يستخدم \"ثقتي\" الميكروفون لسماع إجاباتك أثناء المقابلة وتحويلها إلى نص لتقييمها.",
+          "cameraPermission": "يستخدم \"Interprova\" الكاميرا لعرض صورتك أثناء المقابلة التدريبية ولتسجيلها لمراجعتك أنت فقط.",
+          "microphonePermission": "يستخدم \"Interprova\" الميكروفون لسماع إجاباتك أثناء المقابلة وتحويلها إلى نص لتقييمها.",
           "recordAudioAndroid": true
         }
       ],
       [
         "expo-speech-recognition",
         {
-          "microphonePermission": "يستخدم \"ثقتي\" الميكروفون للتعرّف على إجاباتك أثناء المقابلة.",
-          "speechRecognitionPermission": "يستخدم \"ثقتي\" التعرّف على الكلام لتحويل إجاباتك إلى نص وتقييمها.",
+          "microphonePermission": "يستخدم \"Interprova\" الميكروفون للتعرّف على إجاباتك أثناء المقابلة.",
+          "speechRecognitionPermission": "يستخدم \"Interprova\" التعرّف على الكلام لتحويل إجاباتك إلى نص وتقييمها.",
           "androidSpeechServicePackages": [
             "com.google.android.googlequicksearchbox"
           ]
@@ -97,15 +101,23 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "يحفظ \"ثقتي\" تسجيل مقابلتك في معرض الوسائط لتتمكّن من مراجعته.",
-          "savePhotosPermission": "يحفظ \"ثقتي\" تسجيل مقابلتك في معرض الوسائط.",
+          "photosPermission": "يحفظ \"Interprova\" تسجيل مقابلتك في معرض الوسائط لتتمكّن من مراجعته.",
+          "savePhotosPermission": "يحفظ \"Interprova\" تسجيل مقابلتك في معرض الوسائط.",
           "isAccessMediaLocationEnabled": false
         }
       ],
       [
         "expo-av",
         {
-          "microphonePermission": "يستخدم \"ثقتي\" الميكروفون لقياس مستوى صوتك أثناء المقابلة."
+          "microphonePermission": "يستخدم \"Interprova\" الميكروفون لقياس مستوى صوتك أثناء المقابلة."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/monochrome-icon.png",
+          "color": "#2D73FD",
+          "defaultChannel": "default"
         }
       ],
       "expo-build-properties"

@@ -123,7 +123,7 @@ async function callOpenRouter({ system, user, model, maxTokens = 1024 }) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
       'HTTP-Referer': 'https://intervie-ai-arabia.barmagly.tech',
-      'X-Title': 'Thiqty',
+      'X-Title': 'Interprova',
     },
     body: JSON.stringify({
       model: model || 'meta-llama/llama-3.3-70b-instruct:free',

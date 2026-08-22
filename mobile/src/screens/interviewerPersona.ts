@@ -1,35 +1,51 @@
 /**
  * The two interviewer personas, shared by the setup screen and the call.
  *
- * These colours are *identity*, not theme roles: each one is baked into the
- * DiceBear avatar URL as that avatar's background. If the picker on
- * MeetingSetupScreen and the stage on MeetingScreen disagreed by a single hex
- * digit, the interviewer the candidate chose would visibly change colour
- * between the two screens — which is exactly what happens when the constant is
- * copy-pasted into both files and only one is later edited. Hence one module.
+ * The portrait is a BUNDLED asset, not a URL.
+ *
+ * It used to be a DiceBear SVG fetched from api.dicebear.com at call time.
+ * That was wrong in four separate ways, and only the first one was visible:
+ *
+ *   1. It is line-art. The call screen is a video-call stage — a cartoon in the
+ *      seat where a person should be is the single loudest "this is a toy" cue
+ *      in the product.
+ *   2. It was a third-party request on a metered screen. No network, no face:
+ *      the candidate's paid interview opened with a blank circle.
+ *   3. On native the setup screen never rendered it at all — `<img>` does not
+ *      exist there, so the picker fell back to a coloured initial and the two
+ *      screens disagreed about what the interviewer looked like.
+ *   4. It put a vendor in the data-sharing disclosure to draw a face.
+ *
+ * A `require`d asset has none of those properties: it is in the bundle, it
+ * renders identically on web and device through one `<Image>`, and replacing
+ * the art is a file swap with no code change.
+ *
+ * `color` is still identity rather than a theme role — it is the ring and the
+ * fallback fill, and the picker and the stage must not disagree by a digit.
  */
+
+import type { ImageSourcePropType } from 'react-native';
 
 export type InterviewerGender = 'male' | 'female';
 
-export const PERSONA: Record<InterviewerGender, { seed: string; color: string }> = {
-  female: { seed: 'sara-hr', color: '#E85D75' },
-  male: { seed: 'ahmed-hr', color: '#2D6CE0' },
+interface Persona {
+  /** Ring and fallback fill. Sampled from the portrait's own backdrop. */
+  color: string;
+  portrait: ImageSourcePropType;
+}
+
+export const PERSONA: Record<InterviewerGender, Persona> = {
+  female: {
+    color: '#3A4A78',
+    portrait: require('../../assets/interviewers/sara.png'),
+  },
+  male: {
+    color: '#2E4E80',
+    portrait: require('../../assets/interviewers/ahmed.png'),
+  },
 };
 
-/**
- * DiceBear "personas" — friendly, professional, free, and CORS-clean.
- *
- * Built by string concatenation rather than `URLSearchParams`: this module is
- * imported by screens that also render on native, where React Native's URL
- * polyfill still throws on parts of that API. Every value here is a fixed,
- * URL-safe literal, so there is nothing to escape.
- */
-export function personaAvatarUrl(gender: InterviewerGender): string {
-  const persona = PERSONA[gender];
-  return (
-    'https://api.dicebear.com/7.x/personas/svg'
-    + `?seed=${persona.seed}`
-    + `&backgroundColor=${persona.color.replace('#', '')}`
-    + '&radius=50'
-  );
+/** The portrait to paint for a persona. */
+export function personaPortrait(gender: InterviewerGender): ImageSourcePropType {
+  return PERSONA[gender].portrait;
 }

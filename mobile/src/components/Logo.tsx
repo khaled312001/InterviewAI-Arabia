@@ -1,41 +1,46 @@
 import { useId } from 'react';
-import Svg, { Path, Rect, Defs, LinearGradient, Stop, G } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, G } from 'react-native-svg';
 import { palette } from '../theme/tokens';
 
 interface Props {
   size?: number;
   /**
-   * `onBrand` draws the mark in white for placement on a blue/gradient
-   * surface; `mono` flattens it to a single colour for watermarks.
+   * `onBrand` draws the mark for placement on a blue/gradient surface — the
+   * front bubble goes white while the outline STAYS gold, because flattening
+   * both to white merges them into one shape and loses the idea. `mono` is the
+   * single-colour version for watermarks and Android 13 themed icons, where
+   * only the silhouette survives.
    */
   variant?: 'colour' | 'onBrand' | 'mono';
   monoColor?: string;
 }
 
 /**
- * Thiqty (ثقتي) brand mark — a speech bubble containing three ascending bars.
+ * Interprova brand mark — two overlapping speech bubbles.
  *
- * The bubble is the interview; the bars rising left-to-right are growing
- * confidence, with the tallest in gold as the payoff. Redrawn as vector so it
- * stays sharp at 24px in a tab bar and at 512px on a splash, and so the
- * colours track the design tokens instead of being baked into a PNG.
+ * The one behind is an outline: the rehearsal. The one in front is solid: the
+ * real interview. The offset reads as progress from one to the other, and as
+ * two people in a conversation — which is the product.
  *
- * Geometry is traced from logo/f2286abe (the mark-only artwork) on a 96×96
- * grid. Bar heights are 3 : 5 : 7 — a deliberate, readable progression.
+ * Redrawn as vector rather than shipped as a PNG so it stays sharp at 24px in
+ * a tab bar and at 512px on a splash, and so the colours track the design
+ * tokens instead of being baked in. Geometry is authored on a 96×96 grid to
+ * the proportions of `logo/4349a99f` (the mark-only artwork): the front bubble
+ * covers the back one's lower-right quadrant, and each tail points away from
+ * the overlap so neither is swallowed by it.
  */
 export function Logo({ size = 96, variant = 'colour', monoColor }: Props) {
   // react-native-svg renders into the shared document on web, so two Logos on
   // one screen would collide on a fixed gradient id and the second would
   // inherit the first's fill. useId() namespaces each instance.
-  const gradId = `thiqty-${useId().replace(/:/g, '')}`;
+  const gradId = `interprova-${useId().replace(/:/g, '')}`;
 
   const onBrand = variant === 'onBrand';
   const mono = variant === 'mono';
-  const ink = mono ? (monoColor ?? palette.n900) : onBrand ? '#FFFFFF' : palette.brand700;
 
-  const bars = mono || onBrand
-    ? [ink, ink, ink]
-    : [palette.brand400, palette.brand800, palette.gold500];
+  const ink = monoColor ?? palette.n900;
+  const outline = mono ? ink : palette.gold500;
+  const frontFill = mono ? ink : onBrand ? '#FFFFFF' : `url(#${gradId})`;
 
   return (
     <Svg width={size} height={size} viewBox="0 0 96 96" fill="none">
@@ -47,18 +52,20 @@ export function Logo({ size = 96, variant = 'colour', monoColor }: Props) {
       </Defs>
 
       <G>
-        {/* Speech bubble, stroked — tail at the lower-start edge for RTL. */}
+        {/* The rehearsal — outline only, tail at the lower LEFT, away from the
+            overlap. Drawn first so the solid bubble sits on top of it. */}
         <Path
-          d="M28 12h40c8.8 0 16 7.2 16 16v28c0 8.8-7.2 16-16 16H40L22 88V72h-.5C13.5 72 7 65.5 7 57.5V28c0-8.8 7.2-16 16-16h5Z"
-          stroke={mono || onBrand ? ink : `url(#${gradId})`}
-          strokeWidth={7}
+          d="M21 16H53A11 11 0 0 1 64 27V47A11 11 0 0 1 53 58H30L17 70V58H21A11 11 0 0 1 10 47V27A11 11 0 0 1 21 16Z"
+          stroke={outline}
+          strokeWidth={5.5}
           strokeLinejoin="round"
           fill="none"
         />
-        {/* Ascending bars: 3 : 5 : 7 */}
-        <Rect x="30" y="46" width="10" height="16" rx="5" fill={bars[0]} />
-        <Rect x="45" y="36" width="10" height="26" rx="5" fill={bars[1]} />
-        <Rect x="60" y="26" width="10" height="36" rx="5" fill={bars[2]} />
+        {/* The interview — solid, tail at the lower RIGHT. */}
+        <Path
+          d="M45 36H75A11 11 0 0 1 86 47V86L72 74H45A11 11 0 0 1 34 63V47A11 11 0 0 1 45 36Z"
+          fill={frontFill}
+        />
       </G>
     </Svg>
   );

@@ -52,6 +52,12 @@ const schema = z.object({
   CLAUDE_MODEL: z.string().default('claude-opus-5'),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   GROQ_API_KEY: z.string().optional().default(''),
+
+  // Firebase Cloud Messaging. Base64-encoded service-account JSON — the private
+  // key is multi-line PEM and a .env line cannot hold a newline. Optional: an
+  // unset value means push is off, which every caller already handles.
+  FIREBASE_SERVICE_ACCOUNT_B64: z.string().optional().default(''),
+  PUSH_ENABLED: z.string().optional().default('true'),
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_MODEL: z.string().optional().default(''),
 

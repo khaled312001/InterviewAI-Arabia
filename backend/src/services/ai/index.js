@@ -42,19 +42,95 @@ export class AiUnavailableError extends Error {
  * Provider selection
  * ------------------------------------------------------------------ */
 
-function pickProvider() {
-  if (!cfg('AI_ENABLED')) return null;
-  const preferred = String(cfg('AI_PROVIDER') || 'claude').toLowerCase();
+/** Order of preference when nothing else decides — by evaluation quality. */
+const PROVIDER_ORDER = ['claude', 'gemini', 'groq'];
+
+/**
+ * What each provider is called when nobody named a model for it.
+ *
+ * `AI_MODEL` is a SINGLE setting shared by every provider, which is fine while
+ * only one is ever called and actively harmful the moment failover exists: an
+ * operator who sets it to a Gemini model name — the only sensible thing to do
+ * while Gemini is the provider — has thereby configured the Groq fallback to
+ * request a model Groq has never heard of, so the fallback 400s instantly and
+ * the outage it existed to absorb happens anyway.
+ *
+ * So `AI_MODEL` is honoured for the provider the operator actually chose, and
+ * every OTHER provider is asked for its own default. Claude is absent on
+ * purpose: it reads `CLAUDE_MODEL`, its own setting, so it never collides.
+ */
+const DEFAULT_MODEL = {
+  gemini: 'gemini-flash-latest',
+  groq: 'openai/gpt-oss-120b',
+};
+
+/**
+ * A provider that just failed is skipped for a minute.
+ *
+ * Without this, an exhausted quota is paid for on every single turn: the
+ * preferred provider is tried, waits out its timeout, fails, and only then
+ * does the fallback run — so a candidate mid-interview eats that latency on
+ * every answer for as long as the outage lasts. In-memory on purpose; a
+ * process restart re-probing a provider is the correct behaviour, and this is
+ * a health hint, not state worth a table.
+ */
+const COOLDOWN_MS = 60_000;
+const cooldown = new Map();
+
+/**
+ * The wall-clock budget for trying providers in one call.
+ *
+ * Failover is only an improvement while the candidate is still in the room.
+ * Each provider carries its own timeout and its own retries — Anthropic alone
+ * is 60s x 4 in the worst case — so chaining three of them unbounded would
+ * replace a fast failure with a two-minute silence, which is worse. The first
+ * attempt always runs to completion; this only decides whether there is time
+ * left to try another.
+ */
+const RUN_DEADLINE_MS = 45_000;
+
+function markUnhealthy(provider) {
+  cooldown.set(provider, Date.now() + COOLDOWN_MS);
+}
+
+function isCooling(provider) {
+  const until = cooldown.get(provider);
+  if (!until) return false;
+  if (until <= Date.now()) { cooldown.delete(provider); return false; }
+  return true;
+}
+
+function configuredProviders() {
   const available = {
     claude: claudeConfigured(),
     gemini: geminiConfigured(),
     groq: groqConfigured(),
   };
-  if (available[preferred]) return preferred;
-  // Fall through to any configured provider rather than failing outright —
-  // a degraded answer beats a dead feature. Order is by evaluation quality.
-  for (const p of ['claude', 'gemini', 'groq']) if (available[p]) return p;
-  return null;
+  const preferred = String(cfg('AI_PROVIDER') || 'claude').toLowerCase();
+  const ordered = [
+    ...(available[preferred] ? [preferred] : []),
+    ...PROVIDER_ORDER.filter((p) => p !== preferred && available[p]),
+  ];
+  return ordered;
+}
+
+/**
+ * The providers this call may use, best first.
+ *
+ * Cooling providers go to the BACK rather than out: if every key is unhappy at
+ * once, trying a cooling one is still better than telling the candidate the
+ * interviewer has vanished.
+ */
+function providerCandidates() {
+  if (!cfg('AI_ENABLED')) return [];
+  const ordered = configuredProviders();
+  const warm = ordered.filter((p) => !isCooling(p));
+  const cool = ordered.filter((p) => isCooling(p));
+  return [...warm, ...cool];
+}
+
+function pickProvider() {
+  return providerCandidates()[0] ?? null;
 }
 
 export function aiStatus() {
@@ -64,7 +140,7 @@ export function aiStatus() {
     provider,
     model: provider === 'claude'
       ? cfg('CLAUDE_MODEL')
-      : cfg('AI_MODEL') || (provider === 'gemini' ? 'gemini-flash-latest' : 'llama-3.3-70b-versatile'),
+      : cfg('AI_MODEL') || DEFAULT_MODEL[provider] || provider,
   };
 }
 
@@ -101,37 +177,72 @@ async function record({ userId, provider, feature, usage, success, errorMessage 
 
 /**
  * Dispatch to the active provider and log the outcome either way.
+ *
+ * Every configured provider is tried, best first, before this gives up. That
+ * matters more than it sounds: `pickProvider` chose by CONFIGURATION, never by
+ * health, so a single exhausted Gemini quota took the flagship live interview
+ * down while a perfectly good Anthropic key sat unused in the same settings
+ * page. The candidate saw "the interviewer is temporarily unavailable" and the
+ * operator saw nothing wrong with their keys, because nothing was.
+ *
+ * Every attempt — including the failed ones — is written to the usage log, so
+ * the admin panel shows which provider actually broke rather than only that
+ * something did.
  */
 async function run({ feature, userId, system, systemExtra, messages, schema, maxTokens, effort }) {
-  const provider = pickProvider();
-  if (!provider) throw new AiUnavailableError('AI is not configured');
+  const candidates = providerCandidates();
+  if (candidates.length === 0) throw new AiUnavailableError('AI is not configured');
 
-  try {
-    const call = { claude: callClaude, gemini: callGemini, groq: callGroq }[provider];
-    const result = provider === 'claude'
-      ? await call({ system, systemExtra, messages, schema, maxTokens, effort })
-      : await call({ system, systemExtra, messages, schema, maxTokens });
+  const preferred = String(cfg('AI_PROVIDER') || 'claude').toLowerCase();
 
-    const cost = await record({ userId, provider, feature, usage: result.usage, success: true });
+  let lastError = null;
+  const startedAt = Date.now();
 
-    return {
-      ...result,
-      provider,
-      costMicroUsd: cost,
-      tokensUsed: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
-    };
-  } catch (err) {
-    logger.error('AI call failed', {
-      feature, provider, code: err.code, message: err.message,
-    });
-    await record({
-      userId, provider, feature,
-      usage: { model: provider === 'claude' ? cfg('CLAUDE_MODEL') : cfg('AI_MODEL') || provider },
-      success: false,
-      errorMessage: err.message,
-    });
-    throw new AiUnavailableError(`AI ${feature} failed: ${err.message}`, err);
+  for (const provider of candidates) {
+    // Never skip the first attempt — there is nothing to fall back to yet.
+    if (lastError && Date.now() - startedAt > RUN_DEADLINE_MS) {
+      logger.warn('AI failover budget spent', { feature, tried: candidates.indexOf(provider) });
+      break;
+    }
+    try {
+      const call = { claude: callClaude, gemini: callGemini, groq: callGroq }[provider];
+      // Only the chosen provider gets to use AI_MODEL; see DEFAULT_MODEL.
+      const override = provider === preferred ? null : DEFAULT_MODEL[provider];
+      const result = provider === 'claude'
+        ? await call({ system, systemExtra, messages, schema, maxTokens, effort })
+        : await call({
+            system, systemExtra, messages, schema, maxTokens,
+            ...(override ? { model: override } : null),
+          });
+
+      const cost = await record({ userId, provider, feature, usage: result.usage, success: true });
+      cooldown.delete(provider);
+
+      return {
+        ...result,
+        provider,
+        costMicroUsd: cost,
+        tokensUsed: (result.usage?.inputTokens || 0) + (result.usage?.outputTokens || 0),
+      };
+    } catch (err) {
+      lastError = err;
+      markUnhealthy(provider);
+      logger.error('AI call failed', {
+        feature, provider, code: err.code, message: err.message,
+      });
+      await record({
+        userId, provider, feature,
+        usage: { model: provider === 'claude' ? cfg('CLAUDE_MODEL') : cfg('AI_MODEL') || provider },
+        success: false,
+        errorMessage: err.message,
+      });
+    }
   }
+
+  throw new AiUnavailableError(
+    `AI ${feature} failed on ${candidates.join(', ')}: ${lastError?.message}`,
+    lastError,
+  );
 }
 
 /* ------------------------------------------------------------------ *

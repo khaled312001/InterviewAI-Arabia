@@ -82,6 +82,16 @@ export const qk = {
   integrations: {
     all: () => ['admin', 'integrations'] as const,
   },
+  /**
+   * Push. `all()` is a real prefix because one send moves two views at once:
+   * it appends to the history and it can retire dead tokens, which changes the
+   * device counts the compose form quotes as its reach.
+   */
+  push: {
+    all: () => ['admin', 'push'] as const,
+    overview: () => ['admin', 'push', 'overview'] as const,
+    notifications: (params: QueryParams) => ['admin', 'push', 'notifications', params] as const,
+  },
   admins: {
     all: () => ['admin', 'admins'] as const,
     list: (params: QueryParams) => ['admin', 'admins', 'list', params] as const,

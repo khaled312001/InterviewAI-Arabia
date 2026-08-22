@@ -12,6 +12,8 @@
  * env-file switch that no admin session can flip.
  */
 
+import type { CredentialGroup } from './api';
+
 export interface CredentialCopy {
   labelAr: string;
   help: string;
@@ -100,6 +102,28 @@ export const CREDENTIAL_COPY: Record<string, CredentialCopy> = {
     help: 'مزوّد احتياطي سريع ومنخفض التكلفة.',
     whereAr: 'console.groq.com ← API Keys',
   },
+
+  /* ---------------------------- الإشعارات ---------------------------- */
+  FIREBASE_SERVICE_ACCOUNT_B64: {
+    labelAr: 'حساب خدمة Firebase (ملف JSON بصيغة Base64)',
+    help:
+      'به يوقّع الخادم طلباته إلى Firebase Cloud Messaging. بدونه لا يصل أي إشعار إلى أي جهاز — '
+      + 'لا البث اليدوي ولا الإشعارات التلقائية، وهذه الأخيرة تفشل بصمت لأن أحدًا لم يطلبها ليلاحظ غيابها.',
+    whereAr:
+      'Firebase Console ← اعدادات المشروع ← حسابات الخدمة ← إنشاء مفتاح خاص جديد، ثم حوّل ملف JSON إلى Base64 والصق الناتج هنا',
+    caution:
+      'هذا المفتاح يسمح بإرسال إشعار إلى كل جهاز مثبّت عليه التطبيق، وما يُرسَل لا يمكن سحبه. لا ترسله في '
+      + 'محادثة ولا تضعه في مستودع كود؛ وإن تسرّب فألغِ المفتاح من Firebase فورًا ثم اضبط مفتاحًا جديدًا هنا.',
+  },
+  PUSH_ENABLED: {
+    labelAr: 'تفعيل الإشعارات',
+    help:
+      'عند الإيقاف يرفض الخادم كل إرسال — البث اليدوي والإشعارات التلقائية معًا (انخفاض الرصيد، '
+      + 'جاهزية التقييم، التذكير بالتجربة). تبقى الأجهزة مسجّلة ويعود الإرسال فور إعادة التفعيل.',
+    caution:
+      'هذا إيقاف عام وليس إيقافًا لنوع واحد. لإسكات إشعار تلقائي بعينه استخدم مفتاحه في صفحة الإعدادات '
+      + 'بدلًا من إيقاف الإشعارات كلّها.',
+  },
 };
 
 export interface CredentialSection {
@@ -110,7 +134,9 @@ export interface CredentialSection {
 }
 
 export interface IntegrationPageSpec {
-  group: 'payments' | 'ai';
+  /** Sourced from api.ts so a group added on the server cannot be typed here
+   *  as a string the credential list will never match. */
+  group: CredentialGroup;
   titleAr: string;
   descriptionAr: string;
   sections: CredentialSection[];
@@ -164,6 +190,29 @@ export const AI_PAGE: IntegrationPageSpec = {
       labelAr: 'الاختيار والنماذج',
       description: 'أي مزوّد يُجرَّب أولًا، وبأي نموذج.',
       keys: ['AI_ENABLED', 'AI_PROVIDER', 'CLAUDE_MODEL', 'AI_MODEL'],
+    },
+  ],
+};
+
+export const PUSH_PAGE: IntegrationPageSpec = {
+  group: 'push',
+  titleAr: 'تكامل الإشعارات — Firebase',
+  descriptionAr: 'مفتاح إرسال الإشعارات إلى الأجهزة، ومفتاح إيقاف الإرسال كلّه.',
+  noteAr:
+    'الأسرار تُخزَّن مشفّرة ولا تُعاد أبدًا من الخادم. ما يُضبط هنا يسري على الإشعارات اليدوية '
+    + 'والتلقائية معًا؛ ولمتابعة ما أُرسل فعليًا وإلى كم جهاز، افتح صفحة «الإشعارات».',
+  sections: [
+    {
+      id: 'credentials',
+      labelAr: 'بيانات الاعتماد',
+      description: 'قيمة سرّية. تُكتب ولا تُقرأ.',
+      keys: ['FIREBASE_SERVICE_ACCOUNT_B64'],
+    },
+    {
+      id: 'delivery',
+      labelAr: 'الإرسال',
+      description: 'مفتاح إيقاف عام يسبق أي إرسال.',
+      keys: ['PUSH_ENABLED'],
     },
   ],
 };

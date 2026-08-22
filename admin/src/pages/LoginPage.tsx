@@ -131,7 +131,7 @@ export function LoginPage() {
           />
           <Stack gap={1.5} sx={{ position: 'relative' }}>
             <Typography variant="h2" sx={{ fontWeight: 800, letterSpacing: 0 }}>
-              ثقتي
+              Interprova
             </Typography>
             <Typography sx={{ opacity: 0.85, fontSize: 18 }}>
               لوحة تحكم المشرفين
@@ -183,7 +183,7 @@ export function LoginPage() {
           <Stack gap={0.5} sx={{ mb: 3 }}>
             {!wide && (
               <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                ثقتي
+                Interprova
               </Typography>
             )}
             <Typography variant="h6" sx={{ fontWeight: 700 }}>

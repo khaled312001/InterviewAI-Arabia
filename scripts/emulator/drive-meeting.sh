@@ -39,15 +39,15 @@ typeInto() {
 }
 
 echo "== reset & permissions =="
-"$ADB" shell pm clear com.thiqty.app >/dev/null 2>&1
-for p in CAMERA RECORD_AUDIO; do "$ADB" shell pm grant com.thiqty.app android.permission.$p >/dev/null 2>&1; done
-"$ADB" shell monkey -p com.thiqty.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+"$ADB" shell pm clear com.interprova.app >/dev/null 2>&1
+for p in CAMERA RECORD_AUDIO; do "$ADB" shell pm grant com.interprova.app android.permission.$p >/dev/null 2>&1; done
+"$ADB" shell monkey -p com.interprova.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
 sleep 15; shot onboarding
 
 echo "== sign in =="
 tapNode 'content-desc="لديّ حساب بالفعل"' 4
-typeInto "البريد الإلكتروني" "reviewer@thiqty.app"
-typeInto "كلمة المرور" "ThiqtyReview#2026"
+typeInto "البريد الإلكتروني" "reviewer@interprova.app"
+typeInto "كلمة المرور" "InterprovaReview#2026"
 shot login-filled
 tapNode 'content-desc="تسجيل الدخول"' 12
 shot home

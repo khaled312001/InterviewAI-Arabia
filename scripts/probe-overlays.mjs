@@ -24,7 +24,7 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((r) => server.listen(PORT, r));
 
-const ADMIN = { id: 'adm_1', email: 'super@thiqty.app', name: 'خالد أحمد', role: 'super_admin' };
+const ADMIN = { id: 'adm_1', email: 'super@interprova.app', name: 'خالد أحمد', role: 'super_admin' };
 const CAT = { id: 1, nameAr: 'الهندسة البرمجية', nameEn: 'Software Engineering', icon: '💻', isPremium: false };
 const USERS = [{ id: 'usr_0001', email: 'candidate1@example.com', name: 'أحمد محمد', phone: null, language: 'ar', plan: 'free', dailyQuestionsUsed: 1, lastResetDate: null, premiumUntil: null, isDisabled: false, emailVerifiedAt: null, lastLoginAt: new Date().toISOString(), createdAt: new Date().toISOString() }];
 

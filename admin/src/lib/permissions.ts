@@ -17,6 +17,7 @@ export type Action =
   | 'reports.read' | 'reports.resolve'
   | 'settings.read' | 'settings.write'
   | 'integrations.read' | 'integrations.write'
+  | 'push.read' | 'push.send'
   | 'admins.read' | 'admins.write'
   | 'audit.read'
   | 'analytics.read';
@@ -65,6 +66,11 @@ const MATRIX: Record<Action, AdminRole[]> = {
   'settings.write': ['super_admin'],
   'integrations.read': ['super_admin'],
   'integrations.write': ['super_admin'],
+  // Every /admin/push/* route is requireAdmin('super_admin'). Reading is as
+  // narrow as sending because the history carries the copy of every message the
+  // product ever pushed, including the per-user ones.
+  'push.read': ['super_admin'],
+  'push.send': ['super_admin'],
   'admins.read': ['super_admin'],
   'admins.write': ['super_admin'],
   'audit.read': ['super_admin'],

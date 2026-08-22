@@ -50,7 +50,7 @@ function SidebarContent({ rail, onNavigate, onToggleRail, badges }: SidebarConte
           })}
         >
           <Typography variant="subtitle2" sx={{ fontWeight: 800, lineHeight: 1 }} noWrap>
-            ثقتي
+            Interprova
           </Typography>
           <Typography variant="caption" color="text.secondary" noWrap>
             لوحة التحكم

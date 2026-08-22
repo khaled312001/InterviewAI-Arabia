@@ -34,7 +34,7 @@ import { logger } from '../../utils/logger.js';
 import { HttpError } from '../../utils/asyncHandler.js';
 import {
   CFG, lockUser, chargeLocked, refundLocked, availableSeconds, validSubSeconds,
-  hasPremium, quotaError, toMinutes, ensureTrialGranted,
+  hasPremium, quotaError, toMinutes, ensureTrialGranted, notifyLowBalanceOnCrossing,
 } from './minutes.js';
 import { ensureCurrentCycle } from './cycles.js';
 
@@ -240,17 +240,34 @@ async function topUpHoldLocked(tx, state, meeting, now) {
 }
 
 /**
- * What the client is told after every tick and turn.
+ * Everything the user can still spend IN THIS MEETING: both buckets, minus the
+ * reservations of any *other* live meeting, minus what this meeting has accrued
+ * and not yet paid for. Holds are not spends, so this meeting's own reservation
+ * is not subtracted twice.
  *
- * `remainingSeconds` is everything the user can still spend IN THIS MEETING:
- * both buckets, minus the reservations of any *other* live meeting, minus what
- * this meeting has accrued and not yet paid for. Holds are not spends, so this
- * meeting's own reservation is not subtracted twice.
+ * Split out of billingView() rather than inlined twice, because the low-balance
+ * edge below compares this number from before the accrual against the one
+ * after it, and an edge computed from two subtly different formulas fires on
+ * crossings that never happened.
+ *
+ * DELIBERATELY INVARIANT ACROSS SETTLEMENT: settling moves seconds out of the
+ * buckets and releases the same number from the hold, so `spendable` and
+ * `unsettled` fall together and this total does not move. Only ACCRUAL moves
+ * it — which is what makes it the right quantity to detect a crossing on, and
+ * `availableSeconds()` the wrong one: that number barely twitches when a
+ * meeting settles, so an edge built on it would never fire mid-interview.
  */
-function billingView(state, meeting, now, extra = {}) {
+function remainingFor(state, meeting, now) {
   const othersHeld = Math.max(0, state.heldSeconds - meeting.heldSeconds);
   const spendable = validSubSeconds(state, now) + clamp0(state.balanceSeconds);
-  const remaining = Math.max(0, spendable - othersHeld - unsettled(meeting));
+  return Math.max(0, spendable - othersHeld - unsettled(meeting));
+}
+
+/**
+ * What the client is told after every tick and turn.
+ */
+function billingView(state, meeting, now, extra = {}) {
+  const remaining = remainingFor(state, meeting, now);
   const lowWater = CFG.lowWater();
   return {
     meetingId: meeting.id.toString(),
@@ -431,7 +448,12 @@ export async function startMeeting({ userId, categoryId, client, installId, resu
 export async function advanceMeeting(meetingId, userId, {
   isTurn = false, now = new Date(),
 } = {}) {
-  return prisma.$transaction(async (tx) => {
+  // Recorded under the lock, acted on only after the commit — a push must not
+  // be awaited inside a transaction, and a push for an accrual that then rolled
+  // back is a lie. See notifyLowBalanceOnCrossing() in minutes.js.
+  let crossing = null;
+
+  const out = await prisma.$transaction(async (tx) => {
     // User first, then meeting. See the note on lockMeeting().
     let state = await lockUser(tx, userId);
 
@@ -440,6 +462,11 @@ export async function advanceMeeting(meetingId, userId, {
     if (meeting.status !== 'live') throw meetingExpired();
 
     const premium = hasPremium(state, now);
+
+    // Read BEFORE the accrual below moves it: this is the "was above" half of
+    // the low-balance edge, and it has to come off the same locked rows the
+    // "now below" half is computed from.
+    const remainingBefore = remainingFor(state, meeting, now);
 
     const delta = elapsed(meeting.lastTickAt, now);
     const chargeable = billableGap(meeting, delta);
@@ -504,6 +531,8 @@ export async function advanceMeeting(meetingId, userId, {
       premium,
     });
 
+    crossing = { before: remainingBefore, after: billing.remainingSeconds };
+
     // Mark the closing turn. The NEXT /turn refuses — this one is granted, and
     // is allowed to overdraft by up to the turn floor. Thirty seconds of
     // goodwill costs about half an Egyptian pound and buys a closing sentence
@@ -518,6 +547,9 @@ export async function advanceMeeting(meetingId, userId, {
 
     return { meeting, billing, state };
   });
+
+  if (crossing) notifyLowBalanceOnCrossing(userId, crossing.before, crossing.after);
+  return out;
 }
 
 /**
@@ -555,14 +587,22 @@ export async function endMeeting(meetingId, userId, { reason = 'user_ended', ses
   }))?.userId;
   if (!owner) return null;
 
-  return prisma.$transaction(async (tx) => {
+  // As in advanceMeeting(): recorded under the lock, sent after the commit.
+  let crossing = null;
+
+  const out = await prisma.$transaction(async (tx) => {
     let state = await lockUser(tx, owner);
 
     const meeting = await lockMeeting(tx, meetingId);
     if (!meeting) return null;
     if (String(meeting.userId) !== String(owner)) return null;
 
+    // Only the live branch bills anything, so only it can cross the mark.
+    let remainingBefore = null;
+
     if (meeting.status === 'live') {
+      remainingBefore = remainingFor(state, meeting, now);
+
       // Bill the final partial interval under the same gap rule, so an app
       // that was closed cleanly is charged for the seconds it actually used.
       const delta = elapsed(meeting.lastTickAt, now);
@@ -606,8 +646,18 @@ export async function endMeeting(meetingId, userId, { reason = 'user_ended', ses
       meeting.sessionId = sessionId;
     }
 
-    return { meeting, billing: billingView(state, meeting, now), state };
+    const billing = billingView(state, meeting, now);
+    if (remainingBefore !== null) {
+      crossing = { before: remainingBefore, after: billing.remainingSeconds };
+    }
+    return { meeting, billing, state };
   });
+
+  // The sweeper reaches this for many users at once, and that is not a blast:
+  // the edge is per user and per descent, so a sweep of two hundred abandoned
+  // meetings notifies only the handful that actually ran their balance down.
+  if (crossing) notifyLowBalanceOnCrossing(owner, crossing.before, crossing.after);
+  return out;
 }
 
 /* ------------------------------------------------------------------ *
