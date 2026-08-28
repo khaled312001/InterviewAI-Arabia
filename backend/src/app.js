@@ -34,6 +34,7 @@ import meetingRoutes from './routes/meeting.js';
 import ttsRoutes from './routes/tts.js';
 import paymentRoutes from './routes/payments.js';
 import cronRoutes from './routes/cron.js';
+import contactRoutes from './routes/contact.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.resolve(__dirname, '..', 'public');
@@ -162,6 +163,7 @@ export function createApp() {
   app.use('/api/payments', paymentRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/cron', cronRoutes);
+  app.use('/api/contact', contactRoutes);
 
   // Anything else under /api is a 404 as JSON — never fall through to the SPA
   // shell, which would return 200 + HTML to a broken API call and make client

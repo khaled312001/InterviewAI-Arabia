@@ -1,0 +1,583 @@
+/* ── Design tokens: mirrored from mobile/src/theme/tokens.ts so the landing
+      page and the app are visibly the same product.
+
+      THEMING CONTRACT
+      1. bare :root is the complete LIGHT palette. Every colour is defined
+         here, so nothing lives only inside a media query.
+      2. the prefers-color-scheme block is guarded with
+         :not([data-theme="light"]) — a reader who forces light wins over a
+         dark OS.
+      3. :root[data-theme="dark"] repeats the same declarations, later in the
+         sheet — a reader who forces dark wins over a light OS.
+      Both overrides are specificity (0,1,1) against :root's (0,1,0), so no
+      !important is needed anywhere. ───────────────────────────────────── */
+:root{
+  /* Raw scale — theme-independent, never overridden. */
+  --brand-50:#EFF5FF; --brand-100:#DBE8FE; --brand-200:#BFD7FE; --brand-400:#609AFA;
+  --brand-500:#2D73FD; --brand-600:#1A56E8; --brand-700:#0736A8; --brand-800:#1E3CAF; --brand-950:#172554;
+  --gold-300:#FCD34D; --gold-400:#FBBF24; --gold-500:#FEAF04; --gold-700:#B45309; --gold-800:#92400E;
+  --green-400:#4ADE80; --green-500:#22C55E; --green-600:#16A34A; --green-700:#15803D; --green-800:#166534;
+  --n-0:#FFFFFF; --n-50:#F7F9FC; --n-100:#EEF2F7; --n-200:#E2E8F0; --n-300:#CBD5E1;
+  --n-400:#94A3B8; --n-500:#64748B; --n-600:#475569; --n-800:#1E293B; --n-900:#0F172A; --n-950:#080D1A;
+
+  /* ── LIGHT theme ──────────────────────────────────────────────────────
+     Designed, not de-saturated: a cool paper ground, pure-white cards so
+     they lift off it, and a slightly bluer band colour so the alternating
+     sections read as deliberate stripes rather than dirty white.
+     Contrast (measured against the surface each token actually sits on):
+       text  #0F172A on #F6F9FD ......... 16.3:1
+       text-2 #475569 on #F6F9FD ......... 7.3:1
+       text-3 #64748B on #F6F9FD ......... 4.8:1
+       primary #1A56E8 on #FFFFFF ........ 5.9:1
+       accent-ink #92400E on #FFFBEB ..... 6.8:1  (gold-500 itself is 1.8:1
+         on white — it is a fill colour only, never a text colour)
+       green-ink #166534 on the green tint 6.3:1
+       #fff on primary-solid #1A56E8 ..... 5.9:1 */
+  --bg:#F6F9FD; --surface:var(--n-0); --surface-alt:#ECF1F9;
+  --text:var(--n-900); --text-2:var(--n-600); --text-3:var(--n-500);
+  --border:#DEE7F2;
+  --primary:var(--brand-600);            /* links, icons, kickers */
+  --primary-solid:var(--brand-600);      /* filled buttons + badges, always on #fff */
+  --primary-solid-h:var(--brand-700);
+  --primary-soft:var(--brand-50);
+  --accent:var(--gold-500);              /* fills and glows only */
+  --accent-ink:var(--gold-800);          /* the readable gold */
+  --accent-soft:#FFFBEB;
+  --green-ink:var(--green-800);          /* green that survives a white page */
+  --tick:var(--green-700);
+  --pill-green:var(--green-700);
+  --muted-ink:var(--n-500);              /* the struck-through plan rows */
+  --grad-a:var(--brand-500); --grad-b:var(--brand-800);
+  --device-a:#2b3648; --device-b:#0d1420;
+
+  --r-sm:12px; --r-md:16px; --r-lg:22px; --r-xl:28px; --r-2xl:36px; --r-pill:999px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+  --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px; --sp-20:80px; --sp-24:96px;
+
+  --shadow-sm:0 2px 8px rgba(15,23,42,.05);
+  --shadow-md:0 6px 20px rgba(15,23,42,.07);
+  --shadow-lg:0 14px 40px rgba(15,23,42,.10);
+  --shadow-xl:0 24px 64px rgba(15,23,42,.13);
+  --shadow-brand:0 16px 44px rgba(37,92,235,.28);
+
+  --maxw:1160px;
+  --font:'Cairo','IBM Plex Sans Arabic','Noto Naskh Arabic',system-ui,-apple-system,'Segoe UI',sans-serif;
+
+  color-scheme:light dark;
+}
+
+/* Dark, when the system asks for it AND the reader has not forced light. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--n-950); --surface:#111C31; --surface-alt:#0B1424;
+    --text:var(--n-50); --text-2:var(--n-300); --text-3:var(--n-400);
+    --border:rgba(148,163,184,.18);
+    --primary:var(--brand-400);
+    --primary-solid:var(--brand-600); --primary-solid-h:var(--brand-500);
+    --primary-soft:rgba(96,154,250,.12);
+    --accent:var(--gold-400); --accent-ink:var(--gold-300); --accent-soft:rgba(251,191,36,.12);
+    --green-ink:var(--green-400); --tick:var(--green-400); --pill-green:var(--green-700);
+    --muted-ink:var(--n-400);
+    --grad-a:var(--brand-400); --grad-b:#A5C8FF;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.4); --shadow-md:0 4px 12px rgba(0,0,0,.45);
+    --shadow-lg:0 8px 24px rgba(0,0,0,.5); --shadow-xl:0 16px 48px rgba(0,0,0,.55);
+  }
+}
+/* Dark, forced by the reader — identical declarations, later in the sheet so
+   it also beats a light OS. Keep the two blocks in sync. */
+:root[data-theme="dark"]{
+  --bg:var(--n-950); --surface:#111C31; --surface-alt:#0B1424;
+  --text:var(--n-50); --text-2:var(--n-300); --text-3:var(--n-400);
+  --border:rgba(148,163,184,.18);
+  --primary:var(--brand-400);
+  --primary-solid:var(--brand-600); --primary-solid-h:var(--brand-500);
+  --primary-soft:rgba(96,154,250,.12);
+  --accent:var(--gold-400); --accent-ink:var(--gold-300); --accent-soft:rgba(251,191,36,.12);
+  --green-ink:var(--green-400); --tick:var(--green-400); --pill-green:var(--green-700);
+  --muted-ink:var(--n-400);
+  --grad-a:var(--brand-400); --grad-b:#A5C8FF;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.4); --shadow-md:0 4px 12px rgba(0,0,0,.45);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.5); --shadow-xl:0 16px 48px rgba(0,0,0,.55);
+}
+/* UA widgets — scrollbars, form controls, the canvas behind the page — must
+   follow the forced choice too, or they fight the palette. */
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+body{
+  margin:0;font-family:var(--font);background:var(--bg);color:var(--text);
+  line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+img,svg{max-width:100%;height:auto;display:block}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{margin:0;line-height:1.3;letter-spacing:-.02em;font-weight:800}
+p{margin:0}
+ul{margin:0;padding:0;list-style:none}
+:focus-visible{outline:3px solid var(--primary);outline-offset:3px;border-radius:6px}
+
+/* ── Bilingual switching — the same mechanism as privacy.html / terms.html.
+      Arabic is the document default and is what a reader with JavaScript
+      disabled sees; nothing is hidden behind script.
+      NOTE: display:revert rolls back to the UA value, so a [data-l] wrapper
+      must never be an element whose display comes from author CSS. Every
+      wrapper below is a plain <span>/<div>/<p>. ────────────────────────── */
+[data-l]{display:none}
+html[lang="ar"] [data-l="ar"]{display:revert}
+html[lang="en"] [data-l="en"]{display:revert}
+
+.skip{position:absolute;inset-inline-start:-9999px;top:0;background:var(--primary-solid);color:#fff;padding:12px 20px;z-index:200;border-radius:0 0 var(--r-md) 0}
+.skip:focus{inset-inline-start:0}
+
+.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5)}
+.section{padding-block:var(--sp-24)}
+@media (max-width:768px){.section{padding-block:var(--sp-16)}}
+
+/* ── Inner pages ────────────────────────────────────────────────────
+   Everything below is used only by the generated pages (features, pricing,
+   how-it-works, blog, faq, about, contact). It lives in the homepage's sheet
+   because scripts/build-site.mjs lifts this <style> block verbatim — one
+   stylesheet, one place to change a colour. */
+
+/* Page masthead. Shorter than the homepage hero: an inner page has to get out
+   of the way of its own content. */
+.phero{padding-block:var(--sp-16) var(--sp-10);text-align:center;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--primary) 7%,transparent),transparent)}
+.phero h1{font-size:clamp(30px,4.6vw,50px);font-weight:900;letter-spacing:-.035em;line-height:1.12;margin-bottom:var(--sp-4)}
+.phero p{color:var(--text-2);font-size:clamp(15px,1.8vw,18px);line-height:1.85;max-width:62ch;margin-inline:auto}
+@media (max-width:768px){.phero{padding-block:var(--sp-10) var(--sp-6)}}
+
+/* Long-form text. `max-width` is in ch so the measure stays ~70 characters at
+   any font size — the single biggest lever on whether an article gets read. */
+.prose{max-width:70ch;margin-inline:auto;font-size:16.5px;line-height:2}
+.prose h2{font-size:clamp(21px,2.6vw,28px);font-weight:800;letter-spacing:-.02em;margin:var(--sp-10) 0 var(--sp-3)}
+.prose h3{font-size:clamp(17px,2vw,21px);font-weight:800;margin:var(--sp-7) 0 var(--sp-2)}
+.prose p{color:var(--text-2);margin-bottom:var(--sp-4)}
+.prose ul,.prose ol{color:var(--text-2);margin:0 var(--sp-5) var(--sp-5) 0;display:grid;gap:var(--sp-2)}
+.prose li{padding-inline-start:var(--sp-1)}
+.prose strong{color:var(--text);font-weight:700}
+.prose blockquote{margin:var(--sp-6) 0;padding:var(--sp-4) var(--sp-5);border-inline-start:3px solid var(--primary);
+  background:var(--surface-alt);border-radius:var(--r-md);color:var(--text-2)}
+
+/* Article cards on the blog index. */
+.posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--sp-5)}
+.post{display:flex;flex-direction:column;gap:var(--sp-2);background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:var(--sp-6);text-decoration:none;color:inherit;
+  transition:transform .18s,box-shadow .18s,border-color .18s}
+.post:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:color-mix(in srgb,var(--primary) 40%,var(--border))}
+.post h3{font-size:18px;font-weight:800;line-height:1.5}
+.post p{color:var(--text-2);font-size:14.5px;line-height:1.8}
+.post .meta{color:var(--text-3);font-size:12.5px;font-weight:600}
+
+/* Disclosure FAQ. <details> gives keyboard and screen-reader behaviour for
+   free; a div-and-JS accordion has to reimplement all of it and usually does
+   not. */
+.qa{max-width:78ch;margin-inline:auto;display:grid;gap:var(--sp-3)}
+.qa details{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+.qa summary{cursor:pointer;padding:var(--sp-4) var(--sp-5);font-weight:700;font-size:15.5px;
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);list-style:none}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::after{content:"+";font-size:20px;font-weight:800;color:var(--primary);flex:0 0 auto;transition:transform .2s}
+.qa details[open] summary::after{transform:rotate(45deg)}
+.qa .a{padding:0 var(--sp-5) var(--sp-5);color:var(--text-2);font-size:15px;line-height:1.9}
+
+/* Contact form. */
+.form{max-width:44rem;margin-inline:auto;display:grid;gap:var(--sp-4)}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+@media (max-width:620px){.form .row{grid-template-columns:1fr}}
+.form label{display:block;font-size:13.5px;font-weight:700;margin-bottom:6px}
+.form input,.form textarea,.form select{width:100%;padding:13px 15px;font:inherit;font-size:15px;color:var(--text);
+  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r-md);outline:none;
+  transition:border-color .18s}
+.form input:focus,.form textarea:focus,.form select:focus{border-color:var(--primary)}
+.form textarea{min-height:150px;resize:vertical}
+.form .note{font-size:13px;color:var(--text-3);line-height:1.75}
+.form-msg{display:none;padding:13px 15px;border-radius:var(--r-md);font-size:14.5px;line-height:1.7}
+.form-msg.show{display:block}
+.form-msg.ok{background:rgba(21,128,61,.10);color:var(--green-ink);border:1px solid rgba(21,128,61,.28)}
+.form-msg.err{background:rgba(220,38,38,.10);color:#DC2626;border:1px solid rgba(220,38,38,.28)}
+
+/* Two-column "what this is / who it is for" blocks. */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-8);align-items:start}
+@media (max-width:860px){.split{grid-template-columns:1fr;gap:var(--sp-6)}}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.hdr{position:sticky;top:0;z-index:100;backdrop-filter:saturate(180%) blur(14px);
+  -webkit-backdrop-filter:saturate(180%) blur(14px);
+  background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid transparent;transition:border-color .2s}
+.hdr.scrolled{border-bottom-color:var(--border)}
+/* Wraps rather than overflows: the row now carries two pill switchers as well
+   as the two CTAs, which does not fit a 360px phone on one line. */
+.hdr-in{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+  min-height:68px;flex-wrap:wrap;padding-block:8px}
+.brand{display:flex;align-items:center;gap:var(--sp-3);font-weight:900;font-size:18px}
+.brand-alt{color:var(--text-3);font-weight:600;font-size:15px}
+.brand-mark{width:38px;height:38px;border-radius:11px;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--brand-500),var(--brand-800));
+  display:grid;place-items:center;color:#fff;font-size:19px;box-shadow:var(--shadow-brand)}
+.nav{display:flex;align-items:center;gap:var(--sp-5)}
+.nav a{color:var(--text-2);font-size:15px;font-weight:600;transition:color .15s}
+.nav a:hover{color:var(--primary)}
+/* Raised from 900px: the row now also carries two switchers, and Arabic sets
+   wider than English — below this the nav would push the header to two rows. */
+@media (max-width:1080px){.nav{display:none}}
+/* The switchers live here, NOT inside .nav — .nav is display:none on mobile
+   and a hidden language control would be a trap. */
+.hdr-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Phones: the row carries brand + two switchers + two CTAs, which cannot fit.
+   The login link goes (the primary CTA lands on the same /app), the Latin half
+   of the wordmark goes, and the pills tighten — enough to keep the sticky
+   header to two rows at 360px instead of three. */
+/* Scoped through .hdr-tools so these beat the .toggle.pill-sm base rules,
+   which are declared further down the sheet, next to the plan cards. The
+   .toggle component now has exactly two users — language and theme; the
+   pricing switcher it was first written for went with the yearly plan. */
+@media (max-width:520px){
+  .hdr-tools .btn-ghost{display:none}
+  .brand .brand-alt{display:none}
+  .hdr-tools .btn-sm{padding-inline:var(--sp-3);font-size:14px}
+  .hdr-tools .toggle.pill-sm button{font-size:12px;padding:5px 9px}
+  .hdr-tools .toggle.theme-pill button{padding:5px 7px}
+  .hdr-tools .toggle.theme-pill .icon{width:16px;height:16px}
+}
+@media (max-width:400px){
+  .hdr-tools .toggle.pill-sm button{font-size:11.5px;padding:5px 7px}
+  .hdr-tools .toggle.theme-pill button{padding:5px 6px}
+}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+  height:48px;padding-inline:var(--sp-6);border-radius:var(--r-md);border:0;cursor:pointer;
+  font-family:inherit;font-size:16px;font-weight:700;transition:transform .15s,box-shadow .15s,background .15s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--primary-solid);color:#fff;box-shadow:var(--shadow-brand)}
+.btn-primary:hover{background:var(--primary-solid-h)}
+.btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border)}
+.btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
+.btn-lg{height:56px;padding-inline:var(--sp-8);font-size:17px}
+.btn-sm{height:42px;padding-inline:var(--sp-4);font-size:14.5px}
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+.hero{position:relative;padding-block:var(--sp-20) var(--sp-24);overflow:hidden}
+.hero-glow{position:absolute;inset:0;pointer-events:none;z-index:0}
+.hero-glow::before,.hero-glow::after{content:'';position:absolute;border-radius:50%;filter:blur(90px);opacity:.5}
+.hero-glow::before{width:520px;height:520px;background:var(--brand-400);top:-220px;inset-inline-end:-120px}
+.hero-glow::after{width:400px;height:400px;background:var(--gold-400);bottom:-200px;inset-inline-start:-100px;opacity:.28}
+.hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;gap:var(--sp-16);align-items:center}
+@media (max-width:960px){.hero-grid{grid-template-columns:1fr;gap:var(--sp-12)}}
+
+.eyebrow{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--accent-soft);
+  color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
+  padding:7px 15px;border-radius:var(--r-pill);font-size:13.5px;font-weight:700;margin-bottom:var(--sp-5)}
+.hero h1{font-size:clamp(38px,6.2vw,72px);font-weight:900;letter-spacing:-.042em;line-height:1.08;margin-bottom:var(--sp-5)}
+/* Tokenised, so the headline gradient follows a FORCED theme too — it used to
+   have its own prefers-color-scheme rule that an attribute cannot reach. */
+.hero h1 .grad{background:linear-gradient(120deg,var(--grad-a),var(--grad-b) 70%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lede{font-size:clamp(17px,2.1vw,20px);color:var(--text-2);max-width:56ch;margin-bottom:var(--sp-8)}
+.hero-cta{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-bottom:var(--sp-6)}
+.hero-note{display:flex;flex-wrap:wrap;gap:var(--sp-5);color:var(--text-3);font-size:14px}
+.hero-note > span{display:inline-flex;align-items:center;gap:6px}
+
+/* Phone mockup — pure CSS/SVG, no image request on the critical path. */
+.phone{position:relative;margin-inline:auto;width:300px;max-width:100%;
+  border-radius:44px;padding:11px;background:linear-gradient(160deg,var(--device-a),var(--device-b));
+  box-shadow:var(--shadow-xl),0 0 0 1px rgba(255,255,255,.06) inset}
+.phone-screen{border-radius:34px;background:var(--surface);overflow:hidden;aspect-ratio:9/19}
+.phone-notch{position:absolute;top:11px;left:50%;transform:translateX(-50%);
+  width:112px;height:26px;background:var(--device-b);border-radius:0 0 16px 16px;z-index:2}
+.ps-hd{background:linear-gradient(150deg,var(--brand-600),var(--brand-800));
+  padding:34px var(--sp-4) var(--sp-5);color:#fff}
+.ps-hd .row{display:flex;align-items:center;gap:10px}
+.ps-av{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);
+  display:grid;place-items:center;font-weight:800;font-size:14px}
+.ps-hd small{opacity:.75;font-size:10.5px;display:block;line-height:1.4}
+.ps-hd b{font-size:13.5px}
+.ps-quota{margin-top:var(--sp-4);background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);
+  border-radius:13px;padding:11px;display:flex;align-items:center;gap:9px}
+.ps-quota .ico{width:30px;height:30px;border-radius:9px;background:rgba(251,191,36,.24);display:grid;place-items:center;font-size:14px}
+.ps-body{padding:var(--sp-4);display:grid;gap:11px}
+.ps-card{background:var(--surface-alt);border:1px solid var(--border);border-radius:14px;padding:12px}
+.ps-q{font-size:11.5px;color:var(--text-2);line-height:1.65}
+.ps-score{display:flex;align-items:center;gap:11px}
+.ring{width:52px;height:52px;flex:0 0 auto;border-radius:50%;display:grid;place-items:center;
+  font-weight:900;font-size:16px;color:var(--green-ink);
+  background:conic-gradient(var(--green-500) 0 82%,color-mix(in srgb,var(--green-500) 18%,transparent) 82% 100%)}
+.ring i{width:40px;height:40px;border-radius:50%;background:var(--surface-alt);display:grid;place-items:center;font-style:normal}
+.ps-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tag{font-size:9.5px;font-weight:700;padding:3px 8px;border-radius:var(--r-pill)}
+.tag.g{background:rgba(34,197,94,.14);color:var(--green-ink)}
+.tag.a{background:var(--accent-soft);color:var(--accent-ink)}
+
+/* Real product screenshots. Framed in a device-ish shell so a flat PNG
+   still reads as "this is the app", without pretending to be a mockup. */
+.brand-logo{width:40px;height:auto;flex:0 0 auto}
+.shot-hero{position:relative;margin-inline:auto;width:300px;max-width:78vw;
+  border-radius:38px;padding:9px;background:linear-gradient(160deg,var(--device-a),var(--device-b));
+  box-shadow:var(--shadow-xl),0 0 0 1px rgba(255,255,255,.06) inset}
+.shot-hero img{border-radius:30px;display:block;width:100%;height:auto}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6);align-items:start}
+@media (max-width:820px){.shots{grid-template-columns:1fr;max-width:320px;margin-inline:auto}}
+.shot{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:var(--sp-5);text-align:center;box-shadow:var(--shadow-sm)}
+.shot img{border-radius:var(--r-lg);border:1px solid var(--border);width:100%;height:auto;margin-bottom:var(--sp-4)}
+.shot h3{font-size:16.5px;margin-bottom:var(--sp-2)}
+.shot p{color:var(--text-2);font-size:14.5px}
+/* The meeting walkthrough packs eight steps in, so its cards are denser than
+   the three-up gallery and carry an ordinal the eye can follow. */
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-5);align-items:start}
+@media (max-width:1040px){.flow{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.flow{grid-template-columns:1fr;max-width:320px;margin-inline:auto}}
+/* text-align:start, not right — under dir=ltr a physical `right` would leave
+   these eight cards right-aligned on a left-aligned page. */
+.flow .shot{padding:var(--sp-4);position:relative;text-align:start}
+.flow .shot img{margin-bottom:var(--sp-3)}
+.flow h3{font-size:15px;display:flex;align-items:center;gap:8px}
+.flow p{font-size:13.5px;line-height:1.65}
+.step-no{flex:0 0 auto;width:22px;height:22px;border-radius:50%;
+  display:inline-grid;place-items:center;font-size:12px;font-weight:700;
+  background:var(--primary-solid);color:#fff}
+.shots-sub{margin-top:var(--sp-8)}
+
+
+/* ── Icons ──────────────────────────────────────────────────────────── */
+.icon{width:1em;height:1em;display:inline-block;vertical-align:-.125em;flex:0 0 auto}
+.ico .icon{width:24px;height:24px}
+.eyebrow .icon{width:18px;height:13px;border-radius:2px;vertical-align:-.15em}
+.tick{color:var(--tick);display:inline-flex}
+.tick .icon{width:15px;height:15px}
+.muted-x{color:var(--muted-ink);display:inline-flex}
+.muted-x .icon{width:15px;height:15px}
+.plan li .tick,.plan li .muted-x{margin-top:4px}
+
+/* Feature icons draw themselves in when scrolled into view, then respond to
+   hover. Uses stroke-dashoffset so the line appears to be drawn, which reads
+   as craft rather than decoration. Gated on prefers-reduced-motion. */
+@media (prefers-reduced-motion:no-preference){
+  .feat .ico .icon path,.feat .ico .icon circle,.feat .ico .icon rect,
+  .step .ico .icon path,.step .ico .icon circle,.step .ico .icon rect{
+    stroke-dasharray:120;stroke-dashoffset:120;
+    transition:stroke-dashoffset .9s cubic-bezier(.2,0,0,1)
+  }
+  .reveal.in .ico .icon path,.reveal.in .ico .icon circle,.reveal.in .ico .icon rect{stroke-dashoffset:0}
+  .feat:hover .ico{transform:translateY(-2px) scale(1.06)}
+  .ico{transition:transform .3s cubic-bezier(.2,0,0,1),background .2s}
+  .shot img{transition:transform .4s cubic-bezier(.2,0,0,1)}
+  .shot:hover img{transform:scale(1.02)}
+  .stat b{transition:transform .3s}
+  .stat:hover b{transform:translateY(-2px)}
+}
+
+/* ── Trust bar ──────────────────────────────────────────────────────── */
+/* Sat as four bare numbers on a flat strip before — no hierarchy, nothing to
+   look at, and the mixed "<١٠ث" ran together. Now each stat is an icon, an
+   animated counter, and a label, separated by fading hairlines. */
+.trust{position:relative;border-block:1px solid var(--border);background:var(--surface);padding-block:var(--sp-10);overflow:hidden}
+.trust::before{content:'';position:absolute;inset-inline:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--primary),transparent);opacity:.5}
+.trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4)}
+@media (max-width:760px){.trust-grid{grid-template-columns:repeat(2,1fr);gap:var(--sp-8) var(--sp-4)}}
+
+.stat{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--sp-2);padding-inline:var(--sp-3)}
+/* Hairline separators that fade at both ends — cleaner than a hard border. */
+.stat + .stat::before{content:'';position:absolute;inset-inline-start:0;top:12%;height:76%;width:1px;
+  background:linear-gradient(180deg,transparent,var(--border),transparent)}
+@media (max-width:760px){.stat:nth-child(odd)::before{display:none}}
+
+.stat-ico{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;
+  color:var(--primary);background:var(--primary-soft);
+  border:1px solid color-mix(in srgb,var(--primary) 22%,transparent);
+  margin-bottom:var(--sp-1)}
+.stat-ico .icon{width:22px;height:22px}
+.stat b{font-size:clamp(32px,4.8vw,48px);font-weight:900;line-height:1.05;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;
+  background:linear-gradient(180deg,var(--text),color-mix(in srgb,var(--primary) 55%,var(--text)));
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+/* Scoped to the label only: `.stat span` also matched .stat-ico and, being one
+   step more specific, was repainting the icons in --text-3. */
+.stat > span:not(.stat-ico){font-size:13.5px;color:var(--text-3);line-height:1.5;max-width:15ch}
+
+@media (prefers-reduced-motion:no-preference){
+  .stat-ico{transition:transform .35s cubic-bezier(.2,0,0,1),background .25s}
+  .stat:hover .stat-ico{transform:translateY(-3px) scale(1.05);background:color-mix(in srgb,var(--primary) 16%,transparent)}
+}
+
+/* ── Section headings ───────────────────────────────────────────────── */
+.sec-head{text-align:center;max-width:680px;margin:0 auto var(--sp-12)}
+.sec-head .kicker{color:var(--primary);font-weight:800;font-size:14px;letter-spacing:.04em;margin-bottom:var(--sp-3)}
+.sec-head h2{font-size:clamp(29px,4.3vw,48px);font-weight:900;letter-spacing:-.03em;line-height:1.14;margin-bottom:var(--sp-4)}
+.sec-head p{color:var(--text-2);font-size:17px}
+
+/* ── Steps ──────────────────────────────────────────────────────────── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-6);counter-reset:s}
+@media (max-width:860px){.steps{grid-template-columns:1fr}}
+.step{position:relative;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:var(--sp-8) var(--sp-6);box-shadow:var(--shadow-sm);
+  transition:transform .25s cubic-bezier(.2,0,0,1),box-shadow .25s,border-color .25s}
+.step:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);
+  border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
+/* Step number, trailing edge — the icon leads, the numeral orders.
+   The counter style follows the language: Arabic-Indic in Arabic, Latin in
+   English. (Never duplicate a .step per language — counter-increment would
+   then run 1..6 and the dashed connectors would land between translations.) */
+.step::before{counter-increment:s;content:counter(s, arabic-indic);position:absolute;top:var(--sp-5);inset-inline-end:var(--sp-6);
+  font-weight:900;font-size:44px;line-height:1;color:var(--primary);opacity:.13}
+html[lang="en"] .step::before{content:counter(s, decimal)}
+/* Dashed connector between cards, desktop only. inset-inline-END, so the dash
+   lands in the gutter AFTER each non-last card — with -start it hung off the
+   outer edge of card 1 and left the 2→3 gutter empty, in both directions. */
+.step:not(:last-child)::after{content:'';position:absolute;top:76px;inset-inline-end:-13px;
+  width:26px;border-top:2px dashed color-mix(in srgb,var(--primary) 40%,transparent)}
+@media (max-width:860px){.step:not(:last-child)::after{display:none}}
+.step .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;margin-bottom:var(--sp-4)}
+.step .ico .icon{width:26px;height:26px}
+.step h3{font-size:20px;margin-bottom:var(--sp-3)}
+.step p{color:var(--text-2);font-size:15.5px}
+
+/* ── Features ───────────────────────────────────────────────────────── */
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-5)}
+@media (max-width:980px){.feats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.feats{grid-template-columns:1fr}}
+.feat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:var(--sp-6);transition:transform .18s,box-shadow .18s,border-color .18s}
+.feat:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:color-mix(in srgb,var(--primary) 40%,var(--border))}
+.feat .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-size:22px;margin-bottom:var(--sp-4);color:#fff}
+.feat h3{font-size:17.5px;margin-bottom:var(--sp-2)}
+.feat p{color:var(--text-2);font-size:15px}
+/* Filled, with the hue carried past the chip's edge by its own shadow.
+   These were 8–13% tints, which at 48px read as three faintly different greys
+   — the icons were doing no work at all in telling the three features apart.
+   White glyph on a solid fill is legible in both themes without a second set
+   of dark-mode overrides, which the tinted version needed.
+
+   The gold one is #D97706, not the brand's --gold-500 (#FEAF04): white on
+   #FEAF04 is 1.85:1, well under the 3:1 WCAG 1.4.11 asks of a graphical
+   object, so the icon would have been decoration you cannot actually see.
+   #D97706 measures 3.19:1 and still reads as the brand's gold. */
+.i-blue{background:var(--brand-600);box-shadow:0 8px 20px rgba(37,92,235,.34)}
+.i-gold{background:#D97706;box-shadow:0 8px 20px rgba(217,119,6,.34)}
+.i-green{background:var(--green-600);box-shadow:0 8px 20px rgba(22,163,74,.34)}
+
+.feat-wide{grid-column:span 2;background:linear-gradient(140deg,var(--brand-600),var(--brand-800));color:#fff;border:0}
+@media (max-width:620px){.feat-wide{grid-column:span 1}}
+.feat-wide h3,.feat-wide p{color:#fff}
+.feat-wide p{opacity:.86}
+.feat-wide .ico{background:rgba(255,255,255,.18);color:#fff}
+
+/* ── Pricing ────────────────────────────────────────────────────────── */
+/* The .toggle component below is shared with the header switchers; it is no
+   longer used here (the monthly/yearly switch was removed with the yearly
+   plan) and must not be deleted with it. */
+.toggle{display:inline-flex;background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--r-pill);padding:5px;gap:4px}
+.toggle button{border:0;background:transparent;font-family:inherit;font-size:14.5px;font-weight:700;
+  color:var(--text-2);padding:9px 20px;border-radius:var(--r-pill);cursor:pointer;transition:all .18s}
+.toggle button[aria-pressed="true"]{background:var(--primary-solid);color:#fff;box-shadow:var(--shadow-sm)}
+/* Same component, header size — used by the language and theme switchers. */
+.toggle.pill-sm{padding:3px}
+.toggle.pill-sm button{font-size:12.5px;padding:6px 11px}
+.toggle.theme-pill button{padding:5px 8px;display:inline-grid;place-items:center}
+.toggle.theme-pill .icon{width:17px;height:17px}
+/* #fff on --green-500 is 2.2:1; this pill carries 11px text, so it uses the
+   darker green in both themes. */
+.save-pill{background:var(--pill-green);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);margin-inline-start:6px}
+
+/* Three cards now — trial, time pack, subscription. justify-content:center
+   keeps the leftover card centred when the grid drops to two columns. */
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,340px));gap:var(--sp-6);justify-content:center;align-items:stretch}
+@media (max-width:1080px){.plans{grid-template-columns:repeat(2,minmax(0,360px))}}
+@media (max-width:800px){.plans{grid-template-columns:1fr;max-width:420px;margin-inline:auto}}
+.plan{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);
+  padding:var(--sp-8);display:flex;flex-direction:column;position:relative}
+.plan.featured{border:2px solid var(--primary);box-shadow:var(--shadow-xl)}
+/* left + translateX(-50%) centres in BOTH directions. The old
+   inset-inline-start:50% + translateX(50%) only centred under RTL, because
+   translateX is physical and is not mirrored by `direction`. */
+.plan-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);
+  background:var(--primary-solid);color:#fff;font-size:12.5px;font-weight:800;padding:5px 16px;border-radius:var(--r-pill);white-space:nowrap}
+.plan h3{font-size:19px;margin-bottom:var(--sp-2)}
+.plan .amt{font-size:42px;font-weight:900;line-height:1.15;margin-block:var(--sp-3)}
+.plan .amt small{font-size:16px;font-weight:700;color:var(--text-3)}
+.plan .sub{color:var(--text-3);font-size:14px;margin-bottom:var(--sp-6);min-height:22px}
+.plan ul{display:grid;gap:var(--sp-3);margin-bottom:var(--sp-8);flex:1}
+.plan li{display:flex;gap:var(--sp-3);align-items:flex-start;font-size:15px;color:var(--text-2)}
+.plan li b{color:var(--text);font-weight:700}
+.plan li .tick{flex:0 0 auto;margin-top:2px}
+.muted-x{color:var(--muted-ink);flex:0 0 auto;margin-top:2px}
+/* Every figure on this section is written by script from /api/payments/config
+   and starts as an em dash. Tabular numerals stop the cards from twitching
+   when the fetch lands. */
+.p-num,[data-mins]{font-variant-numeric:tabular-nums}
+/* The script hides a card whose plan left the catalogue by setting [hidden].
+   The UA rule alone loses to .plan{display:flex}, hence the !important. */
+[hidden]{display:none !important}
+.plan .foot{color:var(--text-3);font-size:13.5px;text-align:center;margin-top:var(--sp-3)}
+
+/* Top-ups: the same currency as the featured pack, in three sizes. A row of
+   thin cards rather than three more plan columns — they are one decision
+   ("how much time?"), not three plans. */
+.topups{margin-top:var(--sp-10);background:var(--surface-alt);border:1px solid var(--border);
+  border-radius:var(--r-xl);padding:var(--sp-8);max-width:1080px;margin-inline:auto}
+.topups h3{font-size:18px;text-align:center;margin-bottom:var(--sp-2)}
+.topups .topups-lede{color:var(--text-3);font-size:14.5px;text-align:center;margin-bottom:var(--sp-6)}
+.topup-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4)}
+@media (max-width:700px){.topup-row{grid-template-columns:1fr}}
+.topup{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:var(--sp-5);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
+.topup.is-popular{border-color:var(--primary)}
+.topup .mins{font-weight:800;font-size:16px}
+.topup .rate{display:block;color:var(--text-3);font-size:12.5px;font-weight:600;margin-top:2px}
+.topup .price{font-weight:900;font-size:22px;white-space:nowrap}
+.topup .price small{font-size:13px;font-weight:700;color:var(--text-3)}
+/* Shown only when the config fetch fails — the prices stay em dashes rather
+   than falling back to a number that may no longer be what checkout charges. */
+.price-error{text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-5)}
+
+/* ── FAQ ────────────────────────────────────────────────────────────── */
+.faq{max-width:760px;margin-inline:auto;display:grid;gap:var(--sp-3)}
+details{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+details[open]{border-color:color-mix(in srgb,var(--primary) 45%,var(--border))}
+summary{cursor:pointer;padding:var(--sp-5) var(--sp-6);font-weight:700;font-size:16.5px;
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';font-size:24px;font-weight:400;color:var(--primary);transition:transform .2s;flex:0 0 auto}
+details[open] summary::after{transform:rotate(45deg)}
+details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px}
+
+/* ── Final CTA ──────────────────────────────────────────────────────── */
+.cta{background:linear-gradient(140deg,var(--brand-600),var(--brand-950));border-radius:var(--r-2xl);
+  padding:var(--sp-16) var(--sp-8);text-align:center;color:#fff;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;width:420px;height:420px;border-radius:50%;
+  background:rgba(251,191,36,.16);filter:blur(80px);top:-160px;inset-inline-end:-100px}
+.cta > *{position:relative}
+.cta h2{font-size:clamp(28px,4.4vw,46px);font-weight:900;letter-spacing:-.03em;line-height:1.14;margin-bottom:var(--sp-4)}
+.cta p{opacity:.88;font-size:17.5px;max-width:52ch;margin:0 auto var(--sp-8)}
+.cta .btn-primary{background:#fff;color:var(--brand-700);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.cta .btn-primary:hover{background:var(--brand-50)}
+.cta .btn-ghost{color:#fff;border-color:rgba(255,255,255,.4)}
+.cta .btn-ghost:hover{border-color:#fff;color:#fff;background:rgba(255,255,255,.1)}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.ftr{border-top:1px solid var(--border);padding-block:var(--sp-12) var(--sp-8);margin-top:var(--sp-24)}
+.ftr-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:var(--sp-8);margin-bottom:var(--sp-10)}
+@media (max-width:820px){.ftr-grid{grid-template-columns:1fr 1fr;gap:var(--sp-8)}}
+.ftr h4{font-size:14px;margin-bottom:var(--sp-4);color:var(--text)}
+.ftr ul{display:grid;gap:var(--sp-3)}
+.ftr a{color:var(--text-3);font-size:14.5px}
+.ftr a:hover{color:var(--primary)}
+.ftr-bottom{border-top:1px solid var(--border);padding-top:var(--sp-6);
+  display:flex;flex-wrap:wrap;gap:var(--sp-4);justify-content:space-between;color:var(--text-3);font-size:13.5px}
+.heart{color:#EF4444;display:inline-flex;vertical-align:-.15em}
+.ftr-by a{color:var(--text-2);font-weight:700;text-decoration:none;
+  border-bottom:1px solid color-mix(in srgb,var(--text-3) 45%,transparent);
+  padding-bottom:1px;transition:color .2s,border-color .2s}
+.ftr-by a:hover{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* Entrance animation — opt-in via IntersectionObserver so nothing is hidden
+   if JS fails. Elements start visible and only animate once observed. */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .5s ease,transform .5s ease}
+.reveal.in{opacity:1;transform:none}
+.no-js .reveal{opacity:1;transform:none}

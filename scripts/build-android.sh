@@ -118,10 +118,23 @@ s = io.open(target, encoding="utf-8").read()
 if NEW in s:
     print("  already patched")
 elif OLD in s:
-    io.open(target, "w", encoding="utf-8").write(s.replace(OLD, NEW))
+    s = s.replace(OLD, NEW)
     print("  serviceOf import moved to org.gradle.internal.extensions.core")
 else:
     raise SystemExit("  serviceOf import not found — RN gradle plugin changed shape")
+
+# `allWarningsAsErrors = true` is Meta's own strictness setting for their own
+# plugin. A newer Kotlin compiler reports two ADDITIONAL warnings in that code
+# (an unnecessary safe call, and Gradle's now-deprecated `exec`), and -Werror
+# turns them into a build failure — over warnings in vendored code we do not own
+# and cannot fix at the source. Relaxing it changes no behaviour: nothing is
+# compiled differently, the compiler just stops refusing to finish.
+WERROR = "allWarningsAsErrors = true"
+if WERROR in s:
+    s = s.replace(WERROR, "allWarningsAsErrors = false")
+    print("  -Werror relaxed for the vendored RN plugin")
+
+io.open(target, "w", encoding="utf-8").write(s)
 PY
 
 say "Raising the target API level for Google Play"

@@ -1,0 +1,124 @@
+<!-- {
+  "titleAr": "تواصل معنا",
+  "titleEn": "Contact us",
+  "descAr": "اكتب لنا عن مشكلة، أو اقترح ميزة، أو اسأل عن الاشتراكات. نردّ على كل رسالة.",
+  "descEn": "Write to us about a problem, suggest a feature, or ask about subscriptions. We answer every message."
+} -->
+<section class="phero">
+  <div class="wrap">
+    <div class="kicker"><span data-l="ar">تواصل</span><span data-l="en">Contact</span></div>
+    <h1><span data-l="ar">اكتب لنا</span><span data-l="en">Write to us</span></h1>
+    <p>
+      <span data-l="ar">عطل واجهك، أو ميزة تتمنّاها، أو سؤال عن الاشتراكات — كلها تصل إلى نفس البريد ونقرأها.</span>
+      <span data-l="en">A bug you hit, a feature you want, a question about subscriptions — it all reaches the same inbox and we read it.</span>
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <form class="form" id="contact-form" novalidate>
+      <div class="row">
+        <div>
+          <label for="c-name"><span data-l="ar">الاسم</span><span data-l="en">Name</span></label>
+          <input id="c-name" name="name" type="text" required maxlength="120" autocomplete="name">
+        </div>
+        <div>
+          <label for="c-email"><span data-l="ar">البريد الإلكتروني</span><span data-l="en">Email</span></label>
+          <input id="c-email" name="email" type="email" required maxlength="190" autocomplete="email" dir="ltr">
+        </div>
+      </div>
+
+      <div>
+        <label for="c-topic"><span data-l="ar">الموضوع</span><span data-l="en">Topic</span></label>
+        <select id="c-topic" name="topic">
+          <option value="support"><span></span>مشكلة تقنية / Technical problem</option>
+          <option value="billing">الاشتراكات والدفع / Billing</option>
+          <option value="feature">اقتراح ميزة / Feature request</option>
+          <option value="business">تعاون تجاري / Business</option>
+          <option value="other">أخرى / Other</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="c-message"><span data-l="ar">رسالتك</span><span data-l="en">Your message</span></label>
+        <textarea id="c-message" name="message" required minlength="10" maxlength="4000"></textarea>
+      </div>
+
+      <!-- Honeypot. A field no human can see and no human will fill; bots fill
+           every input they find. Cheaper and less hostile than a captcha, and
+           it costs a real visitor nothing. -->
+      <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+        <label for="c-website">Website</label>
+        <input id="c-website" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <button class="btn btn-primary btn-lg" type="submit" id="c-submit">
+        <span data-l="ar">أرسل الرسالة</span><span data-l="en">Send message</span>
+      </button>
+
+      <div class="form-msg" id="c-msg" role="status" aria-live="polite"></div>
+
+      <p class="note">
+        <span data-l="ar">أو راسلنا مباشرة على <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>. لا نستخدم بريدك إلا للردّ على رسالتك.</span>
+        <span data-l="en">Or email us directly at <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>. We use your address only to reply to you.</span>
+      </p>
+    </form>
+  </div>
+</section>
+
+<script>
+(function () {
+  var form = document.getElementById('contact-form');
+  if (!form) return;
+  var msg = document.getElementById('c-msg');
+  var btn = document.getElementById('c-submit');
+  var en = function () { return document.documentElement.getAttribute('data-lang') === 'en'; };
+
+  function say(ar, enText, kind) {
+    msg.textContent = en() ? enText : ar;
+    msg.className = 'form-msg show ' + kind;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var data = {
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      topic: form.topic.value,
+      message: form.message.value.trim(),
+      website: form.website.value
+    };
+
+    if (!data.name || !data.email || data.message.length < 10) {
+      return say('اكتب اسمك وبريدك ورسالة من ١٠ أحرف على الأقل.',
+                 'Please add your name, your email, and a message of at least 10 characters.', 'err');
+    }
+
+    btn.disabled = true;
+    var label = btn.innerHTML;
+    btn.textContent = en() ? 'Sending…' : 'جارٍ الإرسال…';
+
+    fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body && res.body.error ? res.body.error : 'failed');
+        form.reset();
+        say('وصلتنا رسالتك. سنردّ على بريدك قريبًا.',
+            'Your message reached us. We will reply to your email shortly.', 'ok');
+      })
+      .catch(function (err) {
+        say(err.message || 'تعذّر الإرسال. حاول مجددًا أو راسلنا على info@interprova.com.',
+            err.message || 'Could not send. Try again, or email info@interprova.com.', 'err');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.innerHTML = label;
+      });
+  });
+})();
+</script>

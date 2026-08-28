@@ -74,14 +74,19 @@ function transport() {
  * password-reset REQUEST — are responsible for catching; see the note in
  * routes/auth.js about why the reset endpoint answers identically either way.
  */
-export async function sendMail({ to, subject, html, text }) {
+export async function sendMail({ to, subject, html, text, replyTo }) {
   const s = settings();
   const info = await transport().sendMail({
+    // `from` is always OUR mailbox. A forwarded message that puts the visitor's
+    // address in From: fails SPF at the recipient and, repeated, is what gets a
+    // domain's sending reputation destroyed. `replyTo` is the correct way to
+    // make "reply" reach the person who wrote in.
     from: s.from,
     to,
     subject,
     text,
     html,
+    ...(replyTo ? { replyTo } : null),
   });
   logger.info('mail sent', { messageId: info.messageId, accepted: info.accepted?.length ?? 0 });
   return info;

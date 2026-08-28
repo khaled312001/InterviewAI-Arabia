@@ -1,15 +1,47 @@
 import { useEffect, useState } from 'react';
-import { I18nManager, Platform, View, ActivityIndicator } from 'react-native';
+import { I18nManager, Platform, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import './src/i18n';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef, onNavigationReady } from './src/navigation/navigationRef';
 import { usePushNotifications } from './src/push';
 import { useAuth } from './src/store/auth';
 import { colors } from './src/theme/tokens';
+
+/*
+ * Finish an OAuth redirect that landed in this window, then get out of the way.
+ *
+ * On web the Google popup comes back to `/app/`, which boots a SECOND copy of
+ * the whole app inside that popup. `maybeCompleteAuthSession()` recognises the
+ * redirect, writes the result to localStorage, and posts it to the opener.
+ *
+ * What it does NOT do is close the window — the library leaves that to the
+ * opener, which closes the popup when it receives that message. And the message
+ * never arrives, because Google's pages carry `Cross-Origin-Opener-Policy`:
+ * navigating through them severs `window.opener`, so by the time the popup is
+ * back on our origin the reference is null. The library then falls back to
+ * `window.opener ?? window.parent` — and for a top-level window `window.parent`
+ * is the window itself, so the popup posts the result to nobody and sits there
+ * showing the onboarding slides on top of the page that opened it.
+ *
+ * So we close it ourselves. The result is already in localStorage before this
+ * point, and the opener has a focus-driven fallback that reads it from there —
+ * which is why closing is enough to complete the sign-in rather than abandon it.
+ *
+ * `authPopupDone` is exported so the app can render a bare "you can close this"
+ * panel instead of the full UI, for the case where the browser refuses the
+ * close (a window a script did not open cannot be closed by script).
+ */
+const authResult = WebBrowser.maybeCompleteAuthSession();
+export const authPopupDone = authResult?.type === 'success';
+
+if (authPopupDone && typeof window !== 'undefined') {
+  try { window.close(); } catch { /* browser refused; the panel below covers it */ }
+}
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -69,6 +101,29 @@ export default function App() {
       }
     })();
   }, [hydrate]);
+
+  /*
+   * This window exists only to hand a token back. `window.close()` has already
+   * been attempted at module scope; if the browser refused it, showing the whole
+   * signed-out app — onboarding slides and all — on top of the page the reader
+   * was actually using is the worst possible answer. Say what happened instead.
+   */
+  if (authPopupDone) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center',
+                     backgroundColor: colors.bgLight, padding: 24 }}>
+        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textLight, textAlign: 'center' }}>
+          تم تسجيل الدخول
+        </Text>
+        <Text style={{ marginTop: 8, fontSize: 14, color: colors.textMutedLight, textAlign: 'center' }}>
+          يمكنك إغلاق هذه النافذة والعودة إلى Interprova.
+        </Text>
+        <Text style={{ marginTop: 16, fontSize: 13, color: colors.textMutedLight, textAlign: 'center' }}>
+          Signed in — you can close this window.
+        </Text>
+      </View>
+    );
+  }
 
   if (!ready) {
     return (
