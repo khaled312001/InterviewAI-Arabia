@@ -345,9 +345,36 @@ def main():
     save(play.convert("RGB"), os.path.join(ASSETS, "play-store-icon.png"))
 
     print("landing:")
-    save(make_og(), os.path.join(LANDING, "og-image.png"))
+    # og-image.png and feature-graphic.png are NOT written here.
+    #
+    # Both carry an Arabic headline, and Pillow on this machine has no
+    # OpenType shaper: it draws the base codepoints unjoined and in logical
+    # order, so "تدريب مقابلات العمل" came out as disconnected, overlapping
+    # glyphs. The arabic-reshaper workaround maps to Presentation Forms-B,
+    # which Cairo does not contain at all — that is the tofu.
+    #
+    # This script used to write them anyway and therefore CLOBBERED the
+    # correct browser-rendered versions whenever it ran after
+    # render-text-assets.mjs. The broken card was live on every WhatsApp and
+    # Facebook share of the site. Text-bearing artwork belongs to
+    # scripts/render-text-assets.mjs, which has HarfBuzz and the real font.
     save(make_icon(180), os.path.join(LANDING, "apple-touch-icon.png"))
     save(make_icon(64), os.path.join(LANDING, "favicon.png"))
+
+    # favicon.ico, and it is NOT optional.
+    #
+    # Browsers request /favicon.ico from the site root on their own, whether or
+    # not a <link rel="icon"> exists, and prefer it for the tab. This file was
+    # never regenerated after the rename, so every tab kept showing the OLD
+    # Thiqty mark while the PNGs beside it were correct — the one icon nobody
+    # thought to look at because nothing in the HTML points to it.
+    #
+    # Multi-size, because the ICO container holds several and Windows picks
+    # different ones for the tab, the taskbar and a desktop shortcut.
+    ico = make_icon(256, squircle=False)
+    ico.save(os.path.join(LANDING, "favicon.ico"),
+             sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    print("  landing/favicon.ico  (16-256)")
     # Wordmark for the landing header, transparent so it sits on any surface.
     save(fit(whites_to_alpha(trim_white(load(SRC_HORIZ))), 640), os.path.join(LANDING, "logo-horizontal.png"))
     save(fit(whites_to_alpha(trim_white(load(SRC_MARK))), 256), os.path.join(LANDING, "logo-mark.png"))
@@ -356,7 +383,7 @@ def main():
          os.path.join(LANDING, "logo-mark-ondark.png"))
 
     print("store-assets:")
-    save(make_og(1024, 500), os.path.join(STORE, "feature-graphic.png"))
+    # feature-graphic.png: same reason as og-image.png above.
     save(make_stacked(1024), os.path.join(STORE, "logo-stacked.png"))
 
     print("done")

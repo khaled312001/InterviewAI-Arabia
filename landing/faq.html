@@ -24,16 +24,49 @@
 <meta property="og:title" content="أسئلة شائعة — Interprova">
 <meta property="og:description" content="إجابات مباشرة عن التجربة المجانية، والمحاسبة بالثانية، وخصوصية سيرتك الذاتية وتسجيلات المقابلات، وكيف يعمل التقييم.">
 <meta property="og:url" content="https://interprova.com/faq.html">
-<meta property="og:image" content="https://interprova.com/og-image.png">
+<meta property="og:image" content="https://interprova.com/og-image-v2.png">
+<meta property="og:image:secure_url" content="https://interprova.com/og-image-v2.png">
+<meta property="og:image:type" content="image/png">
+<!-- Dimensions let WhatsApp and Facebook lay the card out from the markup
+     alone; without them the preview reflows once the image finally lands, and
+     some clients skip the image entirely rather than wait for it. -->
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Interprova — تدرّب على مقابلة العمل بالعربية قبل أن تدخلها فعلاً">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Frequently asked questions — Interprova">
 <meta name="twitter:description" content="Straight answers about the free trial, per-second billing, the privacy of your CV and recordings, and how the evaluation works.">
+<meta name="twitter:image" content="https://interprova.com/og-image-v2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap">
 <link rel="stylesheet" href="/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Interprova",
+          "item": "https://interprova.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "أسئلة شائعة",
+          "item": "https://interprova.com/faq.html"
+        }
+      ]
+    }
+  ]
+}
+</script>
 </head>
 <body class="no-js">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
@@ -71,6 +104,9 @@
   <g id="i-x" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
     <path d="M6 6 18 18M18 6 6 18"/>
   </g>
+  <g id="i-menu" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </g>
   <g id="i-heart" fill="currentColor"><path d="M12 21s-8-4.9-8-10.2A4.8 4.8 0 0 1 12 7.4 4.8 4.8 0 0 1 20 10.8C20 16.1 12 21 12 21Z"/></g>
   <g id="i-layers" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>
@@ -104,6 +140,38 @@
     <path d="M12 10.6c1.1 0 2 .7 2 1.6s-.9 1.6-2 1.6-2-.7-2-1.6.9-1.6 2-1.6Z" fill="#C09300"/>
     <rect x="1" y="4" width="22" height="16" fill="none" stroke="rgba(0,0,0,.25)" stroke-width=".5"/>
   </g>
+
+  <!-- Utility icons used by the contact page. Same 24 grid, 1.75 stroke. -->
+  <g id="i-mail" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3 7 8.15 5.4a1.6 1.6 0 0 0 1.7 0L21 7"/>
+  </g>
+  <g id="i-shield" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2.8 4.8 5.6v5.5c0 4.4 3 8.4 7.2 10 4.2-1.6 7.2-5.6 7.2-10V5.6Z"/><path d="m9 12 2.2 2.2L15.4 10"/>
+  </g>
+  <g id="i-building" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 21V5.5A1.5 1.5 0 0 1 5.5 4h7A1.5 1.5 0 0 1 14 5.5V21"/><path d="M14 10h4.5A1.5 1.5 0 0 1 20 11.5V21"/>
+    <path d="M3 21h18M7.5 8h3M7.5 12h3M7.5 16h3M17 14h.01M17 17.5h.01"/>
+  </g>
+
+  <!-- Brand marks. Solid fills on the same 24 grid, from Simple Icons (CC0).
+       `i-s-` prefixed because `i-x` is already the close glyph, and a brand
+       mark colliding with a UI icon is a bug nobody finds until it ships. -->
+  <g id="i-s-facebook" fill="currentColor"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></g>
+  <g id="i-s-instagram" fill="currentColor"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 1 0 0-12.324zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405a1.441 1.441 0 0 1-2.88 0 1.44 1.44 0 0 1 2.88 0z"/></g>
+  <g id="i-s-linkedin" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></g>
+
+  <!-- Google Play mark. Four segments, in Play's own colours, so the badge
+       reads as the real thing at 20px rather than as a grey triangle. -->
+  <g id="i-googleplay">
+    <path fill="#00D2FF" d="M3.6 1.6c-.3.3-.5.8-.5 1.4v18c0 .6.2 1.1.5 1.4l.1.1L13.8 12.1v-.2L3.7 1.6h-.1z"/>
+    <path fill="#FFD900" d="M17.2 15.5l-3.4-3.4v-.2l3.4-3.4.1.1 4 2.3c1.2.7 1.2 1.8 0 2.4l-4 2.3-.1-.1z"/>
+    <path fill="#FF3A44" d="M17.3 15.4 13.8 12 3.6 22.4c.4.4 1 .5 1.8.1l11.9-7.1"/>
+    <path fill="#00E676" d="M17.3 8.6 5.4 1.5c-.8-.4-1.4-.4-1.8.1L13.8 12l3.5-3.4z"/>
+  </g>
+  <g id="i-apple" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></g>
+  <g id="i-download" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 19.5h15"/>
+  </g>
 </defs>
 </svg>
 <header class="hdr" id="hdr">
@@ -120,30 +188,131 @@
       <a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
       <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
       <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
+      <a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a>
     </nav>
     <div class="hdr-tools">
       <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
         <button type="button" data-set-lang="ar" aria-pressed="true" lang="ar">عربي</button>
         <button type="button" data-set-lang="en" aria-pressed="false" lang="en">English</button>
       </div>
-      <div class="toggle pill-sm theme-pill" role="group" aria-label="المظهر / Theme">
-        <!-- These three carry a viewBox: the sheet's .icon svgs have none, so
-             artwork drawn on the 24 grid is clipped at any box under 24px. -->
-        <button type="button" data-set-theme="light" aria-pressed="false" aria-label="مظهر فاتح" data-aria-en="Light theme">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg>
-        </button>
-        <button type="button" data-set-theme="dark" aria-pressed="false" aria-label="مظهر داكن" data-aria-en="Dark theme">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg>
-        </button>
-        <button type="button" data-set-theme="system" aria-pressed="true" aria-label="حسب إعدادات الجهاز" data-aria-en="Match system">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
-        </button>
+      <!-- One cycling button, not a three-button pill.
+           The pill cost ~110px of a header that also carries a brand, six nav
+           links, a language switch, a social cluster and two CTAs — and at
+           every width the row wrapped to two storeys, stranding the navigation
+           above the controls. Three separate hit targets is also a lot of
+           chrome for a preference most readers set once and never revisit.
+           The label and icon always name the state it is IN, and the title
+           says what a press will do. -->
+      <button type="button" class="icon-btn" data-theme-cycle
+              aria-label="المظهر" data-aria-en="Theme">
+        <!-- viewBox is required: the sheet's .icon rule sets no intrinsic size,
+             so artwork on the 24 grid is clipped in any box under 24px. -->
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
+      </button>
+      <div class="social social-hdr" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
+        <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-facebook"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/company/interprova" rel="noopener me" target="_blank" aria-label="LinkedIn">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-linkedin"/></svg>
+        </a>
+        <a href="https://www.instagram.com/interprova.10541" rel="noopener me" target="_blank" aria-label="Instagram">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-instagram"/></svg>
+        </a>
       </div>
+      <!-- Icon only. The header has no room for a two-line badge, and the full
+           one is right below in the "get the app" band, in the footer and in
+           the drawer — so this is a shortcut for people who already know they
+           want it, not the primary route. Hidden with the social cluster
+           below 1280px; probe-header.mjs enforces the single row. -->
+      <a class="icon-btn store-mini" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+         rel="noopener" target="_blank"
+         aria-label="حمّل التطبيق من Google Play" data-aria-en="Get the app on Google Play">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+      </a>
       <a class="btn btn-ghost btn-sm" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
       <a class="btn btn-primary btn-sm" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
+      <!-- The phone's only route to the other thirteen pages. `.nav` above is
+           display:none under 1080px and nothing replaced it, so every visitor
+           on a phone saw a site with no navigation at all. -->
+      <button type="button" class="nav-btn" id="navBtn" aria-expanded="false" aria-controls="navDrawer"
+              aria-label="القائمة" data-aria-en="Menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
     </div>
   </div>
 </header>
+<div class="nav-scrim" id="navScrim" hidden></div>
+<aside class="drawer" id="navDrawer" hidden aria-label="التنقل" data-aria-en="Navigation">
+    <div class="drawer-head">
+      <span class="drawer-title"><span data-l="ar">التنقل</span><span data-l="en">Navigation</span></span>
+      <button type="button" class="nav-btn" id="navClose" aria-label="إغلاق القائمة" data-aria-en="Close menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <nav class="drawer-nav" aria-label="التنقل الرئيسي" data-aria-en="Main navigation">
+      <a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a>
+      <a href="/features.html"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a>
+      <a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
+      <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
+      <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
+      <a href="/about.html"><span data-l="ar">عن الشركة</span><span data-l="en">About</span></a>
+      <a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a>
+    </nav>
+    <div class="drawer-cta">
+      <!-- Repeated here because .hdr-tools hides the login link under 520px:
+           without this, a phone had a "start free" button and no way to sign
+           back IN to an account it already had. -->
+      <a class="btn btn-ghost" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
+      <a class="btn btn-primary" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
+
+      <!-- The drawer is a phone's menu, and a phone is where an install
+           actually happens — so the Play badge belongs here more than anywhere
+           else on the site. -->
+      <div class="store-row store-row-sm" style="justify-content:center">
+        <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+           rel="noopener" target="_blank"
+           aria-label="حمّل تطبيق Interprova من Google Play" data-aria-en="Get Interprova on Google Play">
+          <svg class="store-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+          <span class="store-txt">
+            <small><span data-l="ar">حمّله من</span><span data-l="en">GET IT ON</span></small>
+            <strong>Google Play</strong>
+          </span>
+        </a>
+      </div>
+
+      <!-- Below 900px the header cannot hold the switchers without wrapping to
+           two rows, so they live here instead. Same `data-set-lang` /
+           `data-theme-cycle` hooks as the header pair, so one script drives
+           both and they can never show different states. -->
+      <div class="drawer-tools">
+        <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
+          <button type="button" data-set-lang="ar" aria-pressed="true" lang="ar">عربي</button>
+          <button type="button" data-set-lang="en" aria-pressed="false" lang="en">English</button>
+        </div>
+        <button type="button" class="icon-btn" data-theme-cycle aria-label="المظهر" data-aria-en="Theme">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
+        </button>
+      </div>
+
+      <!-- The header's own social row is hidden below 900px to keep the sticky
+           bar to one line; on a phone this is where it lives instead. -->
+      <div class="social social-sm" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
+        <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-facebook"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/company/interprova" rel="noopener me" target="_blank" aria-label="LinkedIn">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-linkedin"/></svg>
+        </a>
+        <a href="https://www.instagram.com/interprova.10541" rel="noopener me" target="_blank" aria-label="Instagram">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-instagram"/></svg>
+        </a>
+        <a href="mailto:info@interprova.com" aria-label="Email">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+        </a>
+      </div>
+    </div>
+</aside>
 <main id="main">
 <section class="phero">
   <div class="wrap">
@@ -266,9 +435,66 @@
           <span>Interprova</span>
         </div>
         <p style="color:var(--text-3);font-size:14.5px;max-width:34ch">
-          <span data-l="ar">Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي، بالعربية والإنجليزية.</span>
-          <span data-l="en">Interprova — AI interview practice in Arabic and English, with instant scoring.</span>
+          <span data-l="ar">Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي، بالعربية والإنجليزية. محاوِر يسمعك، ويقيّم إجابتك، ويقول لك ما الذي يُحسّنها.</span>
+          <span data-l="en">Interprova — AI interview practice in Arabic and English. An interviewer that listens, scores your answer, and tells you what would make it better.</span>
         </p>
+
+        <!-- Direct, unmediated contact. A support address a visitor can see
+             without opening a form is the difference between "they read this"
+             and "this is a shell". -->
+        <ul class="ftr-contact">
+          <li>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+            <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>
+          </li>
+          <li>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-building"/></svg>
+            <span>
+              <span data-l="ar">شركة برمجلي — القاهرة، مصر</span>
+              <span data-l="en">Barmagly — Cairo, Egypt</span>
+            </span>
+          </li>
+        </ul>
+
+        <!-- Interprova's own accounts. They were briefly the publisher's
+             (Barmagly's), which is defensible but not the same thing: an icon
+             in a product's footer that opens a different company's page reads
+             as a mistake. Instagram is not here yet — an icon linking nowhere
+             is worse than one fewer icon. -->
+        <div class="social" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
+          <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-facebook"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/company/interprova" rel="noopener me" target="_blank" aria-label="LinkedIn">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-linkedin"/></svg>
+          </a>
+          <a href="https://www.instagram.com/interprova.10541" rel="noopener me" target="_blank" aria-label="Instagram">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-instagram"/></svg>
+          </a>
+          <a href="mailto:info@interprova.com" aria-label="Email">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+          </a>
+        </div>
+
+        <div class="store-row store-row-sm">
+          <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+             rel="noopener" target="_blank"
+             aria-label="حمّل تطبيق Interprova من Google Play" data-aria-en="Get Interprova on Google Play">
+            <svg class="store-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+            <span class="store-txt">
+              <small><span data-l="ar">حمّله من</span><span data-l="en">GET IT ON</span></small>
+              <strong>Google Play</strong>
+            </span>
+          </a>
+          <a class="store-badge" href="/app/"
+             aria-label="افتح Interprova على iPhone من المتصفح" data-aria-en="Open Interprova on iPhone in the browser">
+            <svg class="store-ico store-ico-apple" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg>
+            <span class="store-txt">
+              <small><span data-l="ar">على iPhone</span><span data-l="en">On iPhone</span></small>
+              <strong><span data-l="ar">من المتصفح</span><span data-l="en">In the browser</span></strong>
+            </span>
+          </a>
+        </div>
       </div>
       <div>
         <h4><span data-l="ar">المنتج</span><span data-l="en">Product</span></h4>
@@ -294,6 +520,8 @@
           <li><a href="/privacy.html"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a></li>
           <li><a href="/terms.html"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms and conditions</span></a></li>
           <li><a href="/delete-account.html"><span data-l="ar">حذف الحساب</span><span data-l="en">Delete account</span></a></li>
+          <li><a href="/contact.html"><span data-l="ar">الدعم الفني</span><span data-l="en">Support</span></a></li>
+          <li><a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a></li>
         </ul>
       </div>
     </div>
@@ -322,6 +550,93 @@ addEventListener('scroll', onScroll, { passive: true });
 onScroll();
 
 document.getElementById('yr').textContent = new Date().getFullYear();
+
+// ── Mobile navigation drawer ──────────────────────────────────────────
+// Below 1080px .nav is display:none, so this is the ONLY route to the rest of
+// the site on a phone. It is written defensively for that reason: if any part
+// of it throws, the header still renders and the CTAs still work.
+(function(){
+  var btn    = document.getElementById('navBtn');
+  var panel  = document.getElementById('navDrawer');
+  var scrim  = document.getElementById('navScrim');
+  var closeB = document.getElementById('navClose');
+  if (!btn || !panel || !scrim) return;
+
+  // Mark the current page so the reader can see where they are. Compared on
+  // pathname only — the query string carries ?lang=en and would never match.
+  var here = location.pathname.replace(/\/index\.html$/, '/');
+  panel.querySelectorAll('a[href]').forEach(function(a){
+    var p = a.getAttribute('href').split('?')[0];
+    if (p === here) a.setAttribute('aria-current', 'page');
+  });
+
+  var open = false;
+  var lastFocus = null;
+
+  function focusables(){
+    return [].slice.call(panel.querySelectorAll('a[href],button:not([disabled])'));
+  }
+
+  function setOpen(next){
+    if (next === open) return;
+    open = next;
+    btn.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('nav-open', open);
+
+    if (open) {
+      lastFocus = document.activeElement;
+      // `hidden` must come off BEFORE the class that animates, or the element
+      // is display:none for the frame the transition would have started in and
+      // the panel simply appears.
+      panel.hidden = false; scrim.hidden = false;
+      requestAnimationFrame(function(){
+        panel.classList.add('open'); scrim.classList.add('open');
+      });
+      var f = focusables();
+      if (f.length) f[0].focus();
+    } else {
+      panel.classList.remove('open'); scrim.classList.remove('open');
+      // Re-hide only once the slide-out has finished, so it is not cut short.
+      // A timer rather than transitionend: under prefers-reduced-motion the
+      // transition is `none` and transitionend never fires, which would leave
+      // an invisible panel on top of the page swallowing every tap.
+      setTimeout(function(){
+        if (!open) { panel.hidden = true; scrim.hidden = true; }
+      }, 280);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+  }
+
+  btn.addEventListener('click', function(){ setOpen(!open); });
+  scrim.addEventListener('click', function(){ setOpen(false); });
+  if (closeB) closeB.addEventListener('click', function(){ setOpen(false); });
+
+  // Any navigation closes it — including same-page anchors, which change
+  // nothing about the document and would otherwise leave the drawer covering
+  // the section the reader just asked to see.
+  panel.addEventListener('click', function(e){
+    if (e.target.closest('a[href]')) setOpen(false);
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (!open) return;
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key !== 'Tab') return;
+    // Trap focus: with the rest of the page behind a scrim, tabbing out of the
+    // drawer moves the caret somewhere the reader cannot see.
+    var f = focusables();
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  // Widening past the breakpoint brings the real .nav back; a drawer left open
+  // would then sit over a page that already has its navigation.
+  addEventListener('resize', function(){
+    if (open && innerWidth > 1080) setOpen(false);
+  });
+})();
 
 // Reveal on scroll. Falls back to "everything visible" when IntersectionObserver
 // is unavailable, so content is never trapped behind a broken animation.
@@ -356,7 +671,12 @@ function fmt(n){
 // the element so a language switch can repaint without restarting.
 var refreshNums = function(){};
 (function(){
-  var nums = [].slice.call(document.querySelectorAll('.num'));
+  // `[data-to]` is required, not merely usual. `.num` is also worn by figures
+  // that are not a single countable number — "٠–١٠" is a RANGE — and those
+  // were being fed to `+el.dataset.to`, which is `+undefined`, which is NaN.
+  // The strip rendered a confident "NaN" where the scoring scale should be.
+  // Elements without a target keep the text the HTML already gives them.
+  var nums = [].slice.call(document.querySelectorAll('.num[data-to]'));
   if (!nums.length) return;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var render = function(el, v){
@@ -544,7 +864,15 @@ fetch('/api/payments/config').then(function(r){ return r.ok ? r.json() : null; }
 // Three states: system (no attribute), forced light, forced dark. The head
 // script already stamped data-theme before first paint; this only wires the
 // control, the aria state and the browser-chrome colour.
-var themeBtns = [].slice.call(document.querySelectorAll('[data-set-theme]'));
+// Every cycling button on the page — the header's and the drawer's. They are
+// the same control in two places, so they are driven from one list and can
+// never disagree about the current mode.
+var themeBtns = [].slice.call(document.querySelectorAll('[data-theme-cycle]'));
+var THEME_ORDER = ['light', 'dark', 'system'];
+var THEME_ICON = { light: '#i-sun', dark: '#i-moon', system: '#i-auto' };
+var THEME_LABEL_AR = { light: 'المظهر: فاتح', dark: 'المظهر: داكن', system: 'المظهر: حسب الجهاز' };
+var THEME_LABEL_EN = { light: 'Theme: light', dark: 'Theme: dark', system: 'Theme: system' };
+var themeMode = 'system';
 var tcLight = document.getElementById('tc-light');
 var tcDark = document.getElementById('tc-dark');
 var tcForced = document.getElementById('tc-forced');
@@ -571,13 +899,30 @@ function applyTheme(mode, persist){
     root.setAttribute('data-theme', mode);
     if (persist){ try { localStorage.setItem('interprova-theme', mode); } catch (e) {} }
   }
+  themeMode = mode;
   themeBtns.forEach(function(b){
-    b.setAttribute('aria-pressed', String(b.getAttribute('data-set-theme') === mode));
+    var use = b.querySelector('use');
+    if (use) {
+      // Both forms: `href` is the standard, `xlink:href` is what older Safari
+      // still honours, and a <use> that resolves to neither renders nothing —
+      // a button with no icon in it.
+      use.setAttribute('href', THEME_ICON[mode]);
+      use.setAttribute('xlink:href', THEME_ICON[mode]);
+    }
+    // The label names the state it is IN — a screen reader announcing the
+    // NEXT state would describe a theme the page is not using.
+    b.__ar = THEME_LABEL_AR[mode];
+    b.setAttribute('data-aria-en', THEME_LABEL_EN[mode]);
+    b.setAttribute('aria-label',
+      root.getAttribute('lang') === 'en' ? THEME_LABEL_EN[mode] : THEME_LABEL_AR[mode]);
   });
   syncThemeColor(mode);
 }
 themeBtns.forEach(function(b){
-  b.addEventListener('click', function(){ applyTheme(b.getAttribute('data-set-theme'), true); });
+  b.addEventListener('click', function(){
+    var i = THEME_ORDER.indexOf(themeMode);
+    applyTheme(THEME_ORDER[(i + 1) % THEME_ORDER.length], true);
+  });
 });
 
 // ── Language ──────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Interprova",
     "slug": "interprova",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "interprova",
@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.interprova.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -120,7 +120,9 @@
           "defaultChannel": "default"
         }
       ],
-      "expo-build-properties"
+      "expo-build-properties",
+      "expo-web-browser",
+      "./plugins/withAndroidHardwareFeatures"
     ],
     "extra": {
       "apiBaseUrl": "https://interprova.com/api",

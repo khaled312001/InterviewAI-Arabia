@@ -39,12 +39,53 @@ import contactRoutes from './routes/contact.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.resolve(__dirname, '..', 'public');
 
+/**
+ * A filename that carries a content hash — `site.4f8a91c2.css`, or the
+ * `_expo/static/js/web/entry-<40 hex>.js` Metro emits.
+ *
+ * This is the whole basis of the caching policy below, so it is deliberately
+ * strict: eight or more hex characters in their own dot-segment, immediately
+ * before the extension. Metro's 32-char hashes and our 8-char ones both match;
+ * `og-image.png` and `app-home.png` do not, and `v2.png` must not.
+ */
+const FINGERPRINTED = /[.-][0-9a-f]{8,}\.[a-z0-9]+$/i;
+
 const STATIC_OPTS = {
-  // Hashed asset filenames can be cached forever; HTML must not be.
-  maxAge: '1y',
   index: false,
+  /*
+   * `maxAge` is NOT set here, and that is the fix for a real outage of trust.
+   *
+   * It used to be '1y' for everything, on the assumption — stated in the old
+   * comment — that asset filenames were hashed. The landing page's were not:
+   * `/shots/app-home.png` kept its name across re-captures. So every visitor
+   * who had ever loaded the page was holding those bytes until 2027, and
+   * re-deploying new screenshots changed nothing they could see. Not a stale
+   * CDN and not a slow propagation: the browser had been told, in writing, not
+   * to ask again for a year, and it obeyed.
+   *
+   * The cost of that mistake is unrecoverable from the server side — you cannot
+   * un-send a cache directive, and the only remedy is a URL the browser has
+   * never seen (scripts/fingerprint-assets.mjs). So the directive is now earned
+   * per file rather than granted wholesale:
+   *
+   *   hashed name  → immutable for a year. Safe by construction: new bytes
+   *                  cannot reuse this URL.
+   *   plain name   → `no-cache`, which does NOT mean "do not store". It means
+   *                  "revalidate before use", so the browser keeps the bytes and
+   *                  spends one 304 (a few hundred bytes, no body) to confirm
+   *                  them. express.static already sends strong ETags and
+   *                  Last-Modified, so this is cheap and always correct.
+   *   .html        → same, and for the same reason: it is the document that
+   *                  teaches the browser every hashed URL, so it can never be
+   *                  the thing that goes stale.
+   */
   setHeaders(res, filePath) {
-    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    res.setHeader(
+      'Cache-Control',
+      FINGERPRINTED.test(filePath) && !filePath.endsWith('.html')
+        ? 'public, max-age=31536000, immutable'
+        : 'no-cache'
+    );
   },
 };
 

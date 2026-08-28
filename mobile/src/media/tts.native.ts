@@ -27,7 +27,21 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Speech from 'expo-speech';
-import * as FileSystem from 'expo-file-system';
+/*
+ * `expo-file-system/legacy`, deliberately.
+ *
+ * SDK 54 ships expo-file-system v19, whose default export is a completely new
+ * object-oriented API (`new File(...)`, `new Directory(...)`). The constants
+ * and helpers used below — documentDirectory, cacheDirectory, EncodingType,
+ * getInfoAsync's `size` option — do not exist on it.
+ *
+ * The `/legacy` entry point is Expo's own supported bridge for exactly this,
+ * and it keeps the v18 surface intact. Porting to the new API is a separate,
+ * larger change with its own risk; pinning to the legacy import here makes the
+ * SDK upgrade a dependency change rather than a rewrite of the recording and
+ * audio-cache paths, which are the two things in this app that must not break.
+ */
+import * as FileSystem from 'expo-file-system/legacy';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 import type {

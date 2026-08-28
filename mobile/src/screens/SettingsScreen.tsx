@@ -31,6 +31,7 @@ import { setAppLanguage } from '../i18n';
 import { useAuth } from '../store/auth';
 import { disablePush, enablePush, isPushSupported, pushSnapshot, type PushSnapshot } from '../push';
 import { useAppTheme, useThemePreference } from '../theme/useTheme';
+import { useMarketPreference, MARKET_CODES } from '../store/market';
 import { Screen, Text, Card, Badge, ListRow, SectionHeader, Skeleton, Button, Input } from '../components';
 import { api } from '../api/client';
 
@@ -204,6 +205,8 @@ export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const user = useAuth((s) => s.user);
   const { preference, setPreference } = useThemePreference();
+  const marketPreference = useMarketPreference((s) => s.preference);
+  const setMarketPreference = useMarketPreference((s) => s.setPreference);
 
   const [notifs, setNotifs] = useState<NotificationPrefs>(DEFAULT_NOTIFS);
   const [ready, setReady] = useState(false);
@@ -486,6 +489,43 @@ export function SettingsScreen() {
         </Card>
       </View>
 
+      {/* --------------------------- Job market --------------------------- */}
+      {/* Nine options, so this is the one group that wraps rather than sharing
+          a single row. "Automatic" leads because it is the default and is
+          right for almost everyone — the country tiles exist for the traveller
+          and the expat whose handset region is not where they are job-hunting. */}
+      <View style={{ marginTop: theme.spacing['2xl'] }}>
+        <SectionHeader title={t('settings.market')} subtitle={t('settings.marketHint')} />
+        <Card variant="outlined" padding="sm">
+          <View
+            style={[styles.tileWrap, { gap: theme.spacing.sm }]}
+            accessibilityRole="radiogroup"
+            accessibilityLabel={t('settings.market')}
+          >
+            <View style={styles.tileCell}>
+              <OptionTile
+                icon="phone-portrait-outline"
+                label={t('settings.marketAuto')}
+                hint={t('settings.marketHint')}
+                selected={marketPreference === null}
+                onPress={() => setMarketPreference(null)}
+              />
+            </View>
+            {MARKET_CODES.map((code) => (
+              <View key={code} style={styles.tileCell}>
+                <OptionTile
+                  icon="briefcase-outline"
+                  label={t(`settings.markets.${code}`)}
+                  hint={t('settings.marketHint')}
+                  selected={marketPreference === code}
+                  onPress={() => setMarketPreference(code)}
+                />
+              </View>
+            ))}
+          </View>
+        </Card>
+      </View>
+
       {/* -------------------------- Notifications ------------------------- */}
       <View style={{ marginTop: theme.spacing['2xl'] }}>
         <SectionHeader title={t('settings.notifications')} />
@@ -547,18 +587,13 @@ export function SettingsScreen() {
             divider
             onPress={() => openUrl(WEBSITE_URL)}
           />
+          {/* Email is the last row, so no divider — a trailing rule under the
+              final item draws a line to nothing. */}
           <ListRow
             icon="mail-outline"
             title={t('settings.email')}
             subtitle={t('settings.supportEmail')}
-            divider
             onPress={() => openUrl(`mailto:${t('settings.supportEmail')}`)}
-          />
-          <ListRow
-            icon="call-outline"
-            title={t('settings.phone')}
-            subtitle={t('settings.phoneValue')}
-            onPress={() => openUrl(`tel:${t('settings.phoneValue')}`)}
           />
         </Card>
       </View>
@@ -662,4 +697,9 @@ const styles = StyleSheet.create({
   planIcon: { alignItems: 'center', justifyContent: 'center' },
   tileRow: { flexDirection: 'row' },
   tile: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  // `tile` is flex:1, which collapses inside a wrapping container — so each
+  // wrapped tile gets a cell with a real basis to fill instead. Three per row
+  // on a phone, and the percentage leaves room for the gap between them.
+  tileWrap: { flexDirection: 'row', flexWrap: 'wrap' },
+  tileCell: { flexGrow: 1, flexBasis: '30%', minWidth: 96 },
 });

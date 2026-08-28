@@ -211,28 +211,62 @@ html[lang="en"] [data-l="en"]{display:revert}
   -webkit-backdrop-filter:saturate(180%) blur(14px);
   background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid transparent;transition:border-color .2s}
 .hdr.scrolled{border-bottom-color:var(--border)}
-/* Wraps rather than overflows: the row now carries two pill switchers as well
-   as the two CTAs, which does not fit a 360px phone on one line. */
-.hdr-in{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
-  min-height:68px;flex-wrap:wrap;padding-block:8px}
-.brand{display:flex;align-items:center;gap:var(--sp-3);font-weight:900;font-size:18px}
+/* The header bar is wider than the article column.
+   `--maxw` is 1160px, which is right for prose and too narrow for this row: at
+   1160 the six nav links, the language pill, the theme button, the store link,
+   four social icons and two CTAs do not fit, and the nav was silently squeezed
+   51px until it sat on top of the wordmark. No viewport width fixed it, because
+   the CAP was the constraint, not the screen.
+   A full-bleed bar is not bound by the reading measure, so it gets its own. */
+.hdr .wrap{max-width:1320px}
+/* NEVER wraps. It used to (`flex-wrap:wrap`), which was reasonable when the
+   row held a brand and two buttons — wrapping beats overflowing. But the row
+   then gained a language pill, a theme pill, a social cluster and a sixth nav
+   link, and wrapping stopped being a fallback and became the normal state: a
+   two-storey header at EVERY width, with the navigation stranded on a line
+   above its own controls.
+   With nowrap, anything that does not fit has to be removed by a media query
+   below rather than silently folded onto a second row — which forces the
+   decision to be made deliberately, and visibly, once per breakpoint.
+   scripts/probe-header.mjs measures the height at fourteen widths and fails
+   the moment a second row appears. */
+.hdr-in{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);
+  min-height:68px;flex-wrap:nowrap;padding-block:8px}
+/* `flex:0 0 auto` is load-bearing under the header's `flex-wrap:nowrap`.
+   A flex child shrinks by default, and the brand was being squeezed until the
+   wordmark wrapped underneath the mark — a two-line logo in a one-line header.
+   The nav is the only thing allowed to give. */
+.brand{display:flex;align-items:center;gap:var(--sp-3);font-weight:900;font-size:18px;
+  flex:0 0 auto;white-space:nowrap}
 .brand-alt{color:var(--text-3);font-weight:600;font-size:15px}
 .brand-mark{width:38px;height:38px;border-radius:11px;flex:0 0 auto;
   background:linear-gradient(135deg,var(--brand-500),var(--brand-800));
   display:grid;place-items:center;color:#fff;font-size:19px;box-shadow:var(--shadow-brand)}
-.nav{display:flex;align-items:center;gap:var(--sp-5)}
-.nav a{color:var(--text-2);font-size:15px;font-weight:600;transition:color .15s}
+.nav{display:flex;align-items:center;justify-content:center;gap:var(--sp-6);
+  flex:0 0 auto}
+/* `nowrap` per link, and `flex:0 1 auto` on the nav rather than `1 1 auto`.
+   Letting the nav grow-and-shrink freely squeezed the links until each
+   two-word Arabic label broke over two lines — "أسئلة شائعة" and "تواصل معنا"
+   stacked, which made the whole bar look like it had failed rather than like
+   it was tight. A link is now indivisible: if the set no longer fits, the
+   burger breakpoint below takes over instead of mangling the labels. */
+.nav a{color:var(--text-2);font-size:15px;font-weight:600;white-space:nowrap;
+  transition:color .15s}
 .nav a:hover{color:var(--primary)}
 /* Raised from 900px: the row now also carries two switchers, and Arabic sets
    wider than English — below this the nav would push the header to two rows. */
-@media (max-width:1080px){.nav{display:none}}
-/* The switchers live here, NOT inside .nav — .nav is display:none on mobile
-   and a hidden language control would be a trap. */
-.hdr-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-/* Phones: the row carries brand + two switchers + two CTAs, which cannot fit.
-   The login link goes (the primary CTA lands on the same /app), the Latin half
-   of the wordmark goes, and the pills tighten — enough to keep the sticky
-   header to two rows at 360px instead of three. */
+@media (max-width:1180px){.nav{display:none}}
+/* The switchers live here rather than inside .nav, because .nav is
+   display:none below 1180px and a hidden language control would be a trap.
+   Below 900px they move again — into the drawer, which is the only place with
+   room. Duplicated in markup, driven by one script, so they cannot disagree. */
+.hdr-tools{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;flex:0 0 auto}
+/* What is shed, and where it reappears — each step is one decision:
+     < 1280px  the social cluster goes (it is in the drawer and the footer)
+     <  900px  the language and theme switchers go (they are in the drawer)
+     <  520px  the ghost "log in" goes (the primary CTA lands on the same /app)
+               and the Latin half of the wordmark goes
+   Nothing becomes unreachable at any width; it only moves. */
 /* Scoped through .hdr-tools so these beat the .toggle.pill-sm base rules,
    which are declared further down the sheet, next to the plan cards. The
    .toggle component now has exactly two users — language and theme; the
@@ -249,6 +283,228 @@ html[lang="en"] [data-l="en"]{display:revert}
   .hdr-tools .toggle.pill-sm button{font-size:11.5px;padding:5px 7px}
   .hdr-tools .toggle.theme-pill button{padding:5px 6px}
 }
+
+/* ── Mobile navigation ──────────────────────────────────────────────────
+   `.nav` is display:none below 1080px (above). For a long time nothing took
+   its place, so a phone got a header with a logo, two switchers and one CTA —
+   and no route to How it works, Features, Pricing, Blog, FAQ, About or
+   Contact. The site had thirteen pages a phone could not reach.
+
+   The button is hidden at exactly the width `.nav` reappears, so the two are
+   never both present and never both absent. */
+.nav-btn{display:none;align-items:center;justify-content:center;
+  width:42px;height:42px;flex:0 0 auto;border:1px solid var(--border);border-radius:var(--r-sm);
+  background:var(--surface);color:var(--text);cursor:pointer;
+  transition:background .15s,border-color .15s}
+.nav-btn:hover{border-color:var(--primary);color:var(--primary)}
+.nav-btn .icon{width:22px;height:22px}
+@media (max-width:1180px){.nav-btn{display:inline-flex}}
+
+/* Above .hdr's z-index:100. The header is sticky and paints over anything
+   below it, so at z-index 60 the drawer's own close button sat behind the
+   header and could not be tapped. */
+.nav-scrim{position:fixed;inset:0;z-index:110;background:rgb(8 13 26 / .55);
+  opacity:0;transition:opacity .22s ease}
+.nav-scrim.open{opacity:1}
+
+/* `inset-inline-end` rather than `right`: the drawer slides in from the side
+   the reader's language starts at, so it opens under the thumb in both
+   directions instead of flying across the screen in Arabic. */
+.drawer{position:fixed;z-index:111;inset-block:0;inset-inline-end:0;
+  width:min(84vw,340px);display:flex;flex-direction:column;gap:var(--sp-2);
+  padding:var(--sp-5);overflow-y:auto;overscroll-behavior:contain;
+  background:var(--surface);border-inline-start:1px solid var(--border);
+  box-shadow:-24px 0 60px rgb(8 13 26 / .28);
+  transform:translateX(var(--drawer-out,100%));transition:transform .26s cubic-bezier(.32,.72,0,1)}
+[dir="rtl"] .drawer{--drawer-out:-100%;box-shadow:24px 0 60px rgb(8 13 26 / .28)}
+.drawer.open{transform:translateX(0)}
+@media (prefers-reduced-motion:reduce){
+  .drawer,.nav-scrim{transition:none}
+}
+
+.drawer-head{display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-3);padding-bottom:var(--sp-4);margin-bottom:var(--sp-2);
+  border-bottom:1px solid var(--border)}
+.drawer-title{font-weight:800;font-size:15px;color:var(--text-3)}
+
+.drawer-nav{display:flex;flex-direction:column}
+.drawer-nav a{display:block;padding:var(--sp-4) var(--sp-2);border-radius:var(--r-sm);
+  font-size:17px;font-weight:700;color:var(--text);transition:background .15s,color .15s}
+.drawer-nav a:hover,.drawer-nav a:focus-visible{background:var(--surface-alt);color:var(--primary)}
+/* The page you are already on, marked by the drawer script. */
+.drawer-nav a[aria-current="page"]{color:var(--primary);background:var(--surface-alt)}
+
+.drawer-cta{display:flex;flex-direction:column;gap:var(--sp-3);
+  margin-top:auto;padding-top:var(--sp-5);border-top:1px solid var(--border)}
+.drawer-cta .btn{width:100%}
+
+/* The scrim covers the page, so nothing behind it should scroll under it. */
+body.nav-open{overflow:hidden}
+
+/* A square icon button — the theme cycler, and anything else that is one
+   glyph. 40px because that is the smallest comfortable touch target, even
+   where the glyph inside is 18px. */
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;flex:0 0 auto;border:1px solid var(--border);
+  border-radius:var(--r-sm);background:var(--surface);color:var(--text-2);
+  cursor:pointer;transition:color .15s,border-color .15s,background .15s}
+.icon-btn:hover{color:var(--primary);border-color:var(--primary)}
+.icon-btn .icon{width:19px;height:19px}
+/* The Play mark has its own fixed colours; the generic icon-btn hover
+   recolour would tint them. Only the frame reacts. */
+.store-mini:hover{color:inherit;border-color:var(--primary)}
+
+/* The header sheds its cargo in three deliberate steps — see the note above. */
+@media (max-width:1280px){
+  .hdr-tools .social-hdr,
+  .hdr-tools .store-mini{display:none}
+}
+@media (max-width:900px){
+  .hdr-tools > .toggle,
+  .hdr-tools > .icon-btn{display:none}
+}
+
+/* The switchers, once they have moved into the drawer. */
+.drawer-tools{display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-3);padding-top:var(--sp-4);margin-top:var(--sp-2);
+  border-top:1px solid var(--border)}
+.drawer-tools .toggle{flex:1 1 auto}
+.drawer-tools .toggle button{flex:1 1 auto}
+
+/* ── Social accounts ────────────────────────────────────────────────────
+   One component, three placements: the header bar, the mobile drawer, and the
+   footer. Brand marks are solid fills, so they take `currentColor` and follow
+   the theme rather than shipping two sets of artwork.
+
+   Hit targets are 40px even where the glyph is 18px — these sit close together
+   and the neighbouring one is always the wrong account to open. */
+.social{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+.social a{display:inline-flex;align-items:center;justify-content:center;
+  width:40px;height:40px;border-radius:var(--r-sm);
+  border:1px solid var(--border);color:var(--text-2);background:transparent;
+  transition:color .15s,border-color .15s,background .15s,transform .15s}
+.social a:hover{color:var(--primary);border-color:var(--primary);background:var(--primary-soft);transform:translateY(-2px)}
+@media (prefers-reduced-motion:reduce){.social a:hover{transform:none}}
+.social .icon{width:18px;height:18px}
+.social-sm a{width:38px;height:38px}
+/* In the drawer the row sits under the two CTAs and needs air above it. */
+.drawer-cta .social{justify-content:center;margin-top:var(--sp-2);padding-top:var(--sp-4);border-top:1px solid var(--border)}
+
+/* The header row already carries a brand, two switchers and two CTAs. The
+   social cluster is the first thing to go when space runs out — it is
+   duplicated in the drawer and in the footer, so nothing becomes unreachable. */
+.social-hdr a{width:34px;height:34px;border-color:transparent}
+.social-hdr .icon{width:17px;height:17px}
+@media (max-width:900px){.social-hdr{display:none}}
+
+/* ── The rubric section ─────────────────────────────────────────────────
+   Replaces the old `.trust` strip of four bare numbers. Cards rather than
+   columns because each item now carries a sentence, and a sentence under a
+   hairline divider reads as a footnote rather than a claim. */
+.rubric{background:var(--surface-alt)}
+.rubric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-5);margin-top:var(--sp-10)}
+@media (max-width:1040px){.rubric-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:560px){.rubric-grid{grid-template-columns:1fr;max-width:400px;margin-inline:auto}}
+
+.rubric-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:var(--sp-6);
+  transition:transform .18s,box-shadow .18s,border-color .18s}
+.rubric-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--primary)}
+@media (prefers-reduced-motion:reduce){.rubric-card:hover{transform:none}}
+.rubric-ico{display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:var(--r-sm);margin-bottom:var(--sp-4);
+  background:var(--primary-soft);color:var(--primary)}
+.rubric-ico .icon{width:22px;height:22px}
+.rubric-card h3{font-size:18px;margin-bottom:var(--sp-2)}
+.rubric-card p{color:var(--text-2);font-size:15px;line-height:1.8}
+
+/* The numbers, demoted from headline to supporting strip. */
+.rubric-facts{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-6);
+  margin-top:var(--sp-10);padding-top:var(--sp-8);border-top:1px solid var(--border);
+  text-align:center}
+@media (max-width:760px){.rubric-facts{grid-template-columns:repeat(2,1fr);gap:var(--sp-8) var(--sp-4)}}
+.rubric-facts .stat{display:flex;flex-direction:column;align-items:center;gap:var(--sp-1)}
+.rubric-facts .num{font-size:clamp(28px,3.2vw,36px);font-weight:800;color:var(--primary);
+  letter-spacing:-.02em;line-height:1.1}
+.rubric-facts .stat > span{font-size:14px;color:var(--text-3);max-width:20ch;line-height:1.6}
+
+/* ── Store badges ───────────────────────────────────────────────────────
+   One component used in three places: the "get the app" band, the footer,
+   and the mobile drawer. Sized like the real store badges (the two-line
+   "GET IT ON / Google Play" lockup) so it is recognised as one, because a
+   badge people do not recognise is just a button.
+
+   Fixed min-height and nowrap on the text: Arabic sets wider than the English
+   these badges were designed around, and without them the second line wraps
+   and the two badges end up different heights beside each other. */
+.store-row{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin-top:var(--sp-6)}
+.store-badge{display:inline-flex;align-items:center;gap:var(--sp-3);
+  min-height:58px;padding:0 var(--sp-5);border-radius:var(--r-sm);
+  background:#0B1220;color:#fff;border:1px solid rgba(255,255,255,.22);
+  transition:transform .16s,box-shadow .16s,border-color .16s}
+.store-badge:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.45);
+  box-shadow:0 10px 26px rgb(8 13 26 / .35)}
+@media (prefers-reduced-motion:reduce){.store-badge:hover{transform:none}}
+/* On a dark page the near-black badge would vanish into the ground. */
+:root[data-theme="dark"] .store-badge{background:#16223A;border-color:rgba(255,255,255,.28)}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .store-badge{background:#16223A;border-color:rgba(255,255,255,.28)}
+}
+.store-ico{width:26px;height:26px;flex:0 0 auto}
+.store-ico-apple{color:#fff}
+.store-txt{display:flex;flex-direction:column;line-height:1.25;white-space:nowrap}
+.store-txt small{font-size:11.5px;font-weight:600;color:#C7D6EE;letter-spacing:.02em}
+.store-txt strong{font-size:17px;font-weight:800;letter-spacing:-.01em}
+
+/* ── "Get the app" band ─────────────────────────────────────────────── */
+.getapp{background:var(--surface-alt)}
+.getapp-in{display:grid;grid-template-columns:1.15fr .85fr;gap:var(--sp-12);align-items:center}
+@media (max-width:900px){
+  .getapp-in{grid-template-columns:1fr;gap:var(--sp-8)}
+  .getapp-shot{order:-1;max-width:280px;margin-inline:auto}
+}
+.getapp-copy h2{font-size:clamp(26px,3.4vw,38px);margin:var(--sp-3) 0 var(--sp-4)}
+.getapp-copy p{color:var(--text-2);font-size:17px;max-width:52ch}
+.getapp-note{margin-top:var(--sp-4);font-size:13.5px;color:var(--text-3);max-width:52ch}
+.getapp-shot img{width:100%;height:auto;border-radius:var(--r-lg);
+  border:1px solid var(--border);box-shadow:var(--shadow-lg)}
+
+/* Compact variants: the footer column and the drawer are both narrow. */
+.store-row-sm{gap:var(--sp-2);margin-top:var(--sp-4)}
+.store-row-sm .store-badge{min-height:48px;padding:0 var(--sp-4);gap:var(--sp-2)}
+.store-row-sm .store-ico{width:21px;height:21px}
+.store-row-sm .store-txt small{font-size:10px}
+.store-row-sm .store-txt strong{font-size:14px}
+
+/* ── Footer contact block ─────────────────────────────────────────────── */
+.ftr-contact{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-5);font-size:14.5px}
+.ftr-contact li{display:flex;align-items:center;gap:var(--sp-3);color:var(--text-3)}
+.ftr-contact .icon{width:17px;height:17px;flex:0 0 auto;color:var(--primary)}
+.ftr-contact a{color:var(--text-2)}
+.ftr-contact a:hover{color:var(--primary)}
+.ftr-grid > div:first-child .social{margin-top:var(--sp-5)}
+
+/* ── Contact page: the "other ways" cards ─────────────────────────────── */
+.contact-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-5)}
+@media (max-width:900px){.contact-cards{grid-template-columns:1fr;max-width:460px;margin-inline:auto}}
+.ccard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:var(--sp-6);box-shadow:var(--shadow-sm)}
+.ccard-ico{display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:var(--r-sm);margin-bottom:var(--sp-4);
+  background:var(--primary-soft);color:var(--primary)}
+.ccard-ico .icon{width:22px;height:22px}
+.ccard h3{font-size:17px;margin-bottom:var(--sp-2)}
+.ccard p{font-size:15px;color:var(--text-2)}
+.ccard a{color:var(--primary);font-weight:600}
+.ccard-note{margin-top:var(--sp-2);font-size:13.5px;color:var(--text-3)}
+
+/* reCAPTCHA's floating badge is fixed to the bottom corner, where on a phone it
+   lands on top of the send button. Google permits hiding it only if the
+   attribution below is shown instead — .recaptcha-note is that attribution and
+   must not be removed. */
+.grecaptcha-badge{visibility:hidden}
+.recaptcha-note{font-size:13px;color:var(--text-3);margin-top:var(--sp-3)}
+.recaptcha-note a{color:var(--text-2);text-decoration:underline}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
   height:48px;padding-inline:var(--sp-6);border-radius:var(--r-md);border:0;cursor:pointer;

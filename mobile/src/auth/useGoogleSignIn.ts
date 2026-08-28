@@ -46,9 +46,21 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { api } from '../api/client';
 
-// Closes the browser tab / Custom Tab that completed the flow. Must be called
-// at module scope, which is why it is not inside the hook.
-WebBrowser.maybeCompleteAuthSession();
+/*
+ * NOT called here.
+ *
+ * `maybeCompleteAuthSession()` is single-use, and this module's body evaluates
+ * BEFORE App.tsx's (RootNavigator -> LoginScreen -> here). So a call at this
+ * line consumed the handle first and left App.tsx's call returning `failed`
+ * forever — the popup then rendered the whole app instead of closing.
+ *
+ * It now lives in ./completeAuthSession, which runs exactly once for the whole
+ * program no matter who imports it first. Importing it here as well is
+ * harmless and deliberate: it guarantees the redirect is completed even if
+ * this screen is somehow reached without App.tsx having been evaluated.
+ */
+import './completeAuthSession';
+import { AUTH_RELAY_KEY } from './completeAuthSession';
 
 /**
  * Where Google sends the popup back to, on web.
@@ -106,6 +118,8 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
   const [failed, setFailed] = useState(false);
   const mounted = useRef(true);
   const handler = useRef(onIdToken);
+  /** Cancels the "was that a cancel or a success?" grace period. */
+  const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => { handler.current = onIdToken; });
 
   useEffect(() => {
@@ -142,6 +156,58 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
       : undefined,
   });
 
+  /*
+   * The relay: pick the token up from localStorage instead of waiting for a
+   * postMessage that COOP has already killed.
+   *
+   * Web only — on native the popup is a Custom Tab and the library's own
+   * channel works, so this would be dead weight and a second source of truth.
+   *
+   * Both a `storage` event AND a poll, deliberately. The event is instant but
+   * fires only in OTHER windows, and only if the popup actually reached its
+   * write; the poll is the floor that catches a value written before this
+   * listener was attached, or in a browser that coalesced the event away.
+   */
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
+
+    let done = false;
+    const consume = () => {
+      if (done) return;
+      let href: string | null = null;
+      try { href = window.localStorage.getItem(AUTH_RELAY_KEY); } catch { return; }
+      if (!href) return;
+
+      // Remove it before using it: a token left behind would be replayed on the
+      // next mount and sign the user in again out of nowhere.
+      try { window.localStorage.removeItem(AUTH_RELAY_KEY); } catch { /* ignore */ }
+
+      // The implicit flow returns everything in the FRAGMENT, not the query.
+      const hash = href.includes('#') ? href.slice(href.indexOf('#') + 1) : '';
+      const idToken = new URLSearchParams(hash).get('id_token');
+      if (!idToken) return;
+
+      done = true;
+      // The token won the race; stop the grace period from clearing busy a
+      // second time (harmless) and, more importantly, keep the two paths from
+      // disagreeing about what happened.
+      if (dismissTimer.current) { clearTimeout(dismissTimer.current); dismissTimer.current = null; }
+      setBusy(false);
+      handler.current(idToken);
+    };
+
+    const onStorage = (e: StorageEvent) => { if (e.key === AUTH_RELAY_KEY) consume(); };
+    window.addEventListener('storage', onStorage);
+    const timer = setInterval(consume, 500);
+    consume();
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      clearInterval(timer);
+      if (dismissTimer.current) { clearTimeout(dismissTimer.current); dismissTimer.current = null; }
+    };
+  }, []);
+
   useEffect(() => {
     if (!response) return;
 
@@ -157,9 +223,32 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
       return;
     }
 
-    // 'cancel' and 'dismiss' are the user closing the sheet. Not failures, and
-    // telling them their own action failed is noise.
-    setBusy(false);
+    /*
+     * 'cancel' and 'dismiss' are the user closing the sheet. Not failures, and
+     * telling them their own action failed is noise.
+     *
+     * On web 'dismiss' is ALSO what the library reports when our own popup
+     * closes itself after a successful sign-in — its 1s "is the popup gone?"
+     * timer cannot tell the two apart. So the busy state is not cleared here on
+     * web: the relay effect above clears it when the token lands, and this
+     * would otherwise flip the button back to idle a moment before the user is
+     * signed in, which reads as "it did nothing".
+     */
+    if (Platform.OS !== 'web' || response.type !== 'dismiss') {
+      setBusy(false);
+    } else {
+      /*
+       * Web + 'dismiss' is ambiguous: either the sign-in succeeded and our
+       * popup closed itself, or the person shut the window. Wait briefly for
+       * the relay to decide it, then give up — otherwise a real cancel leaves
+       * the button spinning forever, which is the failure mode that made the
+       * previous version look broken even when it worked.
+       *
+       * The relay writes BEFORE the popup closes, so by the time this fires it
+       * has either landed or is never coming. Two seconds is generous.
+       */
+      dismissTimer.current = setTimeout(() => setBusy(false), 2000);
+    }
     if (response.type === 'error') setFailed(true);
   }, [response]);
 
@@ -167,6 +256,11 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
     if (!request) return;
     setFailed(false);
     setBusy(true);
+    // Clear any leftover from an abandoned attempt, so the relay effect cannot
+    // consume a stale token the moment this one starts.
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      try { window.localStorage.removeItem(AUTH_RELAY_KEY); } catch { /* ignore */ }
+    }
     // Fire and forget: the token arrives through `response`, not from here.
     promptAsync().catch(() => {
       setBusy(false);

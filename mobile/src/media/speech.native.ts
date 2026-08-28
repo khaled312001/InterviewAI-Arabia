@@ -27,16 +27,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import {
-  ExpoSpeechRecognitionModule,
-  addSpeechRecognitionListener,
-} from 'expo-speech-recognition';
+// `addSpeechRecognitionListener` was removed in expo-speech-recognition 56
+// (SDK 54): the module now extends NativeModule and carries `.addListener`.
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import type {
   ExpoSpeechRecognitionErrorCode,
   ExpoSpeechRecognitionErrorEvent,
   ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
-import type { Subscription } from 'expo-modules-core';
+// Renamed from `Subscription` in expo-modules-core for SDK 54.
+import type { EventSubscription } from 'expo-modules-core';
 
 import { SPEECH_LOCALE } from './contract';
 import type {
@@ -95,6 +95,12 @@ const ERROR_CODES: Record<ExpoSpeechRecognitionErrorCode, SpeechErrorCode> = {
   'not-allowed': 'not-allowed',
   'service-not-allowed': 'service-not-allowed',
   'speech-timeout': 'no-speech',
+  // New in expo-speech-recognition 56: the recogniser was cut off by another
+  // audio client — an incoming call, an alarm, another app taking the mic.
+  // NOT mapped to 'aborted': that is reserved for our own abort() call, and
+  // conflating them would report the user's own cancellation for something
+  // that happened to them.
+  interrupted: 'busy',
   unknown: 'unknown',
 };
 
@@ -324,13 +330,13 @@ export const useSpeechRecognizer: UseSpeechRecognizer = (opts) => {
   useEffect(() => {
     if (!supported) return;
 
-    const subs: Subscription[] = [
-      addSpeechRecognitionListener('start', () => {
+    const subs: EventSubscription[] = [
+      ExpoSpeechRecognitionModule.addListener('start', () => {
         runningRef.current = true;
         if (activeRef.current) setListening(true);
       }),
 
-      addSpeechRecognitionListener('result', (ev: ExpoSpeechRecognitionResultEvent) => {
+      ExpoSpeechRecognitionModule.addListener('result', (ev: ExpoSpeechRecognitionResultEvent) => {
         if (!activeRef.current) return;
         errorStreakRef.current = 0;
         const text = ev.results[0]?.transcript ?? '';
@@ -347,16 +353,16 @@ export const useSpeechRecognizer: UseSpeechRecognizer = (opts) => {
         armSilence();
       }),
 
-      addSpeechRecognitionListener('speechstart', () => {
+      ExpoSpeechRecognitionModule.addListener('speechstart', () => {
         // Someone is talking: stop counting silence until the next result.
         if (silenceRef.current) { clearTimeout(silenceRef.current); silenceRef.current = null; }
       }),
 
-      addSpeechRecognitionListener('speechend', () => {
+      ExpoSpeechRecognitionModule.addListener('speechend', () => {
         if (activeRef.current) armSilence();
       }),
 
-      addSpeechRecognitionListener('end', () => {
+      ExpoSpeechRecognitionModule.addListener('end', () => {
         runningRef.current = false;
         if (!activeRef.current || releasedRef.current) return;
         // Re-arm before restarting: the session can close with text already
@@ -366,7 +372,7 @@ export const useSpeechRecognizer: UseSpeechRecognizer = (opts) => {
         scheduleRestart(RESTART_DELAY_MS);
       }),
 
-      addSpeechRecognitionListener('error', (ev: ExpoSpeechRecognitionErrorEvent) => {
+      ExpoSpeechRecognitionModule.addListener('error', (ev: ExpoSpeechRecognitionErrorEvent) => {
         if (!activeRef.current || releasedRef.current) return;
         if (ev.error === 'aborted') return; // we caused it
         const code = ERROR_CODES[ev.error] ?? 'unknown';

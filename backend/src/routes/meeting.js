@@ -38,6 +38,7 @@ import { aiLimiter, heavyAiLimiter, tickLimiter } from '../middleware/rateLimit.
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import { prisma } from '../db/prisma.js';
 import { meetingTurn, evaluateInterview, summarizeCv, AiUnavailableError } from '../services/ai/index.js';
+import { MARKET_CODES } from '../services/ai/markets.js';
 import {
   CFG, hasPremium, chargeFlat, refundFlat, loadBalanceUser, balanceSnapshot,
 } from '../services/billing/minutes.js';
@@ -108,6 +109,20 @@ const contextSchema = z.object({
   cvSummary: z.string().max(4000).nullable().optional(),
   cvKey: z.any().optional(),
   gender: z.enum(['male', 'female']).optional(),
+  /*
+   * Which job market this interview is for.
+   *
+   * Client-supplied and carried per request like the rest of this object, so
+   * it needs no column and no migration — the same reason `company` and
+   * `gender` live here. An unknown or absent code is not an error: markets.js
+   * falls back to the default, and an old client that has never heard of the
+   * field keeps behaving exactly as it does today.
+   *
+   * Validated against the table rather than accepted as free text, because it
+   * is interpolated into a system prompt. `z.enum` is the boundary that stops
+   * "market" from becoming an injection point.
+   */
+  market: z.enum(MARKET_CODES).nullable().optional(),
 }).nullable().optional();
 
 /* ------------------------------------------------------------------ *

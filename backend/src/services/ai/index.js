@@ -328,8 +328,10 @@ export async function meetingTurn({
   const { parsed, usage, provider, costMicroUsd: cost, tokensUsed } = await run({
     feature: 'meeting_turn',
     userId,
-    // Stable half carries the cache breakpoint...
-    system: meetingSystemStable({ language, gender }),
+    // Stable half carries the cache breakpoint. The market belongs on this
+    // side: how the interviewer SPEAKS is fixed for the whole call, so it adds
+    // a handful of cache entries rather than a per-turn cost.
+    system: meetingSystemStable({ language, gender, market: context?.market || null }),
     // ...volatile interview context sits after it.
     systemExtra: meetingContextBlock(context, language),
     messages,

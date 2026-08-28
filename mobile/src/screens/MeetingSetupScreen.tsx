@@ -28,6 +28,7 @@ import { api, API_BASE } from '../api/client';
 import { secureStorage } from '../storage/secureStorage';
 import { Screen, Text, Button, Card, Input } from '../components';
 import { useBalance } from '../store/balance';
+import { activeMarket } from '../store/market';
 import { useAppTheme } from '../theme/useTheme';
 import { categoryName, durationLabel } from './mainShared';
 import { PERSONA, personaPortrait } from './interviewerPersona';
@@ -225,6 +226,11 @@ export function MeetingSetupScreen({ route, navigation }: any) {
         context: {
           ...data.context,
           gender,
+          // Which country's hiring norms this interview should follow. Read
+          // here rather than plumbed through props because it is a preference,
+          // not a form field — see store/market.ts for why it defaults to the
+          // device region instead of asking.
+          market: activeMarket(),
         },
       });
     } catch {

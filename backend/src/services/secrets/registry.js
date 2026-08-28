@@ -112,6 +112,31 @@ export const CREDENTIALS = [
    */
   { key: 'FIREBASE_SERVICE_ACCOUNT_B64', group: 'push', type: 'secret', secret: true, testable: true },
   { key: 'PUSH_ENABLED', group: 'push', type: 'boolean', secret: false },
+
+  /* ----------------------------- reCAPTCHA ---------------------------- */
+  /**
+   * reCAPTCHA v3 on the public contact form — the one endpoint on the service
+   * that writes without a session, and therefore the one a bot can reach.
+   *
+   * The SITE key is not a secret in any meaningful sense: it is printed into
+   * the page for every visitor, and it is useless without the pair. It lives
+   * here anyway so both halves are rotated from one place — a site key changed
+   * in the HTML but not here would fail every verification with
+   * `invalid-input-response`, which reads exactly like an outage.
+   *
+   * The SECRET key is a real secret and is write-only like the rest: it goes
+   * to Google over the wire and appears in no response, no log line and no
+   * page. Anyone holding it can mint valid verifications for this domain.
+   *
+   * RECAPTCHA_MIN_SCORE is deliberately configurable without a deploy. v3
+   * returns a probability, not a verdict, and the right cut-off depends on
+   * traffic you cannot know in advance. Google's own suggestion is 0.5; ours
+   * starts there and can be lowered from the admin panel the moment a real
+   * person is turned away, which is a far worse failure than a spam email.
+   */
+  { key: 'RECAPTCHA_SITE_KEY', group: 'security', type: 'text', secret: false },
+  { key: 'RECAPTCHA_SECRET', group: 'security', type: 'secret', secret: true, testable: true },
+  { key: 'RECAPTCHA_MIN_SCORE', group: 'security', type: 'text', secret: false },
 ];
 
 const BY_KEY = new Map(CREDENTIALS.map((c) => [c.key, c]));

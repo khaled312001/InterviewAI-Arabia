@@ -395,18 +395,59 @@ export function HomeScreen({ navigation }: any) {
             theme.shadow.md,
           ]}
         >
+          {/*
+            A slow outward ping behind the camera icon.
+
+            This is the one thing on the screen we actually want the eye to
+            land on — starting an interview is the product — and a static
+            gradient card competes with the balance card above it. A ring that
+            expands and fades reads as "live" rather than as decoration, which
+            is exactly what the button does.
+
+            Dropped entirely under Reduce Motion. A looping animation is the
+            case the tokens call out by name: no duration makes a permanent
+            pulse acceptable to a reader with a vestibular disorder, so this
+            checks `motion.reduced` instead of just inheriting a short one.
+          */}
           <View
             style={[
-              styles.balanceIcon,
-              {
-                width: theme.layout.avatar.md,
-                height: theme.layout.avatar.md,
-                borderRadius: theme.radii.md,
-                backgroundColor: theme.colors.surface,
-              },
+              styles.ctaIcon,
+              { width: theme.layout.avatar.md, height: theme.layout.avatar.md },
             ]}
           >
-            <Ionicons name="videocam" size={theme.layout.icon.lg} color={theme.colors.success} />
+            {theme.motion.reduced ? null : (
+              <MotiView
+                from={{ scale: 1, opacity: 0.55 }}
+                animate={{ scale: 1.7, opacity: 0 }}
+                transition={{
+                  type: 'timing',
+                  duration: 2200,
+                  loop: true,
+                  repeatReverse: false,
+                }}
+                pointerEvents="none"
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  {
+                    borderRadius: theme.radii.md,
+                    borderWidth: 2,
+                    borderColor: theme.colors.surface,
+                  },
+                ]}
+              />
+            )}
+            <View
+              style={[
+                styles.balanceIcon,
+                StyleSheet.absoluteFillObject,
+                {
+                  borderRadius: theme.radii.md,
+                  backgroundColor: theme.colors.surface,
+                },
+              ]}
+            >
+              <Ionicons name="videocam" size={theme.layout.icon.lg} color={theme.colors.success} />
+            </View>
           </View>
 
           <View style={styles.grow}>
@@ -572,6 +613,9 @@ const styles = StyleSheet.create({
   planTap: { justifyContent: 'center' },
 
   balanceIcon: { alignItems: 'center', justifyContent: 'center' },
+  // Positioning context for the CTA's ping ring, which is absolutely placed
+  // behind the icon and must not stretch the row it sits in.
+  ctaIcon: { alignItems: 'center', justifyContent: 'center' },
 
   ctaSubtitle: { opacity: 0.9 },
 

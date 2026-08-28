@@ -60,7 +60,18 @@ export const isPushSupported = true;
  */
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    /*
+     * SDK 52+ split the old `shouldShowAlert` into two, because iOS 14 did:
+     * a notification can appear as a banner, in Notification Centre's list,
+     * or both. Both are wanted here — the banner catches someone looking at
+     * the screen, the list catches someone who was not.
+     *
+     * `shouldShowAlert` is kept alongside them for older native runtimes that
+     * still read it; the newer fields are ignored there and vice versa.
+     */
     shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
   }),

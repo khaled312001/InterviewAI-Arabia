@@ -4,8 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import * as WebBrowser from 'expo-web-browser';
 import './src/i18n';
+// Side-effect import: completes an OAuth redirect before anything renders.
+import { authRedirectLanded } from './src/auth/completeAuthSession';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef, onNavigationReady } from './src/navigation/navigationRef';
 import { usePushNotifications } from './src/push';
@@ -13,41 +14,45 @@ import { useAuth } from './src/store/auth';
 import { colors } from './src/theme/tokens';
 
 /*
- * Finish an OAuth redirect that landed in this window, then get out of the way.
+ * The OAuth popup case is handled entirely by ./src/auth/completeAuthSession,
+ * which calls maybeCompleteAuthSession() exactly once for the whole program.
+ * It is imported for its side effect and re-exported so nothing else has to
+ * know where it lives.
  *
- * On web the Google popup comes back to `/app/`, which boots a SECOND copy of
- * the whole app inside that popup. `maybeCompleteAuthSession()` recognises the
- * redirect, writes the result to localStorage, and posts it to the opener.
- *
- * What it does NOT do is close the window — the library leaves that to the
- * opener, which closes the popup when it receives that message. And the message
- * never arrives, because Google's pages carry `Cross-Origin-Opener-Policy`:
- * navigating through them severs `window.opener`, so by the time the popup is
- * back on our origin the reference is null. The library then falls back to
- * `window.opener ?? window.parent` — and for a top-level window `window.parent`
- * is the window itself, so the popup posts the result to nobody and sits there
- * showing the onboarding slides on top of the page that opened it.
- *
- * So we close it ourselves. The result is already in localStorage before this
- * point, and the opener has a focus-driven fallback that reads it from there —
- * which is why closing is enough to complete the sign-in rather than abandon it.
- *
- * `authPopupDone` is exported so the app can render a bare "you can close this"
- * panel instead of the full UI, for the case where the browser refuses the
- * close (a window a script did not open cannot be closed by script).
+ * It MUST NOT be called here as well. It is single-use, and a second call
+ * returns `failed` — which is precisely the bug that made the popup render the
+ * whole app on top of the page that opened it. See that file for the full
+ * ordering story.
  */
-const authResult = WebBrowser.maybeCompleteAuthSession();
-export const authPopupDone = authResult?.type === 'success';
-
-if (authPopupDone && typeof window !== 'undefined') {
-  try { window.close(); } catch { /* browser refused; the panel below covers it */ }
-}
+export { authRedirectLanded } from './src/auth/completeAuthSession';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function App() {
   const [ready, setReady] = useState(false);
   const hydrate = useAuth((s) => s.hydrate);
+
+  /*
+   * This window landed on an OAuth redirect. completeAuthSession has already
+   * written the token to the relay and asked the window to close.
+   *
+   * Show a neutral "finishing sign-in" state rather than the full app: booting
+   * the onboarding carousel on top of the page the reader was actually using
+   * was the whole complaint.
+   *
+   * But only BRIEFLY. If the close was refused — a window script did not open
+   * cannot be closed by script — a permanent "you can close this window" panel
+   * would be a dead end, because there would be no other window to go back to.
+   * So after a moment it falls through to the normal app, where the relay value
+   * this same window just wrote signs it in on the spot. Either way the person
+   * ends up signed in; the only difference is which window they end up in.
+   */
+  const [finishingAuth, setFinishingAuth] = useState(authRedirectLanded);
+  useEffect(() => {
+    if (!authRedirectLanded) return undefined;
+    const t = setTimeout(() => setFinishingAuth(false), 1400);
+    return () => clearTimeout(t);
+  }, []);
 
   // Above the `!ready` early return on purpose — hooks cannot be conditional,
   // and the notification listeners have to be attached before the first render
@@ -108,18 +113,17 @@ export default function App() {
    * signed-out app — onboarding slides and all — on top of the page the reader
    * was actually using is the worst possible answer. Say what happened instead.
    */
-  if (authPopupDone) {
+  if (finishingAuth) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center',
                      backgroundColor: colors.bgLight, padding: 24 }}>
-        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.textLight, textAlign: 'center' }}>
-          تم تسجيل الدخول
+        <ActivityIndicator color={colors.primary} />
+        <Text style={{ marginTop: 14, fontSize: 16, fontWeight: '700',
+                       color: colors.textLight, textAlign: 'center' }}>
+          جارٍ إتمام تسجيل الدخول…
         </Text>
-        <Text style={{ marginTop: 8, fontSize: 14, color: colors.textMutedLight, textAlign: 'center' }}>
-          يمكنك إغلاق هذه النافذة والعودة إلى Interprova.
-        </Text>
-        <Text style={{ marginTop: 16, fontSize: 13, color: colors.textMutedLight, textAlign: 'center' }}>
-          Signed in — you can close this window.
+        <Text style={{ marginTop: 6, fontSize: 13, color: colors.textMutedLight, textAlign: 'center' }}>
+          Finishing sign-in…
         </Text>
       </View>
     );

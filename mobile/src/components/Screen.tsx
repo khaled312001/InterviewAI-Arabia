@@ -18,7 +18,16 @@ interface Props {
    * Printing an error under a button the user cannot see the cause of is how a
    * screen ends up looking broken rather than incomplete.
    */
-  scrollRef?: RefObject<ScrollView>;
+  /*
+   * `ScrollView | null`, not `ScrollView`.
+   *
+   * React 19 changed what `useRef<T>(null)` produces: it is now
+   * `RefObject<T | null>` rather than the old `RefObject<T>`, because the ref
+   * genuinely IS null until the element mounts and the previous type lied
+   * about it. Every caller here uses `useRef<ScrollView>(null)`, so the prop
+   * has to accept the honest type.
+   */
+  scrollRef?: RefObject<ScrollView | null>;
   refreshing?: boolean;
   onRefresh?: () => void;
   /** Remove the default horizontal padding (for edge-to-edge heroes). */

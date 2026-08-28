@@ -91,6 +91,22 @@ const schema = z.object({
   SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional().default(''),
   MAIL_FROM: z.string().optional().default(''),
+
+  /**
+   * reCAPTCHA v3, guarding the public contact form.
+   *
+   * All three default to empty/zero so a deployment without keys boots and the
+   * form keeps working — services/security/recaptcha.js treats "no secret" as
+   * "skip verification", because a missing environment variable must not take
+   * down the only channel a locked-out user has. They are declared here so
+   * cfg() can fall back to env when the credential row does not exist yet;
+   * without the declaration cfg() would read `undefined` and silently disable
+   * a captcha the operator believes is on.
+   */
+  RECAPTCHA_SITE_KEY: z.string().optional().default(''),
+  RECAPTCHA_SECRET: z.string().optional().default(''),
+  RECAPTCHA_MIN_SCORE: z.string().optional().default(''),
+
   ADMIN_PASSWORD: z.string().min(8).default('ChangeMeImmediately!'),
 
   CRON_SECRET: z.string().optional().default(''),

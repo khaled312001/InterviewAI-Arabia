@@ -55,6 +55,14 @@ if [ "$DO_FRONTENDS" = 1 ]; then
   cp -r "$ROOT/landing"      "$STAGE/public/landing"
   # Never ship source maps or the deploy script itself to the public root.
   find "$STAGE/public" -name '*.map' -delete
+  # Page bodies are build INPUT; the assembled pages are already in landing/.
+  rm -rf "$STAGE/public/landing/pages"
+
+  # Content-address the landing assets. Metro already does this for /app and
+  # Vite for /admin; the marketing site had nothing, which is how a year-long
+  # cache header ended up pinned to a name like `shots/app-home.png`.
+  say "Fingerprinting landing assets"
+  node "$ROOT/scripts/fingerprint-assets.mjs" "$STAGE/public/landing"
 fi
 
 if [ "$DO_BACKEND" = 1 ]; then

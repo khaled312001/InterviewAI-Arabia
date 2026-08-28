@@ -182,16 +182,47 @@ log('\n▸ session summary');
 await goHome();
 if (await tap('السجل')) {
   await sleep(1200);
+  /*
+   * Find the first history row and click it.
+   *
+   * The old selector looked for "من 10" — text this screen has never rendered;
+   * a row shows a bare "9.0" beside the category. So it matched nothing, fell
+   * through, and shot History a second time. That is why session-summary.png
+   * and history.png were byte-for-byte identical on the live site: the landing
+   * page's "step 8 — your session summary" was a picture of the history list.
+   *
+   * Anchor on the answer count instead ("6 أسئلة"), which is structural — every
+   * row has one, and no other screen renders that phrase.
+   */
   const opened = await page.evaluate(() => {
-    const row = [...document.querySelectorAll('div')]
-      .find((e) => /من 10|٪/.test(e.textContent || '') && (e.textContent || '').length < 200);
-    if (!row) return false;
-    row.scrollIntoView({ block: 'center' });
-    const r = row.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    const vis = (el) => {
+      const r = el.getBoundingClientRect();
+      return r.width > 40 && r.height > 20;
+    };
+    const rows = [...document.querySelectorAll('*')].filter(
+      (el) => vis(el) && /\d+\s*(أسئلة|سؤال)/.test(el.innerText || '') && (el.innerText || '').length < 120,
+    );
+    // Innermost match: an ancestor "contains" every row on the screen.
+    const leaf = rows.filter((el) => !rows.some((o) => o !== el && el.contains(o)))[0];
+    if (!leaf) return null;
+    leaf.scrollIntoView({ block: 'center', behavior: 'instant' });
+    const r = leaf.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2, text: leaf.innerText.trim().slice(0, 40) };
   });
-  if (opened) { await page.mouse.click(opened.x, opened.y); await sleep(2500); }
-  await shot('session-summary');
+  if (opened) {
+    log(`   → opening "${opened.text}"`);
+    await page.mouse.click(opened.x, opened.y, { delay: 40 });
+    await sleep(3000);
+  } else {
+    log('   ⚠ no history row found — the summary would be a duplicate of history');
+  }
+  // Refuse to save a duplicate: a silently wrong screenshot is worse than none.
+  const summaryText = await page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
+  if (/لا توجد جلسات|كل جلساتك التدريبية/.test(summaryText)) {
+    log('   ✗ still on History — NOT saving session-summary.png');
+  } else {
+    await shot('session-summary');
+  }
 }
 
 /* ------------------------------------------------------------------ *

@@ -16,6 +16,8 @@
  *    for grading.
  */
 
+import { dialectDirective, marketBlock, marketFairnessRule } from './markets.js';
+
 /** Strip characters that let user text break out of its XML-ish fence. */
 export function fence(value, max = 4000) {
   const s = String(value ?? '').slice(0, max);
@@ -148,11 +150,22 @@ export const MEETING_TURN_SCHEMA = {
  * (gender, language) pair, so it caches. Interview-specific context is
  * appended separately and deliberately kept *after* the cache breakpoint.
  */
-export function meetingSystemStable({ language = 'ar', gender = 'female' }) {
+export function meetingSystemStable({ language = 'ar', gender = 'female', market: marketCode = null }) {
   const isHer = gender !== 'male';
+  /*
+   * The dialect line belongs HERE, in the cached half, and not in the
+   * per-session context block: how the interviewer speaks is fixed for the
+   * whole call, and there are only a handful of (language, gender, market)
+   * combinations — so the prompt cache still works, it just has a few more
+   * entries. Putting it in the uncached half would re-send it every turn of a
+   * thirty-turn interview for no benefit.
+   */
+  const dialect = dialectDirective(marketCode, language);
+
   if (language !== 'ar') {
     const name = isHer ? 'Sarah' : 'Ahmed';
     return `You are "${name}", an HR manager with 10 years' experience at a leading Arab company, conducting a job interview over video.
+${dialect ? `\n${dialect}\n` : ''}
 
 Rules:
 1. Very short replies — 1 to 3 sentences. They are spoken aloud, so never use lists, markdown, or emoji.
@@ -170,11 +183,26 @@ Rules:
   const you = isHer ? 'أنتِ' : 'أنت';
   const role = isHer ? 'مسؤولة' : 'مسؤول';
   const doV = isHer ? 'تُجرين' : 'تُجري';
-  return `${you} "${name}"، ${role} موارد بشرية بخبرة 10 سنوات في شركة عربية رائدة، و${doV} مقابلة وظيفية عبر مكالمة فيديو.
 
+  /*
+   * Rule 2 has to bend around the dialect line, not sit beside it.
+   *
+   * The default register is simplified MSA, which is the right answer when we
+   * do not know where the candidate is. But a market DOES tell us, and then
+   * "speak simplified MSA" directly contradicts "speak professional Saudi
+   * Gulf" three lines above it — two instructions, one of which the model has
+   * to silently discard. So the market replaces the register rule instead of
+   * arguing with it.
+   */
+  const register = dialect
+    ? 'نبرة مهنية ودودة، والتزمي باللهجة المذكورة أعلاه في كل ردودكِ.'
+    : 'نبرة مهنية ودودة، وعربية فصحى مبسطة وسهلة النطق.';
+
+  return `${you} "${name}"، ${role} موارد بشرية بخبرة 10 سنوات في شركة عربية رائدة، و${doV} مقابلة وظيفية عبر مكالمة فيديو.
+${dialect ? `\n${dialect}\n` : ''}
 القواعد:
 1. ردود قصيرة جدًا: من جملة إلى ثلاث جمل فقط. الرد يُنطق بالصوت، فلا تستخدم قوائم أو رموز أو تنسيقًا.
-2. نبرة مهنية ودودة، وعربية فصحى مبسطة وسهلة النطق.
+2. ${register}
 3. سؤال واحد فقط في كل دور، ثم توقّف وانتظر الإجابة.
 4. التدرّج الطبيعي: تعريف ← الخبرة ← سؤال متخصص في المجال ← موقف سلوكي ← التوقعات.
 5. علّقي بجملة قصيرة على الإجابة، ثم اطرحي السؤال التالي.
@@ -193,6 +221,24 @@ export function meetingContextBlock(ctx, language = 'ar') {
   if (ctx.jobTitle)  parts.push(ar ? `المسمى الوظيفي: ${fence(ctx.jobTitle, 200)}` : `Role: ${fence(ctx.jobTitle, 200)}`);
   if (ctx.jobDescription) parts.push(`<job_description>${fence(ctx.jobDescription, 1500)}</job_description>`);
   if (ctx.cvSummary) parts.push(`<cv>${fence(ctx.cvSummary, 1800)}</cv>`);
+
+  /*
+   * The market briefing.
+   *
+   * It sits in the UNCACHED half even though a market is fixed for the whole
+   * call, unlike the dialect line that went into the persona. The reason is
+   * that this same function builds the context for the final EVALUATION, which
+   * has a different system prompt entirely — putting the briefing here is what
+   * makes the evaluator work from the same facts as the interviewer instead of
+   * grading a Riyadh interview against Cairo norms.
+   *
+   * The fairness rule is appended by marketBlock's caller, never separately:
+   * market facts and "these facts inform the questions, never the score" have
+   * to travel together or the first one is an invitation to discriminate.
+   */
+  const briefing = marketBlock(ctx.market, language);
+  if (briefing) parts.push(`${briefing}\n${marketFairnessRule(language)}`);
+
   if (!parts.length) return '';
 
   const header = ar

@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Subscription } from 'expo-modules-core';
-import { addSpeechRecognitionListener, isRecognitionAvailable } from 'expo-speech-recognition';
+/*
+ * SDK 54 / expo-speech-recognition 56 renamed both of these.
+ *
+ *   addSpeechRecognitionListener(type, cb)  ->  Module.addListener(type, cb)
+ *   isRecognitionAvailable()                ->  Module.isRecognitionAvailable()
+ *
+ * They moved from free functions onto the module object, which now extends
+ * expo-modules-core's `NativeModule` and inherits its listener plumbing.
+ * `Subscription` was renamed `EventSubscription` in the same release.
+ */
+import type { EventSubscription } from 'expo-modules-core';
+import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
 import type { CaptureHandle, LevelMeter, LevelSource, UseLevelMeter } from './contract';
 import {
@@ -33,7 +43,9 @@ const RMS_RANGE = 12;
 let micProbe: boolean | null = null;
 function micLevelAvailable(): boolean {
   if (micProbe === null) {
-    try { micProbe = isRecognitionAvailable(); } catch { micProbe = false; }
+    // `?? false` because the native method is typed as possibly null on web
+    // builds of the type definitions; a null here must read as "no mic".
+    try { micProbe = ExpoSpeechRecognitionModule.isRecognitionAvailable() ?? false; } catch { micProbe = false; }
   }
   return micProbe;
 }
@@ -43,7 +55,7 @@ export const useLevelMeter: UseLevelMeter = () => {
   const [source, setSource] = useState<LevelSource>(null);
 
   const envelopeRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const subRef = useRef<Subscription | null>(null);
+  const subRef = useRef<EventSubscription | null>(null);
   const lastRef = useRef({ at: 0, value: 0 });
   const releasedRef = useRef(false);
 
@@ -137,7 +149,7 @@ export const useLevelMeter: UseLevelMeter = () => {
       return;
     }
     try {
-      subRef.current = addSpeechRecognitionListener('volumechange', (event) => {
+      subRef.current = ExpoSpeechRecognitionModule.addListener('volumechange', (event: { value: number }) => {
         emit(clamp((event.value - RMS_MIN) / RMS_RANGE, 0, 1));
       });
       setSource('mic');

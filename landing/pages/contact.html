@@ -63,7 +63,70 @@
         <span data-l="ar">أو راسلنا مباشرة على <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>. لا نستخدم بريدك إلا للردّ على رسالتك.</span>
         <span data-l="en">Or email us directly at <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>. We use your address only to reply to you.</span>
       </p>
+
+      <!-- Google requires either its floating badge or this notice. The badge
+           is hidden (site.css) because it covers the send button on a phone;
+           the notice is the sanctioned alternative and must stay visible. -->
+      <p class="note recaptcha-note">
+        <span data-l="ar">هذا الموقع محمي بـreCAPTCHA، وتنطبق
+          <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">سياسة خصوصية</a> و<a href="https://policies.google.com/terms" rel="noopener" target="_blank">شروط خدمة</a> Google.</span>
+        <span data-l="en">This site is protected by reCAPTCHA and the Google
+          <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">Privacy Policy</a> and
+          <a href="https://policies.google.com/terms" rel="noopener" target="_blank">Terms of Service</a> apply.</span>
+      </p>
     </form>
+  </div>
+</section>
+
+<!-- ══ Reach us another way ══ -->
+<section class="section" style="background:var(--surface-alt)">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2><span data-l="ar">طرق أخرى للتواصل</span><span data-l="en">Other ways to reach us</span></h2>
+      <p>
+        <span data-l="ar">النموذج أسرع طريقة، لكن كل هذه تصل إلينا فعلًا.</span>
+        <span data-l="en">The form is the fastest route, but every one of these reaches us.</span>
+      </p>
+    </div>
+
+    <div class="contact-cards">
+      <div class="ccard">
+        <span class="ccard-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg></span>
+        <h3><span data-l="ar">البريد الإلكتروني</span><span data-l="en">Email</span></h3>
+        <p><a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a></p>
+        <p class="ccard-note">
+          <span data-l="ar">نردّ عادةً خلال يوم عمل واحد.</span>
+          <span data-l="en">We normally reply within one business day.</span>
+        </p>
+      </div>
+
+      <div class="ccard">
+        <span class="ccard-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg></span>
+        <h3><span data-l="ar">الخصوصية وحذف الحساب</span><span data-l="en">Privacy and account deletion</span></h3>
+        <p>
+          <a href="/delete-account.html"><span data-l="ar">اطلب حذف حسابك</span><span data-l="en">Request deletion</span></a>
+          ·
+          <a href="/privacy.html"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a>
+        </p>
+        <p class="ccard-note">
+          <span data-l="ar">تُنفَّذ طلبات الحذف خلال ٣٠ يومًا كحدّ أقصى.</span>
+          <span data-l="en">Deletion requests are completed within 30 days at most.</span>
+        </p>
+      </div>
+
+      <div class="ccard">
+        <span class="ccard-ico"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-building"/></svg></span>
+        <h3><span data-l="ar">الشركة</span><span data-l="en">The company</span></h3>
+        <p>
+          <span data-l="ar">Interprova منتج من <a href="https://barmagly.tech" rel="noopener" target="_blank">شركة برمجلي</a></span>
+          <span data-l="en">Interprova is a product of <a href="https://barmagly.tech" rel="noopener" target="_blank">Barmagly</a></span>
+        </p>
+        <p class="ccard-note">
+          <span data-l="ar">القاهرة، مصر — ونعمل بالعربية والإنجليزية.</span>
+          <span data-l="en">Cairo, Egypt — we work in Arabic and English.</span>
+        </p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -74,10 +137,58 @@
   var msg = document.getElementById('c-msg');
   var btn = document.getElementById('c-submit');
   var en = function () { return document.documentElement.getAttribute('data-lang') === 'en'; };
+  // When the form appeared. The server rejects a submission that arrives
+  // impossibly fast, which is most naive bots — they never run this script at
+  // all, so they cannot send a plausible value.
+  var shownAt = Date.now();
 
   function say(ar, enText, kind) {
     msg.textContent = en() ? enText : ar;
     msg.className = 'form-msg show ' + kind;
+  }
+
+  /* ── reCAPTCHA v3 ────────────────────────────────────────────────────
+     The site key is FETCHED, not hardcoded: rotating the key pair is then an
+     admin action rather than a redeploy, and a page that has been cached with
+     an old key still asks the server which one is current.
+
+     Everything here degrades. If the config call fails, if Google's script is
+     blocked, or if execute() rejects, the form still submits — without a
+     token. The server decides what that is worth; the page never becomes a
+     dead end because a third-party script did not load. */
+  var captcha = { ready: false, siteKey: null, action: 'contact' };
+
+  fetch('/api/contact/config')
+    .then(function (r) { return r.json(); })
+    .then(function (cfg) {
+      var rc = cfg && cfg.recaptcha;
+      if (!rc || !rc.enabled || !rc.siteKey) return;
+      captcha.siteKey = rc.siteKey;
+      captcha.action = rc.action || 'contact';
+      var s = document.createElement('script');
+      s.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(rc.siteKey);
+      s.async = true;
+      s.onload = function () { captcha.ready = true; };
+      document.head.appendChild(s);
+    })
+    .catch(function () { /* no token; the server still has honeypot + limiter */ });
+
+  function token() {
+    if (!captcha.ready || !window.grecaptcha) return Promise.resolve('');
+    return new Promise(function (resolve) {
+      // A token expires in two minutes, so it is minted at SUBMIT, never at
+      // page load — a visitor who reads the page for five minutes before
+      // writing would otherwise be rejected for being slow.
+      try {
+        window.grecaptcha.ready(function () {
+          window.grecaptcha.execute(captcha.siteKey, { action: captcha.action })
+            .then(resolve)
+            .catch(function () { resolve(''); });
+        });
+      } catch (e) { resolve(''); }
+      // Never let a hung third-party script strand the button in "Sending…".
+      setTimeout(function () { resolve(''); }, 8000);
+    });
   }
 
   form.addEventListener('submit', function (e) {
@@ -87,7 +198,8 @@
       email: form.email.value.trim(),
       topic: form.topic.value,
       message: form.message.value.trim(),
-      website: form.website.value
+      website: form.website.value,
+      elapsedMs: Date.now() - shownAt
     };
 
     if (!data.name || !data.email || data.message.length < 10) {
@@ -99,15 +211,22 @@
     var label = btn.innerHTML;
     btn.textContent = en() ? 'Sending…' : 'جارٍ الإرسال…';
 
-    fetch('/api/contact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    })
+    token()
+      .then(function (t) {
+        data.captcha = t;
+        return fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      })
       .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
       .then(function (res) {
         if (!res.ok) throw new Error(res.body && res.body.error ? res.body.error : 'failed');
         form.reset();
+        // The clock restarts with the empty form, so a second genuine message
+        // is not judged against the time the first one took.
+        shownAt = Date.now();
         say('وصلتنا رسالتك. سنردّ على بريدك قريبًا.',
             'Your message reached us. We will reply to your email shortly.', 'ok');
       })

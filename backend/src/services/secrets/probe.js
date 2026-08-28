@@ -61,6 +61,31 @@ const PROBES = {
   },
 
   /**
+   * reCAPTCHA has no "is this secret valid" endpoint, but siteverify answers
+   * the question for free: it always returns HTTP 200, and distinguishes a bad
+   * SECRET from a bad RESPONSE in `error-codes`. So a deliberately junk
+   * response earns `invalid-input-response` from a working secret and
+   * `invalid-input-secret` from a broken one — a real verification, with no
+   * side effect and no browser needed.
+   */
+  async RECAPTCHA_SECRET(value) {
+    const res = await fetchWithTimeout('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ secret: value, response: 'probe' }).toString(),
+    });
+    if (!res.ok) return { ...fromStatus(res.status), status: res.status };
+    const data = await res.json().catch(() => null);
+    const codes = Array.isArray(data?.['error-codes']) ? data['error-codes'] : [];
+    if (codes.includes('invalid-input-secret')) {
+      return { ok: false, verified: true, code: 'unauthorized', status: res.status };
+    }
+    // Anything else means Google recognised the secret and objected only to
+    // the response we deliberately made up.
+    return { ok: true, verified: true, code: 'ok', status: res.status };
+  },
+
+  /**
    * EasyKash publishes no key-verification endpoint, and the only authenticated
    * call available (Direct Pay) CREATES a payment. Probing it would put junk
    * orders in the merchant dashboard, so this checks reachability of the

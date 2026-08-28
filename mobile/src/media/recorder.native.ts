@@ -2,7 +2,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
 import type { CameraView } from 'expo-camera';
-import * as FileSystem from 'expo-file-system';
+/*
+ * `expo-file-system/legacy`, deliberately.
+ *
+ * SDK 54 ships expo-file-system v19, whose default export is a completely new
+ * object-oriented API (`new File(...)`, `new Directory(...)`). The constants
+ * and helpers used below — documentDirectory, cacheDirectory, EncodingType,
+ * getInfoAsync's `size` option — do not exist on it.
+ *
+ * The `/legacy` entry point is Expo's own supported bridge for exactly this,
+ * and it keeps the v18 surface intact. Porting to the new API is a separate,
+ * larger change with its own risk; pinning to the legacy import here makes the
+ * SDK upgrade a dependency change rather than a rewrite of the recording and
+ * audio-cache paths, which are the two things in this app that must not break.
+ */
+import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 
@@ -143,7 +157,10 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
 
     let sizeBytes: number | undefined;
     try {
-      const info = await FileSystem.getInfoAsync(uri, { size: true });
+      // `{ size: true }` was dropped in expo-file-system v19's legacy surface —
+      // size is now always returned for a file that exists, so asking for it is
+      // both unnecessary and a type error.
+      const info = await FileSystem.getInfoAsync(uri);
       if (!info.exists) { notice('recordingEmpty', 'danger'); return fail('empty'); }
       sizeBytes = info.size;
       if (!sizeBytes) {
