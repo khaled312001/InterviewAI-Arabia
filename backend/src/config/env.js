@@ -82,6 +82,15 @@ const schema = z.object({
   FREE_DAILY_QUESTION_LIMIT: z.coerce.number().int().positive().default(5),
 
   ADMIN_EMAIL: z.string().email().default('admin@barmagly.tech'),
+
+  // Outbound mail. Empty by default so a deployment without a mailbox starts
+  // normally and simply cannot send — `isConfigured()` in services/mail decides
+  // that, not a crash at boot.
+  SMTP_HOST: z.string().optional().default(''),
+  SMTP_PORT: z.coerce.number().int().optional().default(465),
+  SMTP_USER: z.string().optional().default(''),
+  SMTP_PASS: z.string().optional().default(''),
+  MAIL_FROM: z.string().optional().default(''),
   ADMIN_PASSWORD: z.string().min(8).default('ChangeMeImmediately!'),
 
   CRON_SECRET: z.string().optional().default(''),

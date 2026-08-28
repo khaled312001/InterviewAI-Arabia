@@ -2,31 +2,31 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://interview.khaledahmed.net/</loc>
+    <loc>https://interprova.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://interview.khaledahmed.net/og-image.png</image:loc>
+      <image:loc>https://interprova.com/og-image.png</image:loc>
       <image:title>Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي</image:title>
     </image:image>
     <image:image>
-      <image:loc>https://interview.khaledahmed.net/shots/app-home.png</image:loc>
+      <image:loc>https://interprova.com/shots/app-home.png</image:loc>
       <image:title>الشاشة الرئيسية لتطبيق Interprova</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://interview.khaledahmed.net/app</loc>
+    <loc>https://interprova.com/app</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://interview.khaledahmed.net/privacy</loc>
+    <loc>https://interprova.com/privacy</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://interview.khaledahmed.net/terms</loc>
+    <loc>https://interprova.com/terms</loc>
     <lastmod>2026-08-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

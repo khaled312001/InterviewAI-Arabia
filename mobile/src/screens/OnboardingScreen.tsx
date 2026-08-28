@@ -326,6 +326,18 @@ export function OnboardingScreen({ navigation }: Props) {
   // Returns an Animated node once the pager has been measured, a static
   // number before that. Typed loosely because Animated's style generics do
   // not narrow across that union.
+  /** Degrees of Y-rotation for slide `i` at the current scroll position. */
+  const rotateAt = (i: number): any =>
+    (position
+      ? position.interpolate({
+        inputRange: [i - 1, i, i + 1],
+        // Signed by `dir` so the deck turns the same way the finger travels in
+        // both writing directions; unsigned, the RTL build spins backwards.
+        outputRange: [`${-14 * dir}deg`, '0deg', `${14 * dir}deg`],
+        extrapolate: 'clamp',
+      })
+      : '0deg');
+
   const fadeAt = (i: number, out: [number, number, number]): any =>
     (position
       ? position.interpolate({ inputRange: [i - 1, i, i + 1], outputRange: out, extrapolate: 'clamp' })
@@ -418,10 +430,29 @@ export function OnboardingScreen({ navigation }: Props) {
                       paddingHorizontal: screenPadding,
                       gap: theme.spacing['2xl'],
                       opacity: fadeAt(i, [0.2, 1, 0.2]),
-                      transform: [
-                        { translateX: dir * i * box.width },
-                        { scale: fadeAt(i, [0.92, 1, 0.92]) },
-                      ],
+                      // A card carousel with depth rather than a filmstrip.
+                      //
+                      // `perspective` is first because React Native multiplies
+                      // these in order: a rotation written before the
+                      // projection is applied flat, and the slide would shear
+                      // sideways instead of turning away from the reader.
+                      //
+                      // The neighbours turn ±14° and sit slightly further back,
+                      // so the deck reads as three panels on a spindle. Under
+                      // reduce-motion the rotation is dropped and the old
+                      // scale-and-fade is kept — the tilt is the part that
+                      // moves the horizon, and that is what causes trouble.
+                      transform: theme.motion.reduced
+                        ? [
+                          { translateX: dir * i * box.width },
+                          { scale: fadeAt(i, [0.92, 1, 0.92]) },
+                        ]
+                        : [
+                          { perspective: 1000 },
+                          { translateX: dir * i * box.width },
+                          { rotateY: rotateAt(i) },
+                          { scale: fadeAt(i, [0.86, 1, 0.86]) },
+                        ],
                     },
                   ]}
                 >

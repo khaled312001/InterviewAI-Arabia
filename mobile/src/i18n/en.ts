@@ -304,7 +304,7 @@ export default {
     noScore: 'Not scored',
     durationMinutes: '{{n}} min',
     durationSeconds: '{{n}} sec',
-    shareMessage: 'I scored {{score}} out of 10 in a "{{category}}" session on Interprova — AI interview practice. Try it: https://interview.khaledahmed.net',
+    shareMessage: 'I scored {{score}} out of 10 in a "{{category}}" session on Interprova — AI interview practice. Try it: https://interprova.com',
     shareFallbackTitle: 'Copy the text and share it',
     retrySame: 'New session in this field',
     goHome: 'Back to home',

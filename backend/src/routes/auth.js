@@ -12,6 +12,8 @@ import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import { signUserToken, signUserRefreshToken } from '../middleware/auth.js';
 import { setting } from '../services/appSettings.js';
 import { verifyGoogleIdToken, NO_PASSWORD, hasUsablePassword } from '../services/auth/googleIdentity.js';
+import { sendMail, isConfigured as mailConfigured } from '../services/mail/mailer.js';
+import { passwordResetEmail } from '../services/mail/templates.js';
 import { logger } from '../utils/logger.js';
 
 const router = Router();
@@ -34,6 +36,11 @@ const refreshSchema = z.object({
 
 const forgotSchema = z.object({
   email: z.string().email().toLowerCase(),
+});
+
+const resetSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(8).max(200),
 });
 
 const googleSchema = z.object({
@@ -111,10 +118,100 @@ router.post('/refresh', asyncHandler(async (req, res) => {
 }));
 
 // Stubbed: real flow would issue a reset token via email. Return success to prevent enumeration.
+/** How long a reset link stays valid. Short enough that a forwarded or
+ *  archived mail is not a standing key to the account. */
+const RESET_TTL_MINUTES = 30;
+
+const sha256 = (v) => crypto.createHash('sha256').update(v).digest('hex');
+
 router.post('/forgot-password', authLimiter, asyncHandler(async (req, res) => {
-  forgotSchema.parse(req.body);
-  // TODO: send reset email when SMTP is configured.
-  res.json({ ok: true, message: 'If the email exists, a reset link has been sent.' });
+  const body = forgotSchema.parse(req.body);
+
+  // The answer never varies. Saying "no account with that email" turns this
+  // endpoint into a membership oracle: anyone can test an address list against
+  // it and learn who has an account here — which, for a job-interview product,
+  // is telling an employer that their staff are practising for interviews.
+  const ok = { ok: true, message: 'If the email exists, a reset link has been sent.' };
+
+  const user = await prisma.user.findUnique({ where: { email: body.email } });
+  if (!user || user.isDisabled) return res.json(ok);
+
+  // Google-only accounts have no password to reset; sending them a link would
+  // hand them a form that cannot help. They sign in with Google.
+  if (!hasUsablePassword(user.passwordHash)) return res.json(ok);
+
+  if (!mailConfigured()) {
+    // The old handler returned this same success message with no mail server
+    // configured at all, so the app told people to check an inbox nothing had
+    // been sent to. The reply still cannot reveal anything, but the operator
+    // now finds out from the log instead of from a support ticket.
+    logger.error('password reset requested but SMTP is not configured');
+    return res.json(ok);
+  }
+
+  // Only the hash is stored. A leaked database therefore yields no usable
+  // links, and the token exists in plaintext only inside the one email.
+  const token = crypto.randomBytes(32).toString('base64url');
+  const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60_000);
+
+  await prisma.$transaction([
+    // Any earlier link for this account stops working the moment a new one is
+    // asked for, so a stolen older mail cannot be used behind the owner's back.
+    prisma.passwordReset.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+    prisma.passwordReset.create({
+      data: { userId: user.id, tokenHash: sha256(token), expiresAt },
+    }),
+  ]);
+
+  const url = `${String(env.APP_URL).replace(/\/$/, '')}/reset-password.html?token=${token}`;
+  const mail = passwordResetEmail({ url, minutes: RESET_TTL_MINUTES });
+
+  try {
+    await sendMail({ to: user.email, ...mail });
+  } catch (err) {
+    // Still a 200: the response must not differ by outcome, or it leaks
+    // membership by timing and status just as surely as a 404 would.
+    logger.error('password reset email failed', { message: err.message });
+  }
+
+  return res.json(ok);
+}));
+
+/**
+ * POST /api/auth/reset-password — spend the token, set the new password.
+ */
+router.post('/reset-password', authLimiter, asyncHandler(async (req, res) => {
+  const body = resetSchema.parse(req.body);
+
+  const row = await prisma.passwordReset.findUnique({
+    where: { tokenHash: sha256(body.token) },
+    include: { user: true },
+  });
+
+  const invalid = () => {
+    throw new HttpError(400, 'رابط إعادة التعيين غير صالح أو منتهي / This reset link is invalid or has expired');
+  };
+
+  if (!row || row.usedAt || row.expiresAt.getTime() < Date.now()) invalid();
+  if (!row.user || row.user.isDisabled) invalid();
+
+  const passwordHash = await bcrypt.hash(body.password, 12);
+
+  await prisma.$transaction([
+    prisma.passwordReset.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
+    prisma.user.update({ where: { id: row.userId }, data: { passwordHash } }),
+    // Every other outstanding link dies with it.
+    prisma.passwordReset.updateMany({
+      where: { userId: row.userId, usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+  ]);
+
+  logger.info('password reset completed', { userId: row.userId.toString() });
+  res.json({ ok: true });
 }));
 
 /* ------------------------------------------------------------------ *

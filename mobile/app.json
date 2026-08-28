@@ -123,8 +123,8 @@
       "expo-build-properties"
     ],
     "extra": {
-      "apiBaseUrl": "https://interview.khaledahmed.net/api",
-      "webAppUrl": "https://interview.khaledahmed.net",
+      "apiBaseUrl": "https://interprova.com/api",
+      "webAppUrl": "https://interprova.com",
       "eas": {
         "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
       }

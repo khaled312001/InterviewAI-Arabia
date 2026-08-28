@@ -342,7 +342,7 @@ export default {
     noScore: 'بلا درجة',
     durationMinutes: '{{n}} دقيقة',
     durationSeconds: '{{n}} ثانية',
-    shareMessage: 'حصلت على {{score}} من 10 في جلسة "{{category}}" على Interprova — تدرّب على مقابلات العمل بالذكاء الاصطناعي. جرّبها: https://interview.khaledahmed.net',
+    shareMessage: 'حصلت على {{score}} من 10 في جلسة "{{category}}" على Interprova — تدرّب على مقابلات العمل بالذكاء الاصطناعي. جرّبها: https://interprova.com',
     shareFallbackTitle: 'انسخ النص وشاركه',
     retrySame: 'جلسة جديدة في نفس المجال',
     goHome: 'العودة للرئيسية',

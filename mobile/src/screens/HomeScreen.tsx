@@ -63,6 +63,7 @@ const CategoryTile = React.memo(function CategoryTile({
       <Card
         onPress={press}
         padding="md"
+        depth
         style={styles.tile}
         accessibilityLabel={name}
         accessibilityHint={t('home.categoriesSubtitle')}

@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: https://interview.khaledahmed.net/sitemap.xml
+Sitemap: https://interprova.com/sitemap.xml

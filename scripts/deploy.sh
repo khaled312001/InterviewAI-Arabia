@@ -8,7 +8,7 @@
 #   ./scripts/deploy.sh --migrate    # run the SQL migration only
 #
 # Layout on the server:
-#   ~/domains/khaledahmed.net/interview-backend/     app root (Passenger)
+#   ~/domains/interprova.com/interprova-backend/     app root (Passenger)
 #     ├── src/ prisma/ package.json server.cjs .env
 #     └── public/{landing,admin,web}                 static frontends
 #
@@ -19,7 +19,7 @@ set -euo pipefail
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/interview_prod_ed25519}"
 SSH_HOST="${SSH_HOST:-u405809647@145.79.20.56}"
 SSH_PORT="${SSH_PORT:-65002}"
-APP_DIR="domains/khaledahmed.net/interview-backend"
+APP_DIR="domains/interprova.com/interprova-backend"
 NODE="/opt/alt/alt-nodejs20/root/bin/node"
 NPM="/opt/alt/alt-nodejs20/root/bin/npm"
 
@@ -106,7 +106,7 @@ if [ "$DO_MIGRATE" = 1 ] || [ "$DO_BACKEND" = 1 ]; then
       "$STAGE/_migration.sql" "$SSH_HOST:~/$APP_DIR/_migration.sql"
   "${SSH[@]}" bash -s <<'REMOTE'
 set -euo pipefail
-APP=~/domains/khaledahmed.net/interview-backend
+APP=~/domains/interprova.com/interprova-backend
 NODE=/opt/alt/alt-nodejs20/root/bin/node
 cd "$APP"
 # Parse credentials out of .env without ever printing them.
@@ -168,8 +168,8 @@ say "Restarting application"
 say "Smoke test"
 sleep 6
 for path in /api/health /api/categories /api/payments/config /; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "https://interview.khaledahmed.net$path" || echo 000)
+  code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "https://interprova.com$path" || echo 000)
   printf '  %-24s %s\n' "$path" "$code"
 done
 
-say "Done → https://interview.khaledahmed.net"
+say "Done → https://interprova.com"

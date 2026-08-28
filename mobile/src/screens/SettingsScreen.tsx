@@ -40,9 +40,9 @@ import { api } from '../api/client';
  * providers or this app's data. Google Play compares the policy against the
  * app's actual behaviour, and `/privacy#delete-account` is the deletion URL
  * declared in the Data safety form. */
-const WEBSITE_URL = 'https://interview.khaledahmed.net';
-const PRIVACY_URL = 'https://interview.khaledahmed.net/privacy';
-const TERMS_URL = 'https://interview.khaledahmed.net/terms';
+const WEBSITE_URL = 'https://interprova.com';
+const PRIVACY_URL = 'https://interprova.com/privacy';
+const TERMS_URL = 'https://interprova.com/terms';
 
 const NOTIF_STORAGE_KEY = 'settings:notifications';
 

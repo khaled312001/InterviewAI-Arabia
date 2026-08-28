@@ -1,7 +1,7 @@
 /**
  * Firebase Cloud Messaging, web side — deliberately inert.
  *
- * The web bundle is deployed to interview.khaledahmed.net/app, and browser push
+ * The web bundle is deployed to interprova.com/app, and browser push
  * is a different mechanism end to end: a service worker, a VAPID key pair and a
  * `PushSubscription` object, none of which this deployment has and none of
  * which the backend can address — `sendToTokens()` talks to firebase-admin,

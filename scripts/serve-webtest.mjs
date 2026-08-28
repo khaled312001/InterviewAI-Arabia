@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.resolve(ROOT, process.argv[2] || '.webtest');
 const PORT = Number(process.argv[3] || 8099);
-const UPSTREAM = process.env.UPSTREAM || 'https://interview.khaledahmed.net';
+const UPSTREAM = process.env.UPSTREAM || 'https://interprova.com';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',

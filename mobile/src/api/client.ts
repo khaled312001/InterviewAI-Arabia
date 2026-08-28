@@ -11,7 +11,7 @@ const configUrl = (Constants.expoConfig?.extra as any)?.apiBaseUrl as string | u
 // this repo produces serves the API at `/api` on the page's own origin — the
 // Hostinger box serves it directly, and the Vercel frontend project rewrites
 // `/api/*` to the backend deployment (vercel.json at the repo root).
-const BACKEND_FALLBACK = 'https://interview.khaledahmed.net/api';
+const BACKEND_FALLBACK = 'https://interprova.com/api';
 
 let resolved: string;
 if (envUrl) {

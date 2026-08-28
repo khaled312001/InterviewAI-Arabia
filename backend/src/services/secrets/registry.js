@@ -81,6 +81,22 @@ export const CREDENTIALS = [
   { key: 'GEMINI_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
   { key: 'GROQ_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
 
+  /* ------------------------------- Mail ------------------------------- */
+  /**
+   * Outbound email. Only one message actually depends on it today — the
+   * password reset — but that one message is the difference between "I forgot
+   * my password" being recoverable and being the end of the account.
+   *
+   * `SMTP_PASS` is the mailbox password, so it is a secret like any other and
+   * is write-only through the admin panel. The rest are plain configuration an
+   * operator needs to be able to read back while debugging a delivery problem.
+   */
+  { key: 'SMTP_HOST', group: 'mail', type: 'text', secret: false },
+  { key: 'SMTP_PORT', group: 'mail', type: 'text', secret: false },
+  { key: 'SMTP_USER', group: 'mail', type: 'text', secret: false },
+  { key: 'SMTP_PASS', group: 'mail', type: 'secret', secret: true, testable: true },
+  { key: 'MAIL_FROM', group: 'mail', type: 'text', secret: false },
+
   /* ------------------------------- Push ------------------------------- */
   /**
    * The Firebase service account, base64-encoded JSON.
