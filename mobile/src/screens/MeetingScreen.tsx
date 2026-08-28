@@ -42,6 +42,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, StyleSheet, Pressable, Platform, ScrollView, ActivityIndicator, Modal, Image,
 } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView, AnimatePresence } from 'moti';
@@ -121,6 +122,9 @@ const VIDEO = {
   avatarRatio: 0.46,
   avatarMin: 136,
   avatarMax: 236,
+  /** The smallest the portrait may go before the layout would rather clip than
+   *  overlap. Still a recognisable face at arm's length. */
+  avatarFloor: 104,
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -315,7 +319,7 @@ function StatusChip({
           <MotiView
             from={{ opacity: 1, scale: 1 }}
             animate={{ opacity: 0.25, scale: 0.7 }}
-            transition={{ type: 'timing', duration: theme.motion.duration.deliberate, loop: true }}
+            transition={{ type: 'timing', duration: theme.motion.duration.deliberate, loop: !theme.motion.reduced }}
             style={{ width: dot, height: dot, borderRadius: theme.radii.pill, backgroundColor: dotColor }}
           />
         ) : (
@@ -398,7 +402,7 @@ function ControlButton({
             pointerEvents="none"
             from={{ opacity: 0.8, scale: 1 }}
             animate={{ opacity: 0, scale: 1.4 }}
-            transition={{ type: 'timing', duration: theme.motion.duration.deliberate * 2, loop: true, repeatReverse: false }}
+            transition={{ type: 'timing', duration: theme.motion.duration.deliberate * 2, loop: !theme.motion.reduced, repeatReverse: false }}
             style={[
               StyleSheet.absoluteFillObject,
               { borderRadius: theme.radii.pill, borderWidth: theme.spacing.xxs, borderColor: STAGE.danger },
@@ -591,7 +595,7 @@ function InterviewerStage({
           <MotiView
             from={{ scale: 1, opacity: 0.45 }}
             animate={{ scale: 1.28, opacity: 0 }}
-            transition={{ type: 'timing', duration: theme.motion.duration.deliberate * 4, loop: true, repeatReverse: false }}
+            transition={{ type: 'timing', duration: theme.motion.duration.deliberate * 4, loop: !theme.motion.reduced, repeatReverse: false }}
             style={{
               position: 'absolute',
               width: size * 1.10,
@@ -792,7 +796,7 @@ function Sheet({
 export function MeetingScreen({ route, navigation }: any) {
   const theme = useAppTheme();
   const { t, i18n } = useTranslation();
-  const { width, isPhone } = useResponsive();
+  const { width, height, isPhone } = useResponsive();
   const insets = useSafeAreaInsets();
   const dir = useDirection();
   const userName = useAuth((s) => s.user?.name);
@@ -1563,7 +1567,6 @@ export function MeetingScreen({ route, navigation }: any) {
     : !capabilities.recorder.capturesMicAudio ? t('meeting.recordVideoOnly')
     : null;
 
-  const avatarSize = clamp(width * VIDEO.avatarRatio, VIDEO.avatarMin, VIDEO.avatarMax);
   const pipW = clamp(width * VIDEO.pipRatio, VIDEO.pipMin, VIDEO.pipMax);
   const pipH = pipW * VIDEO.pipAspect;
 
@@ -1577,6 +1580,51 @@ export function MeetingScreen({ route, navigation }: any) {
 
   const topChromeHeight = insets.top + theme.layout.control.md + theme.spacing.xl;
   const bottomChromeHeight = insets.bottom + theme.spacing.lg + controlBarHeight + theme.spacing.md;
+
+  /*
+   * The lower third — notice, captions, start CTA — floats over the stage, and
+   * the stage used to reserve a fixed `5xl` for it. A fixed reserve is a guess
+   * about how tall a sentence is: a two-line error, a caption pair, or a reader
+   * with large system text all overrun it, and what they overrun is the
+   * interviewer's own name and role. That is the overlap on the call screen.
+   *
+   * So the overlay is measured and the stage is told. Nothing here feeds back
+   * into the overlay's own height, so there is no layout loop — the stage
+   * simply centres itself in whatever room is genuinely left.
+   */
+  const [lowerThirdH, setLowerThirdH] = useState(0);
+  const onLowerThirdLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = Math.ceil(e.nativeEvent.layout.height);
+    // Round to whole pixels and ignore sub-pixel churn: a state write per
+    // animation frame while the notice fades in would re-render the stage.
+    setLowerThirdH((prev) => (Math.abs(prev - next) > 1 ? next : prev));
+  }, []);
+
+  const stageBottomInset = bottomChromeHeight
+    + Math.max(theme.spacing['5xl'], lowerThirdH + theme.spacing.lg);
+
+  /*
+   * The portrait is sized by whichever axis runs out first.
+   *
+   * Width alone was the old rule, and on a short viewport — or once the lower
+   * third grows — a portrait sized for the width simply does not fit, so the
+   * name and role beneath it are pushed under the overlay. `1.84` is the
+   * stage's own geometry: the halo is `size * 1.6` wide by `halo * 1.15` tall.
+   */
+  const stageTextAllowance =
+    theme.typography.scale.h3.lineHeight
+    + theme.typography.scale.bodySm.lineHeight
+    + theme.typography.scale.micro.lineHeight
+    + theme.spacing.md * 3;
+  const stageRoom = Math.max(0, height - topChromeHeight - stageBottomInset - stageTextAllowance);
+  const avatarSize = clamp(
+    Math.min(width * VIDEO.avatarRatio, stageRoom / 1.84),
+    // Allowed BELOW `avatarMin` when the room genuinely is not there: a portrait
+    // that keeps its minimum by overlapping the text has not honoured a minimum,
+    // it has just moved the failure somewhere less visible.
+    VIDEO.avatarFloor,
+    VIDEO.avatarMax,
+  );
 
   const captionLines = useMemo(() => turns.slice(-2), [turns]);
 
@@ -1717,7 +1765,7 @@ export function MeetingScreen({ route, navigation }: any) {
           styles.center,
           {
             paddingTop: topChromeHeight,
-            paddingBottom: bottomChromeHeight + theme.spacing['5xl'],
+            paddingBottom: stageBottomInset,
             paddingHorizontal: theme.spacing.lg,
           },
         ]}
@@ -1890,6 +1938,7 @@ export function MeetingScreen({ route, navigation }: any) {
       {/* ---------------- lower third: notice + captions + start CTA ------- */}
       <View
         pointerEvents="box-none"
+        onLayout={onLowerThirdLayout}
         style={{
           position: 'absolute',
           bottom: bottomChromeHeight,
@@ -2076,7 +2125,11 @@ export function MeetingScreen({ route, navigation }: any) {
               {
                 alignSelf: 'center',
                 gap: theme.spacing.sm,
-                height: theme.layout.control.sm,
+                // `control.sm` (40) is below the 48dp Android minimum, and this
+                // is the control that resumes listening mid-interview — the one
+                // a candidate reaches for in a hurry. Same call as the chips in
+                // CategoryDetailsScreen: a real control gets the real target.
+                height: theme.layout.touchTarget,
                 paddingHorizontal: theme.spacing.lg,
                 borderRadius: theme.radii.pill,
                 backgroundColor: STAGE.chromeSoft,

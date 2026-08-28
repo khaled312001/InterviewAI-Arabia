@@ -104,12 +104,12 @@ export const spacing = {
 
 export const radii = {
   none: 0,
-  xs:  6,   // chips, tiny badges
-  sm:  10,  // inputs, small buttons
-  md:  14,  // buttons, list rows
-  lg:  18,  // cards
-  xl:  24,  // sheets, hero panels
-  '2xl': 32,
+  xs:  8,   // chips, tiny badges
+  sm:  12,  // inputs, small buttons
+  md:  16,  // buttons, list rows
+  lg:  22,  // cards
+  xl:  28,  // sheets, hero panels
+  '2xl': 36,
   pill: 999,
 } as const;
 
@@ -145,10 +145,15 @@ export const typography: {
 
   /** size / lineHeight / letterSpacing per role. */
   scale: {
-    display: { fontSize: 34, lineHeight: 46, letterSpacing: -0.6 },
-    h1:      { fontSize: 28, lineHeight: 40, letterSpacing: -0.4 },
-    h2:      { fontSize: 23, lineHeight: 34, letterSpacing: -0.3 },
-    h3:      { fontSize: 19, lineHeight: 29, letterSpacing: -0.2 },
+    // The display sizes step up harder than the body sizes on purpose. The old
+    // scale ran 34/28/23/19/17 — a ~1.2 ratio all the way down — which is even
+    // and therefore flat: a heading only barely outranked the one below it, so
+    // every screen read as one undifferentiated column of text. Widening the
+    // gap at the top is what makes a screen look composed rather than typed.
+    display: { fontSize: 40, lineHeight: 52, letterSpacing: -1.0 },
+    h1:      { fontSize: 32, lineHeight: 44, letterSpacing: -0.7 },
+    h2:      { fontSize: 25, lineHeight: 36, letterSpacing: -0.4 },
+    h3:      { fontSize: 20, lineHeight: 30, letterSpacing: -0.25 },
     h4:      { fontSize: 17, lineHeight: 26, letterSpacing: -0.1 },
     bodyLg:  { fontSize: 16, lineHeight: 26, letterSpacing: 0 },
     body:    { fontSize: 15, lineHeight: 24, letterSpacing: 0 },
@@ -156,7 +161,7 @@ export const typography: {
     caption: { fontSize: 12.5, lineHeight: 19, letterSpacing: 0.1 },
     micro:   { fontSize: 11, lineHeight: 16, letterSpacing: 0.2 },
     /** Tabular figures for scores/counters so digits don't jitter. */
-    numeric: { fontSize: 26, lineHeight: 32, letterSpacing: -0.5 },
+    numeric: { fontSize: 30, lineHeight: 36, letterSpacing: -0.8 },
   },
 };
 
@@ -192,11 +197,15 @@ export function text(role: TextRole, weight: 'regular' | 'bold' = 'regular'): Te
 
 function elevation(level: 0 | 1 | 2 | 3 | 4, color = '#0F172A') {
   if (level === 0) return {};
+  // Wider blur at lower opacity than the old ramp. A shadow that is short and
+  // dark reads as a dark line under the card — the "cheap drop shadow" look;
+  // spreading the same ink over twice the radius is what makes a surface look
+  // lifted rather than outlined.
   const spec = {
-    1: { y: 1, blur: 3,  opacity: 0.06, android: 1 },
-    2: { y: 4, blur: 12, opacity: 0.08, android: 3 },
-    3: { y: 8, blur: 24, opacity: 0.12, android: 6 },
-    4: { y: 16, blur: 40, opacity: 0.16, android: 12 },
+    1: { y: 2, blur: 8,   opacity: 0.05, android: 1 },
+    2: { y: 6, blur: 20,  opacity: 0.07, android: 3 },
+    3: { y: 14, blur: 40, opacity: 0.10, android: 6 },
+    4: { y: 24, blur: 64, opacity: 0.13, android: 12 },
   }[level];
 
   return Platform.select({
@@ -241,6 +250,35 @@ export const motion = {
     decelerate: [0, 0, 0, 1] as const,
     spring: { damping: 18, stiffness: 220, mass: 0.8 },
   },
+  /** True when the reader has asked the OS to reduce motion. Always false in
+   *  the base tokens; `useAppTheme` swaps in the reduced set. */
+  reduced: false,
+} as const;
+
+/**
+ * The same motion vocabulary for a reader who has turned motion down.
+ *
+ * "Reduce motion" is an accessibility setting, not a preference for a snappier
+ * app: for a reader with a vestibular disorder, the pulsing rings and drifting
+ * entrances on the call screen can cause actual nausea. Honouring it is a
+ * platform expectation on both iOS and Android.
+ *
+ * Durations collapse to a single frame rather than to zero — Moti and Reanimated
+ * treat a zero duration as "no animation to run" on some paths and leave the
+ * `from` value on screen, which would hide content instead of revealing it
+ * instantly. `reduced` is exported so a component can additionally drop a
+ * `loop`, which no duration can make acceptable.
+ */
+const FRAME_MS = 16;
+
+export const reducedMotion = {
+  duration: {
+    instant: FRAME_MS, fast: FRAME_MS, normal: FRAME_MS,
+    slow: FRAME_MS, deliberate: FRAME_MS,
+  },
+  stagger: 0,
+  easing: motion.easing,
+  reduced: true,
 } as const;
 
 /* ------------------------------------------------------------------ *
@@ -415,16 +453,31 @@ export const gradients = {
  * between sessions — a category that changes colour on every load reads as
  * a bug, and it destroys the user's ability to recognise tiles by colour.
  * Index by category id, not by array position.
+ *
+ * Four roles per category:
+ *   `solid` — the filled icon container. This is the one the grid uses now.
+ *             A 12% tint behind a coloured glyph (`bg` + `fg`) is legible but
+ *             timid: at tile size it reads as grey, so eight categories that
+ *             are meant to be told apart at a glance all look the same. A
+ *             filled chip with a white glyph is the difference between a list
+ *             and a set of things.
+ *   `glow`  — the same hue at carrying strength, for a coloured shadow under
+ *             the container so the colour reaches past its own edge.
+ *   `bg`/`fg` — the quiet pairing, kept for dense contexts (list rows, history)
+ *             where eight saturated chips in a column would be noise.
  */
 export const categoryAccents = [
-  { fg: '#3B7BF6', bg: 'rgba(59,123,246,0.12)' },
-  { fg: '#16A34A', bg: 'rgba(22,163,74,0.12)' },
-  { fg: '#D97706', bg: 'rgba(217,119,6,0.12)' },
-  { fg: '#DC2626', bg: 'rgba(220,38,38,0.12)' },
-  { fg: '#9333EA', bg: 'rgba(147,51,234,0.12)' },
-  { fg: '#0891B2', bg: 'rgba(8,145,178,0.12)' },
-  { fg: '#DB2777', bg: 'rgba(219,39,119,0.12)' },
-  { fg: '#4F46E5', bg: 'rgba(79,70,229,0.12)' },
+  { fg: '#3B7BF6', bg: 'rgba(59,123,246,0.12)',  solid: '#2563EB', glow: 'rgba(37,99,235,0.32)' },
+  { fg: '#16A34A', bg: 'rgba(22,163,74,0.12)',   solid: '#15A34A', glow: 'rgba(21,163,74,0.32)' },
+  // #D97706, not a brighter gold: the chip carries a WHITE glyph, and white on
+  // #EA8A04 measures 2.58:1 — under the 3:1 WCAG 1.4.11 requires of a graphical
+  // object. This one is 3.19:1 and still reads gold.
+  { fg: '#D97706', bg: 'rgba(217,119,6,0.12)',   solid: '#D97706', glow: 'rgba(217,119,6,0.32)' },
+  { fg: '#DC2626', bg: 'rgba(220,38,38,0.12)',   solid: '#E02424', glow: 'rgba(224,36,36,0.32)' },
+  { fg: '#9333EA', bg: 'rgba(147,51,234,0.12)',  solid: '#8B32E8', glow: 'rgba(139,50,232,0.32)' },
+  { fg: '#0891B2', bg: 'rgba(8,145,178,0.12)',   solid: '#0891B2', glow: 'rgba(8,145,178,0.32)' },
+  { fg: '#DB2777', bg: 'rgba(219,39,119,0.12)',  solid: '#DB2777', glow: 'rgba(219,39,119,0.32)' },
+  { fg: '#4F46E5', bg: 'rgba(79,70,229,0.12)',   solid: '#4F46E5', glow: 'rgba(79,70,229,0.32)' },
 ] as const;
 
 export function accentForCategory(id: number | string) {
@@ -438,7 +491,7 @@ export function accentForCategory(id: number | string) {
 
 export type ThemeMode = 'light' | 'dark';
 
-export function getTheme(mode: ThemeMode) {
+export function getTheme(mode: ThemeMode, motionOff = false) {
   return {
     mode,
     colors: mode === 'dark' ? darkColors : lightColors,
@@ -448,7 +501,7 @@ export function getTheme(mode: ThemeMode) {
     typography,
     text,
     shadow,
-    motion,
+    motion: (motionOff ? reducedMotion : motion) as typeof motion,
     layout,
     isDark: mode === 'dark',
   };

@@ -1,4 +1,5 @@
-import { useColorScheme, useWindowDimensions, I18nManager } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AccessibilityInfo, useColorScheme, useWindowDimensions, I18nManager } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,12 +23,40 @@ export const useThemePreference = create<ThemeState>()(
   ),
 );
 
+/**
+ * Whether the reader has asked the system to reduce motion.
+ *
+ * Read once and then subscribed to, because the setting can be changed while
+ * the app is open — on iOS it is a Control Centre toggle. Defaults to `false`
+ * so a platform that cannot answer (older web engines) keeps the normal
+ * experience rather than a permanently still one.
+ */
+export function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((on) => { if (alive) setReduced(on); })
+      .catch(() => { /* unsupported: keep motion */ });
+
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => { alive = false; sub?.remove?.(); };
+  }, []);
+
+  return reduced;
+}
+
 export function useAppTheme(): AppTheme {
   const system = useColorScheme();
   const preference = useThemePreference((s) => s.preference);
+  const reducedMotion = useReducedMotion();
   const mode: ThemeMode =
     preference === 'system' ? (system === 'dark' ? 'dark' : 'light') : preference;
-  return getTheme(mode);
+  // Every animation in the app reads its duration from `theme.motion`, so
+  // swapping the set here turns motion down everywhere at once — there is no
+  // list of animated components to keep in step, and none can be forgotten.
+  return getTheme(mode, reducedMotion);
 }
 
 /**
@@ -39,7 +68,7 @@ export function useAppTheme(): AppTheme {
  * and `columns` to widen grids instead of stretching tiles.
  */
 export function useResponsive() {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const isPhone = width < 600;
   const isTablet = width >= 600 && width < 1024;
@@ -47,6 +76,10 @@ export function useResponsive() {
 
   return {
     width,
+    /** Viewport height. A layout that only ever reads `width` cannot tell that
+     *  its content has run out of room vertically — which is how a stage ends
+     *  up drawing its caption underneath a banner. */
+    height,
     isPhone,
     isTablet,
     isDesktop,

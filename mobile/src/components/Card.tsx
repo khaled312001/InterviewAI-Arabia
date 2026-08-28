@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { View, Pressable, StyleSheet, StyleProp, ViewStyle, Platform, LayoutChangeEvent } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { MotiView } from 'moti';
 import { useAppTheme } from '../theme/useTheme';
 
 export type CardVariant = 'elevated' | 'outlined' | 'filled' | 'ghost';
@@ -18,6 +19,17 @@ interface Props {
   accessibilityLabel?: string;
   accessibilityHint?: string;
   testID?: string;
+  /**
+   * Press with real depth: the card tips away from the finger on a perspective
+   * projection instead of only shrinking.
+   *
+   * Opt-in rather than the default. It belongs on a small number of focal,
+   * card-shaped targets — the category grid — and nowhere else: a list where
+   * every row tilts is not tactile, it is seasick. The repo's own
+   * micro-interaction rule says the same thing about magnetic hover ("not more
+   * than 1-2 focal elements per screen; it becomes noisy").
+   */
+  depth?: boolean;
 }
 
 /**
@@ -41,8 +53,10 @@ export function Card({
   accessibilityLabel,
   accessibilityHint,
   testID,
+  depth = false,
 }: Props) {
   const theme = useAppTheme();
+  const [pressedIn, setPressedIn] = useState(false);
 
   const pad = {
     none: 0,
@@ -77,7 +91,50 @@ export function Card({
     style,
   ];
 
+  const press = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    onPress?.();
+  };
+
   if (!onPress) return <View style={base} onLayout={onLayout} testID={testID}>{children}</View>;
+
+  if (!depth) {
+    return (
+      <Pressable
+        testID={testID}
+        onLayout={onLayout}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: !!disabled }}
+        onPress={press}
+        style={({ pressed }) => [
+          base,
+          {
+            opacity: disabled ? 0.5 : 1,
+            transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
+          },
+        ]}
+      >
+        {children}
+      </Pressable>
+    );
+  }
+
+  /*
+   * The transform lives on an inner MotiView rather than in Pressable's own
+   * `style` callback, because that callback re-renders between two fixed
+   * values — it can only snap. The tilt has to be sprung to read as a physical
+   * object, and a spring needs somewhere to hold its velocity.
+   *
+   * `perspective` must come FIRST in the transform list: React Native applies
+   * these as an ordered matrix multiplication, so a rotation written before the
+   * projection is applied flat and the card simply squashes instead of tipping.
+   */
+  const down = pressedIn && !disabled;
 
   return (
     <Pressable
@@ -88,21 +145,26 @@ export function Card({
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!disabled }}
-      onPress={() => {
-        if (Platform.OS !== 'web') {
-          Haptics.selectionAsync().catch(() => {});
-        }
-        onPress();
-      }}
-      style={({ pressed }) => [
-        base,
-        {
-          opacity: disabled ? 0.5 : 1,
-          transform: [{ scale: pressed && !disabled ? 0.985 : 1 }],
-        },
-      ]}
+      onPressIn={() => setPressedIn(true)}
+      onPressOut={() => setPressedIn(false)}
+      onPress={press}
+      style={{ opacity: disabled ? 0.5 : 1 }}
     >
-      {children}
+      <MotiView
+        animate={{
+          scale: down ? 0.965 : 1,
+          rotateX: down ? '7deg' : '0deg',
+          translateY: down ? 2 : 0,
+        }}
+        transition={
+          theme.motion.reduced
+            ? { type: 'timing', duration: theme.motion.duration.instant }
+            : { type: 'spring', ...theme.motion.easing.spring }
+        }
+        style={[base, { transform: [{ perspective: 900 }] }]}
+      >
+        {children}
+      </MotiView>
     </Pressable>
   );
 }

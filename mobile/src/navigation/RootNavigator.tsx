@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { I18nManager, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -119,8 +119,32 @@ export function RootNavigator() {
     headerBackTitleVisible: false,
   } as const;
 
+  /*
+   * One deliberate push transition instead of the platform default.
+   *
+   * Direction follows the writing direction: in Arabic, "forward" is leftward,
+   * so a screen that flies in from the right is travelling backwards as far as
+   * the reader is concerned. `slide_from_right` is not mirrored for us, so the
+   * side is chosen explicitly rather than hoped for.
+   *
+   * 280ms is from the repo's Page Transition / Subtle row (200–300ms) and its
+   * rule that navigation must never wait on an animation. Reduced motion turns
+   * it off entirely — `theme.motion.reduced` is the same flag every animation
+   * in the app reads.
+   */
+  const pushAnimation = theme.motion.reduced
+    ? ('none' as const)
+    : I18nManager.isRTL ? ('slide_from_left' as const) : ('slide_from_right' as const);
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.colors.bg } }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.colors.bg },
+        animation: pushAnimation,
+        animationDuration: theme.motion.reduced ? 0 : 280,
+      }}
+    >
       {!token ? (
         <>
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -138,7 +162,7 @@ export function RootNavigator() {
           <Stack.Screen name="Subscription" component={SubscriptionScreen} options={{ ...headerOptions, title: t('subscription.title') }} />
           <Stack.Screen name="Ledger" component={LedgerScreen} options={{ ...headerOptions, title: t('ledger.title') }} />
           <Stack.Screen name="MeetingSetup" component={MeetingSetupScreen} options={{ ...headerOptions, title: t('meeting.setupTitle') }} />
-          <Stack.Screen name="Meeting" component={MeetingScreen} options={{ headerShown: false, animation: 'fade' }} />
+          <Stack.Screen name="Meeting" component={MeetingScreen} options={{ headerShown: false, animation: theme.motion.reduced ? 'none' : 'fade' }} />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ ...headerOptions, title: t('settings.title') }} />
         </>
       )}

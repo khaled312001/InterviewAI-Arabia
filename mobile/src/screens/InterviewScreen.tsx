@@ -172,7 +172,7 @@ function ThinkingOverlay({ visible }: { visible: boolean }) {
             <MotiView
               from={{ scale: 1 }}
               animate={{ scale: 1.1 }}
-              transition={{ loop: true, type: 'timing', duration: theme.motion.duration.deliberate }}
+              transition={{ loop: !theme.motion.reduced, type: 'timing', duration: theme.motion.duration.deliberate }}
               style={[
                 styles.pulse,
                 {
@@ -206,7 +206,7 @@ function ThinkingOverlay({ visible }: { visible: boolean }) {
                       from={{ opacity: active ? 0.35 : 1 }}
                       animate={{ opacity: 1 }}
                       transition={active
-                        ? { loop: true, type: 'timing', duration: theme.motion.duration.slow }
+                        ? { loop: !theme.motion.reduced, type: 'timing', duration: theme.motion.duration.slow }
                         : { type: 'timing', duration: theme.motion.duration.instant }}
                       style={{
                         width: theme.layout.icon.md,

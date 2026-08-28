@@ -67,21 +67,27 @@ const CategoryTile = React.memo(function CategoryTile({
         accessibilityLabel={name}
         accessibilityHint={t('home.categoriesSubtitle')}
       >
+        {/* Filled, not tinted — and the coloured shadow is what carries the
+            hue past the chip's own edge, so a grid of eight tiles reads as
+            eight different things from arm's length instead of eight grey
+            squares with a faint wash in them. */}
         <View
           style={[
             styles.tileIcon,
+            theme.shadow.md,
             {
               width: theme.layout.avatar.md,
               height: theme.layout.avatar.md,
               borderRadius: theme.radii.md,
-              backgroundColor: accent.bg,
+              backgroundColor: accent.solid,
+              shadowColor: accent.solid,
             },
           ]}
         >
           <Ionicons
             name={categoryIcon(category.icon)}
             size={theme.layout.icon.lg}
-            color={accent.fg}
+            color="#FFFFFF"
           />
         </View>
 

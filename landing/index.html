@@ -209,15 +209,15 @@
   --grad-a:var(--brand-500); --grad-b:var(--brand-800);
   --device-a:#2b3648; --device-b:#0d1420;
 
-  --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px; --r-2xl:32px; --r-pill:999px;
+  --r-sm:12px; --r-md:16px; --r-lg:22px; --r-xl:28px; --r-2xl:36px; --r-pill:999px;
   --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
   --sp-8:32px; --sp-10:40px; --sp-12:48px; --sp-16:64px; --sp-20:80px; --sp-24:96px;
 
-  --shadow-sm:0 1px 3px rgba(15,23,42,.06);
-  --shadow-md:0 4px 12px rgba(15,23,42,.08);
-  --shadow-lg:0 8px 24px rgba(15,23,42,.12);
-  --shadow-xl:0 16px 48px rgba(15,23,42,.16);
-  --shadow-brand:0 10px 30px rgba(37,92,235,.30);
+  --shadow-sm:0 2px 8px rgba(15,23,42,.05);
+  --shadow-md:0 6px 20px rgba(15,23,42,.07);
+  --shadow-lg:0 14px 40px rgba(15,23,42,.10);
+  --shadow-xl:0 24px 64px rgba(15,23,42,.13);
+  --shadow-brand:0 16px 44px rgba(37,92,235,.28);
 
   --maxw:1160px;
   --font:'Cairo','IBM Plex Sans Arabic','Noto Naskh Arabic',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -364,7 +364,7 @@ html[lang="en"] [data-l="en"]{display:revert}
 .eyebrow{display:inline-flex;align-items:center;gap:var(--sp-2);background:var(--accent-soft);
   color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);
   padding:7px 15px;border-radius:var(--r-pill);font-size:13.5px;font-weight:700;margin-bottom:var(--sp-5)}
-.hero h1{font-size:clamp(34px,5.4vw,60px);font-weight:900;letter-spacing:-.03em;margin-bottom:var(--sp-5)}
+.hero h1{font-size:clamp(38px,6.2vw,72px);font-weight:900;letter-spacing:-.042em;line-height:1.08;margin-bottom:var(--sp-5)}
 /* Tokenised, so the headline gradient follows a FORCED theme too — it used to
    have its own prefers-color-scheme rule that an attribute cannot reach. */
 .hero h1 .grad{background:linear-gradient(120deg,var(--grad-a),var(--grad-b) 70%);
@@ -484,7 +484,7 @@ html[lang="en"] [data-l="en"]{display:revert}
   border:1px solid color-mix(in srgb,var(--primary) 22%,transparent);
   margin-bottom:var(--sp-1)}
 .stat-ico .icon{width:22px;height:22px}
-.stat b{font-size:clamp(28px,4.2vw,40px);font-weight:900;line-height:1.1;letter-spacing:-.02em;
+.stat b{font-size:clamp(32px,4.8vw,48px);font-weight:900;line-height:1.05;letter-spacing:-.035em;
   font-variant-numeric:tabular-nums;
   background:linear-gradient(180deg,var(--text),color-mix(in srgb,var(--primary) 55%,var(--text)));
   -webkit-background-clip:text;background-clip:text;color:transparent}
@@ -500,7 +500,7 @@ html[lang="en"] [data-l="en"]{display:revert}
 /* ── Section headings ───────────────────────────────────────────────── */
 .sec-head{text-align:center;max-width:680px;margin:0 auto var(--sp-12)}
 .sec-head .kicker{color:var(--primary);font-weight:800;font-size:14px;letter-spacing:.04em;margin-bottom:var(--sp-3)}
-.sec-head h2{font-size:clamp(27px,3.8vw,42px);font-weight:900;margin-bottom:var(--sp-4)}
+.sec-head h2{font-size:clamp(29px,4.3vw,48px);font-weight:900;letter-spacing:-.03em;line-height:1.14;margin-bottom:var(--sp-4)}
 .sec-head p{color:var(--text-2);font-size:17px}
 
 /* ── Steps ──────────────────────────────────────────────────────────── */
@@ -536,12 +536,22 @@ html[lang="en"] .step::before{content:counter(s, decimal)}
 .feat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
   padding:var(--sp-6);transition:transform .18s,box-shadow .18s,border-color .18s}
 .feat:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:color-mix(in srgb,var(--primary) 40%,var(--border))}
-.feat .ico{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;font-size:22px;margin-bottom:var(--sp-4)}
+.feat .ico{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-size:22px;margin-bottom:var(--sp-4);color:#fff}
 .feat h3{font-size:17.5px;margin-bottom:var(--sp-2)}
 .feat p{color:var(--text-2);font-size:15px}
-.i-blue{background:var(--primary-soft);color:var(--primary)}
-.i-gold{background:var(--accent-soft);color:var(--accent-ink)}
-.i-green{background:rgba(34,197,94,.13);color:var(--green-ink)}
+/* Filled, with the hue carried past the chip's edge by its own shadow.
+   These were 8–13% tints, which at 48px read as three faintly different greys
+   — the icons were doing no work at all in telling the three features apart.
+   White glyph on a solid fill is legible in both themes without a second set
+   of dark-mode overrides, which the tinted version needed.
+
+   The gold one is #D97706, not the brand's --gold-500 (#FEAF04): white on
+   #FEAF04 is 1.85:1, well under the 3:1 WCAG 1.4.11 asks of a graphical
+   object, so the icon would have been decoration you cannot actually see.
+   #D97706 measures 3.19:1 and still reads as the brand's gold. */
+.i-blue{background:var(--brand-600);box-shadow:0 8px 20px rgba(37,92,235,.34)}
+.i-gold{background:#D97706;box-shadow:0 8px 20px rgba(217,119,6,.34)}
+.i-green{background:var(--green-600);box-shadow:0 8px 20px rgba(22,163,74,.34)}
 
 .feat-wide{grid-column:span 2;background:linear-gradient(140deg,var(--brand-600),var(--brand-800));color:#fff;border:0}
 @media (max-width:620px){.feat-wide{grid-column:span 1}}
@@ -634,7 +644,7 @@ details p{padding:0 var(--sp-6) var(--sp-5);color:var(--text-2);font-size:15.5px
 .cta::before{content:'';position:absolute;width:420px;height:420px;border-radius:50%;
   background:rgba(251,191,36,.16);filter:blur(80px);top:-160px;inset-inline-end:-100px}
 .cta > *{position:relative}
-.cta h2{font-size:clamp(26px,4vw,40px);font-weight:900;margin-bottom:var(--sp-4)}
+.cta h2{font-size:clamp(28px,4.4vw,46px);font-weight:900;letter-spacing:-.03em;line-height:1.14;margin-bottom:var(--sp-4)}
 .cta p{opacity:.88;font-size:17.5px;max-width:52ch;margin:0 auto var(--sp-8)}
 .cta .btn-primary{background:#fff;color:var(--brand-700);box-shadow:0 10px 30px rgba(0,0,0,.25)}
 .cta .btn-primary:hover{background:var(--brand-50)}

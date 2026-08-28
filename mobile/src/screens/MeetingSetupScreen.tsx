@@ -383,7 +383,7 @@ export function MeetingSetupScreen({ route, navigation }: any) {
                   styles.chip,
                   {
                     gap: theme.spacing.xs,
-                    minHeight: theme.layout.control.sm,
+                    minHeight: theme.layout.touchTarget,
                     paddingVertical: theme.spacing.sm,
                     paddingHorizontal: theme.spacing.lg,
                     borderRadius: theme.radii.pill,

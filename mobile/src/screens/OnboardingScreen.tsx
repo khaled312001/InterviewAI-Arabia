@@ -300,10 +300,19 @@ export function OnboardingScreen({ navigation }: Props) {
   const goSignUp = useCallback(() => navigation.replace('SignUp'), [navigation]);
 
   const isLast = index === SLIDE_COUNT - 1;
+  /*
+   * The last slide lands on LOG IN, not sign-up.
+   *
+   * The app is published, so most people arriving at the end of the intro
+   * already have an account — a returning user sent to a registration form has
+   * to notice the small link underneath and correct course, and some will just
+   * make a second account instead. Signing up is still one tap away, as the
+   * secondary action beneath the button.
+   */
   const onPrimary = useCallback(() => {
-    if (indexRef.current === SLIDE_COUNT - 1) goSignUp();
+    if (indexRef.current === SLIDE_COUNT - 1) goLogin();
     else goTo(indexRef.current + 1);
-  }, [goSignUp, goTo]);
+  }, [goLogin, goTo]);
 
   /** Fractional slide position, 0…2 — drives the wash and per-slide fades. */
   const position = box.width > 0
@@ -482,7 +491,7 @@ export function OnboardingScreen({ navigation }: Props) {
           </View>
 
           <Button
-            title={isLast ? t('common.getStarted') : t('common.next')}
+            title={isLast ? t('auth.login') : t('common.next')}
             onPress={onPrimary}
             size="lg"
             // No accessibilityLabel override: Button defaults it to `title`, so
@@ -495,15 +504,15 @@ export function OnboardingScreen({ navigation }: Props) {
           />
 
           <Pressable
-            onPress={goLogin}
+            onPress={goSignUp}
             accessibilityRole="link"
-            accessibilityLabel={t('onboarding.haveAccount')}
+            accessibilityLabel={t('onboarding.newHere')}
             style={({ pressed }) => [
               styles.haveAccount,
               { minHeight: theme.layout.touchTarget, opacity: pressed ? 0.6 : 1 },
             ]}
           >
-            <Text role="bodySm" weight="bold" tone="primary">{t('onboarding.haveAccount')}</Text>
+            <Text role="bodySm" weight="bold" tone="primary">{t('onboarding.newHere')}</Text>
           </Pressable>
         </View>
       </View>

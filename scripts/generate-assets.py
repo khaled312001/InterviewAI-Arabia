@@ -35,7 +35,11 @@ FONT_BOLD = os.path.join(ASSETS, "fonts", "Cairo-Bold.ttf")
 
 # Source art — the Interprova set: two overlapping speech bubbles, the back one
 # a gold outline (the rehearsal), the front one solid blue (the real interview).
-SRC_ICON = os.path.join(LOGO, "95638c0f-2714-4c67-928c-8aa920c41b00.png")   # app icon, white mark on blue
+SRC_ICON = os.path.join(LOGO, "95638c0f-2714-4c67-928c-8aa920c41b00.png")   # legacy: white mark on blue
+# The stacked lockup on white — mark above, wordmark beneath. This is now the
+# app icon: the blue-field version read as a solid blue tile at launcher size,
+# because a white mark on a saturated blue loses its edges once it is 48dp.
+SRC_LOCKUP = os.path.join(LOGO, "logo.jpeg")
 SRC_MARK = os.path.join(LOGO, "4349a99f-df1a-4177-93a7-b561d6ba2e9d.png")   # mark only, on near-white
 SRC_HORIZ = os.path.join(LOGO, "a5d70e5d-d6f5-4261-bb2d-51dea8fcac0c.png")  # horizontal lockup
 # There is no stacked lockup in the supplied set, so it is composed from the
@@ -181,16 +185,28 @@ def rounded_mask(size, radius):
 
 def make_icon(size=1024, squircle=True):
     """
-    Square app icon: the designed icon art, re-rendered crisply at `size`.
+    Square app icon: the stacked lockup, centred on white.
 
-    The source art draws a rounded square on a white page, so the four corners
-    arrive opaque white. Launchers that do not mask the icon would render those
-    corners as visible white notches, so they are cut to transparent here.
+    White field, not blue. The blue icon put a white mark on a saturated blue
+    ground, and at launcher size that reads as a blue tile with something
+    indistinct on it — the mark loses its edges exactly when the icon is
+    smallest and has to work hardest.
+
+    The wordmark is included because the brand is new and the name is doing
+    real work here; it is sized as large as the square allows rather than
+    dropped in at logo proportions, since a wordmark too small to read is worse
+    than none. Corners are cut to transparent so launchers that do not mask the
+    icon do not show white notches.
     """
-    art = trim_white(load(SRC_ICON)).resize((size, size), Image.LANCZOS)
+    # tol=235, not the 248 default: this source is a JPEG whose page is a very
+    # light grey (~#F5F6F8) carrying compression noise, so the default cutoff
+    # trims nothing and the icon keeps a visible grey frame around the lockup.
+    art = whites_to_alpha(trim_white(load(SRC_LOCKUP), tol=235))
+    canvas = Image.new("RGBA", (size, size), WHITE + (255,))
+    canvas = centre_on(canvas, fit(art, size * 0.86))
     if squircle:
-        art.putalpha(rounded_mask((size, size), int(size * 0.235)))
-    return art
+        canvas.putalpha(rounded_mask((size, size), int(size * 0.235)))
+    return canvas
 
 
 def make_adaptive_foreground(size=1024):
@@ -198,12 +214,14 @@ def make_adaptive_foreground(size=1024):
     Android adaptive icon foreground.
 
     Android masks these to arbitrary shapes and only guarantees the centre 66%
-    is visible, so the mark is drawn small on a transparent field — otherwise
-    a circular mask would clip the speech-bubble tail.
+    is visible. The full lockup is kept — the name is the point — but fitted
+    inside that guaranteed circle rather than the square, so a round mask
+    cannot shave the wordmark's first and last letters off. The background is
+    the white plate declared in app.json, so this layer stays transparent.
     """
-    mark = whites_to_alpha(trim_white(load(SRC_MARK)))
+    art = whites_to_alpha(trim_white(load(SRC_LOCKUP), tol=235))
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    return centre_on(canvas, fit(mark, size * 0.52))
+    return centre_on(canvas, fit(art, size * 0.62))
 
 
 def make_monochrome_foreground(size=1024):
