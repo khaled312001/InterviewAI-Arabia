@@ -233,6 +233,46 @@ def make_monochrome_foreground(size=1024):
     return centre_on(canvas, fit(solid, size * 0.52))
 
 
+def make_splash_icon(size=1024):
+    """
+    The launch screen's logo, as Android 12+ actually renders it.
+
+    From API 31 the system owns the splash. It paints
+    `windowSplashScreenBackground` and centres `windowSplashScreenAnimatedIcon`
+    on a canvas of exactly 288dp, with the guidance that content stay inside the
+    middle 192dp — two thirds — because an adaptive icon is masked to a circle
+    there and OEM skins differ about the rest.
+
+    Handing that slot a full-screen splash DESIGN is what shipped until now, and
+    it looks broken in a way that is hard to name: expo-splash-screen fits the
+    image to `imageWidth` (100dp under the legacy `expo.splash` key) on the
+    288dp canvas, so a 1242x2688 portrait card — gradient, mark, wordmark and
+    tagline — was scaled to a third of the width and centred, and the phone
+    showed a blue screen with a postage stamp in the middle of it.
+
+    So this is a square, a mark, and nothing else. No wordmark: text that close
+    to the edge of a circular mask loses its first and last letters, and a
+    launch screen reading "nterprov" is worse than one with no name on it. The
+    mark is the on-dark treatment — blue bubble to white, gold outline kept —
+    because the field behind it is the brand blue.
+
+    The 8% margin is inside the image so the art can be scaled by `imageWidth`
+    alone; see the expo-splash-screen entry in mobile/app.json for the dp.
+    """
+    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    mark = mark_on_dark(whites_to_alpha(trim_white(load(SRC_MARK))))
+    # Crop to what is actually VISIBLE before fitting. trim_white() only removes
+    # rows that are near-white, and whites_to_alpha() then dissolves a wide band
+    # of off-white around the art that trimming did not reach — leaving a mark
+    # that filled barely half its own canvas, so `pad` understated the real
+    # margin by a factor of two and the logo landed small and lost on the
+    # screen. The alpha box is the honest bound.
+    box = mark.getchannel("A").getbbox()
+    if box:
+        mark = mark.crop(box)
+    return centre_on(canvas, fit(mark, size, pad=0.08))
+
+
 def make_splash(w=1242, h=2688):
     img = diagonal_gradient((w, h), BRAND_MID, NAVY).convert("RGBA")
     mark = whites_to_alpha(trim_white(load(SRC_MARK)))
@@ -337,7 +377,14 @@ def main():
     save(make_icon(1024), os.path.join(ASSETS, "icon.png"))
     save(make_adaptive_foreground(1024), os.path.join(ASSETS, "adaptive-icon.png"))
     save(make_monochrome_foreground(1024), os.path.join(ASSETS, "monochrome-icon.png"))
-    save(make_splash(), os.path.join(ASSETS, "splash.png"))
+    save(make_splash_icon(1024), os.path.join(ASSETS, "splash-icon.png"))
+    # splash.png is NOT written here, for the same reason as og-image.png below:
+    # make_splash() draws "تدريب مقابلات العمل" with Pillow, which has no
+    # OpenType shaper on this machine and produces unjoined letters. The file on
+    # disk is the browser-rendered one from scripts/render-text-assets.mjs, and
+    # writing here would silently replace it with the broken version. The
+    # function is kept because it documents the full-screen composition, and
+    # because Android 11 and below can still show one.
     save(make_icon(196), os.path.join(ASSETS, "favicon.png"))
     # Play Store listing icon: exactly 512x512, opaque, corners included.
     play = Image.new("RGBA", (512, 512), BRAND_MID + (255,))

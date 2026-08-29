@@ -8,11 +8,6 @@
     "scheme": "interprova",
     "userInterfaceStyle": "automatic",
     "primaryColor": "#2D73FD",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#2D73FD"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -28,7 +23,7 @@
     },
     "android": {
       "package": "com.interprova.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -120,9 +115,20 @@
           "defaultChannel": "default"
         }
       ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 150,
+          "resizeMode": "contain",
+          "backgroundColor": "#2D73FD",
+          "dark": { "backgroundColor": "#2D73FD" }
+        }
+      ],
       "expo-build-properties",
       "expo-web-browser",
-      "./plugins/withAndroidHardwareFeatures"
+      "./plugins/withAndroidHardwareFeatures",
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "apiBaseUrl": "https://interprova.com/api",

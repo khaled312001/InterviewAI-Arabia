@@ -8,6 +8,16 @@
  *   signature, the issuer and the audience before it believes a single field in
  *   it. See backend/src/services/auth/googleIdentity.js.
  *
+ * Two doors, and the native one is tried first
+ *   On a phone, `start()` opens Google's own account sheet through Play
+ *   services — no browser, no address bar, no leaving the app. Everything
+ *   below about `expo-auth-session` is the fallback: it runs on web always,
+ *   and on a device only when the sheet cannot (no Play services, or a signing
+ *   certificate with no matching Android OAuth client). Both doors end at the
+ *   same place — an ID token posted to POST /auth/google — and the backend
+ *   accepts either audience. See ./nativeGoogleSignIn for which client id each
+ *   one uses and why they differ.
+ *
  * Why `expo-auth-session/providers/google` rather than a hand-rolled AuthRequest
  *   Because the two platforms need genuinely different OAuth flows, and getting
  *   that wrong produces a button that works in the browser and fails on every
@@ -61,6 +71,11 @@ import { api } from '../api/client';
  */
 import './completeAuthSession';
 import { AUTH_RELAY_KEY } from './completeAuthSession';
+import {
+  configureNativeGoogle,
+  nativeGoogleAvailable,
+  signInWithNativeGoogle,
+} from './nativeGoogleSignIn';
 
 /**
  * Where Google sends the popup back to, on web.
@@ -132,6 +147,30 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
       .finally(() => { /* keep the ref honest for the unmount guard below */ });
     return () => { mounted.current = false; };
   }, []);
+
+  /*
+   * Hand the native sheet its client id as soon as the config lands.
+   *
+   * Separate from `start` on purpose: `configure()` is synchronous setup, and
+   * doing it on the tap would put it between the press and the sheet, where
+   * every millisecond is visible. It is idempotent, so re-running on a config
+   * refetch costs nothing.
+   */
+  useEffect(() => {
+    if (config?.webClientId) configureNativeGoogle(config.webClientId, config.iosClientId);
+  }, [config?.webClientId, config?.iosClientId]);
+
+  /*
+   * Can this tap open the sheet instead of a browser?
+   *
+   * Only two things decide it here — the module is present (so: a device, and
+   * a build that included it) and we have the web client id it needs. Whether
+   * Play services is actually installed, and whether this build's signing
+   * certificate is registered, cannot be known without asking; those answers
+   * come back from the attempt as `unavailable` and fall through to the
+   * browser.
+   */
+  const useNative = Boolean(config?.webClientId) && nativeGoogleAvailable();
 
   /*
    * The hook is called unconditionally, as React requires, and the ids are
@@ -252,10 +291,16 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
     if (response.type === 'error') setFailed(true);
   }, [response]);
 
-  const start = useCallback(() => {
-    if (!request) return;
-    setFailed(false);
-    setBusy(true);
+  /** The browser flow — a Custom Tab on device, a popup on web. */
+  const startBrowserFlow = useCallback(() => {
+    if (!request) {
+      // Nothing left to try. Reached only if the native path reported
+      // `unavailable` on a deployment that configured no client id for this
+      // platform, which is a misconfiguration rather than a user error.
+      setBusy(false);
+      setFailed(true);
+      return;
+    }
     // Clear any leftover from an abandoned attempt, so the relay effect cannot
     // consume a stale token the moment this one starts.
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -268,8 +313,50 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
     });
   }, [promptAsync, request]);
 
+  const start = useCallback(() => {
+    setFailed(false);
+    setBusy(true);
+
+    /*
+     * Native first: Google's own account sheet, in-process, no browser.
+     *
+     * `unavailable` is not an error — it is "this device or this build cannot
+     * use the sheet", and the browser flow is the answer. `busy` deliberately
+     * stays true across that hand-off so the button does not blink back to
+     * idle between the two attempts. See ./nativeGoogleSignIn.
+     */
+    if (useNative) {
+      signInWithNativeGoogle().then((result) => {
+        if (!mounted.current) return;
+        switch (result.kind) {
+          case 'token':
+            setBusy(false);
+            handler.current(result.idToken);
+            return;
+          case 'cancelled':
+            setBusy(false);
+            return;
+          case 'unavailable':
+            startBrowserFlow();
+            return;
+          default:
+            setBusy(false);
+            setFailed(true);
+        }
+      });
+      return;
+    }
+
+    startBrowserFlow();
+  }, [startBrowserFlow, useNative]);
+
   return {
-    available: Boolean(config?.enabled && request),
+    /*
+     * The button is worth drawing if EITHER door can open. On a device the
+     * native sheet needs only the web client id, so it can be available before
+     * — or without — an auth-session request being built.
+     */
+    available: Boolean(config?.enabled && (useNative || request)),
     busy,
     failed,
     clearFailure: useCallback(() => setFailed(false), []),

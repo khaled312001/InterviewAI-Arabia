@@ -1,22 +1,49 @@
 # Mobile assets
 
-Expo expects the following PNG assets at the paths referenced in `app.json`:
-
-- `icon.png`         — 1024x1024 app icon
-- `adaptive-icon.png` — 1024x1024 Android foreground layer
-- `splash.png`       — 1242x2436 (or similar) splash image
-
-## Logo source
-
-The authoritative logo is `logo.svg` (vector). Generate the PNG exports from it:
+None of these are drawn by hand. They are generated from the brand source art
+by `scripts/generate-assets.py`, so the app icon, the launch screen, the
+favicon and the store listing are provably the same mark:
 
 ```bash
-# Requires rsvg-convert (librsvg) or Inkscape
-rsvg-convert logo.svg -w 1024 -h 1024 -o icon.png
-rsvg-convert logo.svg -w 1024 -h 1024 -o adaptive-icon.png
-rsvg-convert logo.svg -w 1242 -h 2436 -b "#0F5AA8" -o splash.png
+python scripts/generate-assets.py        # icons, splash icon, favicons, lockups
+node scripts/render-text-assets.mjs      # anything with ARABIC TEXT in it
 ```
 
-Until those PNGs exist, `expo start` will warn but still bundle; the in-app
-`<Logo />` component renders the SVG directly so the splash screen fallback
-is cosmetic only.
+The split between those two is not stylistic. Pillow on this machine has no
+OpenType shaper, so it draws Arabic unjoined and in logical order; anything
+carrying Arabic text is rendered in a headless browser instead, which has
+HarfBuzz and the real font. `generate-assets.py` deliberately does not write
+the text-bearing files, because it used to, and it silently replaced the
+correct ones.
+
+| file | size | used by |
+| --- | --- | --- |
+| `icon.png` | 1024² | `expo.icon` — iOS and the web manifest |
+| `adaptive-icon.png` | 1024² | Android launcher foreground layer |
+| `monochrome-icon.png` | 1024² | Android themed icons, and the notification icon |
+| `splash-icon.png` | 1024² | the launch screen — see below |
+| `favicon.png` | 196² | web tab |
+| `play-store-icon.png` | 512², opaque | uploaded by hand to the Play Console listing |
+| `splash.png` | 1242×2688 | **nothing.** Kept as the brand's full-screen composition |
+
+## The launch screen is an ICON, not a screen
+
+From Android 12 the system owns the splash: it paints a solid background and
+centres one drawable on a 288dp canvas, with content expected to stay inside
+the middle 192dp. There is no way to show a full-screen design there.
+
+`splash.png` was pointed at that slot for a long time, and the result looked
+broken in a way that is hard to name — a 1242×2688 portrait card scaled down to
+a third of the canvas width, centred, on an otherwise empty blue screen. It is
+kept on disk because it is a good piece of artwork and because Android 11 and
+below could still use one, but `app.json` points at `splash-icon.png`: the mark
+alone, on a transparent square, sized so it survives a circular mask.
+
+The dp size lives in the `expo-splash-screen` entry in `app.json`
+(`imageWidth`), not in the image.
+
+## Source art
+
+`logo.svg` is the OLD InterviewAI mark and is kept only as history — it is not
+the Interprova brand and nothing generates from it. The real sources are the
+supplied logo exports referenced at the top of `scripts/generate-assets.py`.

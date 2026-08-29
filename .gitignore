@@ -80,6 +80,15 @@ mobile/ios/
 # Local regression-test exports (scripts/serve-webtest.mjs)
 .webtest*/
 
+# OAuth client downloads from Google Cloud Console.
+#
+# An "installed"/Android client JSON holds no secret — the client id is public
+# and ships inside the app. A WEB client JSON downloaded from the same screen
+# holds `client_secret`, looks identical, and is named the same way. Ignoring
+# the whole pattern means the dangerous one cannot be committed by accident on
+# a day when nobody checked which kind it was.
+client_secret_*.json
+
 # Firebase
 #
 # google-services.json is not a secret (it ships inside the APK and only
