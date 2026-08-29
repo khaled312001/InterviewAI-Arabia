@@ -104,3 +104,10 @@ mobile/GoogleService-Info.plist
 # never be committed, and it must never be served from the web root.
 *-firebase-adminsdk-*.json
 firebase-service-account.json
+
+# Diagnostic logcat dumps from scripts/android-*.sh. They capture whatever the
+# device was logging, which for a sign-in attempt includes OAuth URLs carrying
+# short-lived `rapt` and `part` tokens. Transient, but there is no reason for
+# them to reach a commit.
+android-crash-report.txt
+google-signin-log.txt

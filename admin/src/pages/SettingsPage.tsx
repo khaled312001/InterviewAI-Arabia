@@ -227,10 +227,33 @@ export function SettingsPage() {
                         error={Boolean(err)}
                         multiline={def.type === 'multiline'}
                         minRows={def.type === 'multiline' ? 2 : undefined}
+                        /*
+                         * `dir` is not cosmetic here — without it a value can
+                         * be read WRONG.
+                         *
+                         * This page is RTL, so an unmarked LTR value is laid
+                         * out by the bidi algorithm against an RTL paragraph:
+                         * a leading run of digits and a hyphen is neutral, so
+                         * it gets pushed to the far end. A Google client id
+                         * stored as
+                         *
+                         *   567239383014-p6ukp9sc….apps.googleusercontent.com
+                         *
+                         * renders as `p6ukp9sc….apps.googleusercontent.com-567239383014`
+                         * — the same characters, reordered into something that
+                         * looks like a corrupted value. It cost a round trip of
+                         * "is this wrong?" over a field that was correct.
+                         *
+                         * `auto` rather than `ltr` because these fields also
+                         * hold Arabic prose: the browser takes the direction
+                         * from the first strong character, which is Latin for
+                         * an id, key or URL and Arabic for a message. One
+                         * attribute, both cases right.
+                         */
                         inputProps={
                           def.type === 'int'
                             ? { inputMode: 'numeric', dir: 'ltr', style: { textAlign: 'start' } }
-                            : undefined
+                            : { dir: 'auto', style: { textAlign: 'start' } }
                         }
                         helperText={err ?? def.help}
                       />
