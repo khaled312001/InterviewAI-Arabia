@@ -37,7 +37,38 @@
  * verdict is advisory. Nothing here depends on it.
  */
 
+import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+
+/**
+ * ── Bug 3: `typeof window === 'undefined'` is not a native guard ───────────
+ *
+ * Everything below is browser redirect handling. The original guard here was
+ * `typeof window === 'undefined'`, which is the guard for SERVER rendering —
+ * and React Native is not a server. RN defines `window`; it aliases `global`.
+ * What it does NOT define is `window.location`.
+ *
+ * So on Android the guard passed, `window.location.hash` read `.hash` off
+ * `undefined`, and because `authRedirectLanded` is computed at MODULE SCOPE —
+ * imported by App.tsx before anything renders — the TypeError escaped as
+ *
+ *   [runtime not ready]: TypeError: Cannot read property 'hash' of undefined
+ *
+ * which Hermes turns into a SIGABRT. The app showed its native splash and died
+ * before the first frame, with nothing in the Java log to explain it.
+ *
+ * `Platform.OS` is the honest predicate: this is web-only code, and it should
+ * say so once, at the top, rather than each function guessing. The `location`
+ * null-check behind it is belt-and-braces for an exotic web engine, not the
+ * native guard — that job belongs to IS_WEB alone.
+ */
+const IS_WEB = Platform.OS === 'web';
+
+/** The browser's Location, or null anywhere that is not a browser. */
+function browserLocation(): Location | null {
+  if (!IS_WEB || typeof window === 'undefined') return null;
+  return window.location ?? null;
+}
 
 /**
  * Where the popup leaves the redirect URL for the opener to find.
@@ -72,8 +103,9 @@ export const AUTH_RELAY_KEY = 'interprova.auth.relay';
 
 /** The implicit flow returns its result in the FRAGMENT, never the query. */
 function idTokenInFragment(): string | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.location.hash || '';
+  const location = browserLocation();
+  if (!location) return null;
+  const raw = location.hash || '';
   const hash = raw.startsWith('#') ? raw.slice(1) : raw;
   if (!hash) return null;
   try {
@@ -91,16 +123,19 @@ function idTokenInFragment(): string | null {
  */
 export const authRedirectLanded = idTokenInFragment() !== null;
 
-// Advisory only. Wrapped because it throws a CodedError when it cannot find any
+// Advisory only, and web-only: on native there is no popup and no opener to
+// message. Wrapped because it throws a CodedError when it cannot find any
 // window to message, and a throw at module scope would take down the bundle —
-// leaving a blank page instead of a sign-in.
-try {
-  WebBrowser.maybeCompleteAuthSession();
-} catch {
-  /* the relay below is the channel that actually matters */
+// which, as Bug 3 above records, is not a hypothetical.
+if (IS_WEB) {
+  try {
+    WebBrowser.maybeCompleteAuthSession();
+  } catch {
+    /* the relay below is the channel that actually matters */
+  }
 }
 
-if (authRedirectLanded && typeof window !== 'undefined') {
+if (authRedirectLanded && browserLocation()) {
   /*
    * Order matters. Hand the token over FIRST, then close: a close that beats
    * the write loses the sign-in entirely, and the window is gone so there is
