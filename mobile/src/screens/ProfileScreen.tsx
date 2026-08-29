@@ -10,7 +10,7 @@ import { useBalance } from '../store/balance';
 import { setAppLanguage } from '../i18n';
 import { useAppTheme } from '../theme/useTheme';
 import {
-  Screen, Text, Card, Badge, Button, Input, ListRow, SectionHeader,
+  Screen, Text, Card, Badge, Button, Input, ListRow, SectionHeader, Avatar,
 } from '../components';
 import { balanceLabel, formatMonthYear } from './mainShared';
 
@@ -30,6 +30,8 @@ type ProfileUser = {
   id: string; email: string; name: string;
   language: Lang; plan: 'free' | 'premium';
   createdAt?: string;
+  /** Google's profile picture, when the account was created through it. */
+  avatarUrl?: string | null;
 };
 
 /* ------------------------------------------------------------------ *
@@ -189,7 +191,6 @@ export function ProfileScreen({ navigation }: any) {
   }, []);
 
   const isPremium = (balance?.plan ?? user?.plan) === 'premium';
-  const initial = (user?.name?.trim()?.[0] ?? '?').toUpperCase();
   const memberSince = useMemo(
     () => formatMonthYear(user?.createdAt, i18n.language),
     [user?.createdAt, i18n.language],
@@ -260,19 +261,13 @@ export function ProfileScreen({ navigation }: any) {
       {/* ---------------------------- identity --------------------------- */}
       <Card padding="lg">
         <View style={[styles.row, { gap: theme.spacing.lg }]}>
-          <View
-            style={[
-              styles.avatar,
-              {
-                width: theme.layout.avatar.lg,
-                height: theme.layout.avatar.lg,
-                borderRadius: theme.layout.avatar.lg / 2,
-                backgroundColor: theme.colors.primaryMuted,
-              },
-            ]}
-          >
-            <Text role="h2" weight="bold" tone="primary">{initial}</Text>
-          </View>
+          <Avatar
+            uri={user?.avatarUrl}
+            name={user?.name}
+            size={theme.layout.avatar.lg}
+            background={theme.colors.primaryMuted}
+            role="h2"
+          />
 
           <View style={[styles.grow, { gap: theme.spacing.xxs }]}>
             <Text role="h3" weight="bold" numberOfLines={1}>{user?.name ?? '—'}</Text>

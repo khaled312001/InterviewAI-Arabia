@@ -99,6 +99,35 @@ function createPreview(
     const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
     const live = state.granted && state.active && state.enabled && !state.released && state.fault === null;
 
+    /*
+     * These three MUST be stable, and the ref most of all.
+     *
+     * React re-invokes a callback ref whenever its IDENTITY changes between
+     * renders: it calls the old one with `null`, then the new one with the
+     * instance. An inline arrow is a new identity every render, so a parent
+     * that re-renders produces a detach/attach cycle on a camera that never
+     * moved — and `onViewRef(null)` clears `previewReady` and cancels the
+     * readiness fallback that is about to set it.
+     *
+     * MeetingScreen re-renders about once a second, because it shows a
+     * countdown. That is faster than PREVIEW_READY_FALLBACK_MS, so the
+     * fallback timer was armed and cancelled forever without firing, and on a
+     * device whose CameraX build never emits `onCameraReady` — the case the
+     * fallback exists for — `previewReady` could never become true. The camera
+     * opened, streamed, and sat underneath the placeholder for the whole call:
+     * logcat showed `CameraDevice.onOpened()` and `CameraState{type=OPEN,
+     * error=null}` while the candidate looked at their own initial.
+     *
+     * Nothing failed, which is why nothing reported a failure.
+     */
+    const setViewRef = useCallback((view: CameraView | null) => {
+      handlers.current.onViewRef(view);
+    }, []);
+    const handleReady = useCallback(() => { handlers.current.onReady(); }, []);
+    const handleMountError = useCallback((event: CameraMountError) => {
+      handlers.current.onMountError(event);
+    }, []);
+
     return (
       <View
         style={[styles.fill, style]}
@@ -107,7 +136,7 @@ function createPreview(
       >
         {live ? (
           <CameraView
-            ref={(view) => { handlers.current.onViewRef(view); }}
+            ref={setViewRef}
             style={StyleSheet.absoluteFill}
             facing={state.facing}
             // `video` is what makes `recordAsync` legal, and `mute` is not a
@@ -122,8 +151,8 @@ function createPreview(
             mirror={false}
             ratio="4:3"
             videoQuality="4:3"
-            onCameraReady={() => handlers.current.onReady()}
-            onMountError={(event) => handlers.current.onMountError(event)}
+            onCameraReady={handleReady}
+            onMountError={handleMountError}
           />
         ) : null}
 

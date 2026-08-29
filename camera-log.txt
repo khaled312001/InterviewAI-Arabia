@@ -1,0 +1,43 @@
+=== app JS ===
+
+=== camera stack ===
+08-29 14:48:02.332  2090  2591 D Camera2PresenceSrc: System onCameraUnavailable: 1
+08-29 14:48:02.332  2090  2591 D Camera2PresenceSrc: [FetchData] Refreshed camera list: CameraIdentifier{cameraIds=0}, CameraIdentifier{cameraIds=1}
+08-29 14:48:02.339  3284  3772 E UserAwareMgr: thread exist: {threadName='cameraservice', tid=3188, reporterPid=2959, currentThreadCount=9, maxThreadCount=16, extendTids=[15349, 2959, 7510, 29421, 14939, 12710, 2618, 2620]}
+08-29 14:48:02.339  2959 15349 E cameraserver: CameraServiceExtImpl_sm8650.cpp: 900 Set UX successfully for 15349
+08-29 14:48:02.344  2959  2933 E Camera2-FrameProcessorBase: threadLoop() setting ux state
+08-29 14:48:02.344  2959  2927 E cameraserver: CameraServiceExtImpl_sm8650.cpp: 900 Set UX successfully for 2927
+08-29 14:48:02.347  2959  2933 E cameraserver: CameraServiceExtImpl_sm8650.cpp: 900 Set UX successfully for 2933
+08-29 14:48:02.347  2959  2933 D OplusCameraService: Set async binder(tid: -1 isEnable: 1) successfully.
+08-29 14:48:02.348  2959 12710 I CameraServiceProxyWrapper: logOpen: id 1, facing 1, effectiveApiLevel 2, isNdk 0, latencyMs 22
+08-29 14:48:02.349  2090  2594 D Camera2CameraImpl: {Camera@693b818[id=1]} Use case B.p0-834b23c6-9573-481b-959c-8c2699583bd9255346263 ACTIVE
+08-29 14:48:02.350  2090  2594 D Camera2CameraImpl: {Camera@693b818[id=1]} Use case c0.m0-d5ba18c9-e514-480f-b112-4cd6872f6d6d246326596 ACTIVE
+08-29 14:48:02.351  2090  2594 D Camera2CameraImpl: {Camera@693b818[id=1]} CameraDevice.onOpened()
+08-29 14:48:02.351  2090  2594 D Camera2CameraImpl: {Camera@693b818[id=1]} Transitioning camera internal state: OPENING --> OPENED
+08-29 14:48:02.351  2090  2594 D CameraStateMachine: New public camera state CameraState{type=OPEN, error=null} from OPEN and null
+08-29 14:48:02.351  2090  2594 D CameraStateMachine: Publishing new public camera state CameraState{type=OPEN, error=null}
+08-29 14:48:02.356  3284  8471 W ContextImpl: Calling a method in the system process without a qualified user: android.app.ContextImpl.sendBroadcast:1281 com.android.server.camera.OplusCameraStateBroadcast.notifyCameraState:52 com.android.server.camera.CameraServiceProxyExtImpl.extendNotifyCameraState:370 com.android.server.camera.CameraServiceProxy.updateActivityCount:1583 com.android.server.camera.CameraServiceProxy.-$$Nest$mupdateActivityCount:0 
+08-29 14:48:02.385  2959  2959 D OplusCameraService: Set async binder(tid: 12710 isEnable: 0) successfully.
+08-29 14:48:02.385  2959  2959 D OplusCameraService: Set async binder(tid: 2959 isEnable: 0) successfully.
+08-29 14:48:02.386  2959  2959 D OplusCameraService: Set async binder(tid: -1 isEnable: 0) successfully.
+08-29 14:48:02.386  2959  2959 I Camera2ClientBase: ~Camera2ClientBase: Client object's dtor for Camera Id 1 completed. Client was: com.interprova.app (PID 2090, UID 10462)
+08-29 14:48:02.387  2959  2959 E cameraserver: CameraServiceExtImpl_sm8650.cpp: 922 release UX successfully for 2959
+08-29 14:48:02.422  2090  2591 D Camera2CaptureRequestBuilder: template type = 3
+08-29 14:48:02.423  2090  2591 D Camera2CaptureRequestBuilder: applyAeFpsRange: expectedFrameRateRange = [0, 0]
+08-29 14:48:02.425  2959  2959 I CameraDeviceClient: createStream : stream size is 3264 x 2448
+08-29 14:48:02.431  2959  2959 I CameraDeviceClient: createStream : stream size is 720 x 480
+08-29 14:48:02.436  2314  6332 E [CAM-OEMLAYER] : [ERROR][ProviderExt] oemcamera3device.cpp:324 Config() [CAM-OEMLAYER] get vendor tags packageName error!!
+08-29 14:48:02.486  2090  2591 D Camera2CaptureRequestBuilder: createCaptureRequest
+08-29 14:48:02.486  3284  8497 W ContextImpl: Calling a method in the system process without a qualified user: android.app.ContextImpl.sendBroadcast:1281 com.android.server.camera.OplusCameraStateBroadcast.notifyCameraState:52 com.android.server.camera.CameraServiceProxyExtImpl.extendNotifyCameraState:370 com.android.server.camera.CameraServiceProxy.updateActivityCount:1583 com.android.server.camera.CameraServiceProxy.-$$Nest$mupdateActivityCount:0 
+08-29 14:48:02.486  2090  2591 D Camera2CaptureRequestBuilder: applyAeFpsRange: expectedFrameRateRange = [0, 0]
+08-29 14:48:02.486  2090  2591 D Camera2CaptureRequestBuilder: applyVideoStabilization: mode = 1
+08-29 14:48:02.487  2959  2923 D CameraService: startCameraStreamingOps: Start data delivery for uid 10462
+08-29 14:48:02.488  2959  2927 E AidlCamera3-Device: isReconfigurationRequired: Unexpected binder error: OPERATION_NOT_SUPPORTED
+08-29 14:48:02.490  2314  6332 E [CAM-OEMLAYER] : [ERROR][ProviderExt] oemcamera3device.cpp:324 Config() [CAM-OEMLAYER] get vendor tags packageName error!!
+08-29 14:48:02.491  3284  7618 W ContextImpl: Calling a method in the system process without a qualified user: android.app.ContextImpl.sendBroadcast:1281 com.android.server.camera.OplusCameraStateBroadcast.notifyCameraState:52 com.android.server.camera.CameraServiceProxyExtImpl.extendNotifyCameraState:370 com.android.server.camera.CameraServiceProxy.updateActivityCount:1583 com.android.server.camera.CameraServiceProxy.-$$Nest$mupdateActivityCount:0 
+08-29 14:48:02.650  2959  2959 D OplusCameraService: Set async binder(tid: -1 isEnable: 1) successfully.
+08-29 14:48:02.710  3284  7618 W ContextImpl: Calling a method in the system process without a qualified user: android.app.ContextImpl.sendBroadcast:1281 com.android.server.camera.OplusCameraStateBroadcast.notifyCameraState:52 com.android.server.camera.CameraServiceProxyExtImpl.extendNotifyCameraState:370 com.android.server.camera.CameraServiceProxy.updateActivityCount:1583 com.android.server.camera.CameraServiceProxy.-$$Nest$mupdateActivityCount:0 
+08-29 14:48:03.181  2959 12710 D OplusCameraService: Set async binder(tid: -1 isEnable: 1) successfully.
+08-29 14:48:08.215  2090  2594 D Camera2PresenceSrc: System onCameraAccessPrioritiesChanged.
+08-29 14:48:08.216  2090  2591 D Camera2PresenceSrc: [FetchData] Refreshed camera list: CameraIdentifier{cameraIds=0}, CameraIdentifier{cameraIds=1}
+08-29 14:48:08.968  2959  7510 D OplusCameraService: Set async binder(tid: -1 isEnable: 1) successfully.

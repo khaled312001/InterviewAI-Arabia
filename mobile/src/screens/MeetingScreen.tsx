@@ -55,7 +55,7 @@ import { secureStorage } from '../storage/secureStorage';
 import { useAuth } from '../store/auth';
 import { useBalance, formatClock } from '../store/balance';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
-import { Screen, Text, Button, Card, Badge, ScoreRing } from '../components';
+import { Screen, Text, Button, Card, Badge, ScoreRing, Avatar } from '../components';
 import { balanceLabel, durationLabel } from './mainShared';
 import {
   capabilities, useCamera, useInterviewerVoice, useLevelMeter,
@@ -800,6 +800,7 @@ export function MeetingScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const dir = useDirection();
   const userName = useAuth((s) => s.user?.name);
+  const userAvatar = useAuth((s) => s.user?.avatarUrl);
   const refreshBalance = useBalance((s) => s.refresh);
   const setAvailableSeconds = useBalance((s) => s.setAvailableSeconds);
 
@@ -824,7 +825,6 @@ export function MeetingScreen({ route, navigation }: any) {
   const hrRole = t(hrGender === 'male' ? 'meeting.hrMaleRole' : 'meeting.hrFemaleRole');
   const hrPortrait = personaPortrait(hrGender);
 
-  const youInitial = (userName?.trim()?.[0] ?? '?').toUpperCase();
 
   /* -------------------- refs -------------------- */
 
@@ -1881,23 +1881,17 @@ export function MeetingScreen({ route, navigation }: any) {
           accessibilityLabel={`${t('meeting.you')}${camOn ? '' : ` — ${t('meeting.cameraOffLabel')}`}`}
           placeholder={(
             <View style={[StyleSheet.absoluteFillObject, styles.center, { gap: theme.spacing.xs, backgroundColor: STAGE.tile }]}>
-              <View
-                style={[
-                  styles.center,
-                  {
-                    width: theme.layout.avatar.md,
-                    height: theme.layout.avatar.md,
-                    borderRadius: theme.radii.pill,
-                    backgroundColor: STAGE.chromeSoft,
-                    borderWidth: theme.layout.hairline,
-                    borderColor: STAGE.border,
-                  },
-                ]}
-              >
-                <Text role="h4" weight="bold" tone="inherit" style={{ color: STAGE.ink }}>
-                  {youInitial}
-                </Text>
-              </View>
+              <Avatar
+                uri={userAvatar}
+                name={userName}
+                size={theme.layout.avatar.md}
+                background={STAGE.chromeSoft}
+                textColor={STAGE.ink}
+                style={{
+                  borderWidth: theme.layout.hairline,
+                  borderColor: STAGE.border,
+                }}
+              />
               {/* Only when the camera is genuinely off: the same artwork also
                   covers the gap before the first frame arrives, and "camera
                   off" would be a lie while the candidate is still granting it. */}

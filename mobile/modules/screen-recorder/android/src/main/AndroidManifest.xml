@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!--
+    The service is what makes MediaProjection legal from Android 14 onwards.
+    Declared HERE rather than in the app manifest so the module carries its own
+    requirement: a build that links this module cannot forget it, and a build
+    that drops the module does not keep a dangling service behind.
+  -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
+  <application>
+    <service
+      android:name="com.interprova.screenrecorder.ScreenRecordService"
+      android:exported="false"
+      android:foregroundServiceType="mediaProjection" />
+  </application>
+</manifest>

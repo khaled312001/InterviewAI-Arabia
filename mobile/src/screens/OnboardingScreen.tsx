@@ -384,7 +384,17 @@ export function OnboardingScreen({ navigation }: Props) {
       <View style={styles.fill}>
         {/* ---------- top bar ---------- */}
         <View style={[styles.topBar, { paddingHorizontal: screenPadding, paddingVertical: theme.spacing.sm }]}>
-          <Logo size={theme.layout.icon['2xl']} />
+          {/* The full lockup, not the mark alone.
+              These three slides are the first thing a new install shows, and
+              the brand is new: a bare icon in the corner is recognisable only
+              to someone who already knows it, which by definition is nobody
+              here. The name carries it until the icon can. `space-between` on
+              the row puts this at the start of the reading direction — the
+              RIGHT in Arabic — and Skip at the other end. */}
+          <View style={[styles.brand, { gap: theme.spacing.xs }]}>
+            <Logo size={theme.layout.icon['2xl']} />
+            <Text role="body" weight="bold" numberOfLines={1}>Interprova</Text>
+          </View>
           <Pressable
             onPress={goLogin}
             hitSlop={theme.spacing.md}
@@ -554,6 +564,7 @@ export function OnboardingScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center' },
   skip: { alignItems: 'center', justifyContent: 'center' },
   pager: { flex: 1, overflow: 'hidden', justifyContent: 'center' },
   track: { position: 'absolute', top: 0, bottom: 0, left: 0 },

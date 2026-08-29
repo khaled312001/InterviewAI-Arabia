@@ -13,7 +13,7 @@ import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import { accentForCategory, scoreTone } from '../theme/tokens';
 import {
   Screen, Text, Card, Badge, Button, SectionHeader, ListRow, EmptyState,
-  SkeletonTile, SkeletonRow,
+  SkeletonTile, SkeletonRow, Avatar,
 } from '../components';
 import {
   balanceLabel, categoryIcon, categoryName, durationLabel, formatShortDate,
@@ -210,7 +210,6 @@ export function HomeScreen({ navigation }: any) {
   const remainingLabel = balance ? balanceLabel(availableSeconds, t) : '';
   /** Only once a balance has actually arrived — an unloaded card is not empty. */
   const empty = !!balance && availableSeconds <= 0;
-  const firstLetter = (user?.name?.trim()?.[0] ?? '?').toUpperCase();
 
   /**
    * The one line under the balance. Ordered by what the user most needs to
@@ -254,19 +253,13 @@ export function HomeScreen({ navigation }: any) {
         ]}
       >
         <View style={[styles.heroRow, { gap: theme.spacing.md }]}>
-          <View
-            style={[
-              styles.avatar,
-              {
-                width: theme.layout.avatar.md,
-                height: theme.layout.avatar.md,
-                borderRadius: theme.layout.avatar.md / 2,
-                backgroundColor: theme.colors.textOnBrand,
-              },
-            ]}
-          >
-            <Text role="h4" weight="bold" tone="primary">{firstLetter}</Text>
-          </View>
+          <Avatar
+            uri={user?.avatarUrl}
+            name={user?.name}
+            size={theme.layout.avatar.md}
+            background={theme.colors.textOnBrand}
+            role="h4"
+          />
 
           <View style={styles.heroText}>
             <Text role="caption" tone="onBrand" style={styles.heroGreeting}>

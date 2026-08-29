@@ -65,24 +65,68 @@ async function persistTokens(token: string | null, refreshToken: string | null) 
   else await secureStorage.deleteItem('refresh_token');
 }
 
+/**
+ * The last known profile, kept beside the tokens.
+ *
+ * Not a cache for speed — a cache for CORRECTNESS at launch. Without it the
+ * first frame after a cold start has a valid session and no user, so every
+ * screen that greets someone by name renders a blank while the network
+ * answers, and an offline launch renders that blank for as long as it stays
+ * offline. Written wherever the server hands us a fresh copy.
+ */
+async function cacheUser(user: AppUser | null) {
+  try {
+    if (user) await secureStorage.setItem('user', JSON.stringify(user));
+    else await secureStorage.deleteItem('user');
+  } catch { /* storage is a convenience here, never a requirement */ }
+}
+
 export const useAuth = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   refreshToken: null,
   loading: false,
 
+  /**
+   * Restore the session at launch.
+   *
+   * Two rules, and both exist because breaking either sends someone who never
+   * signed out back to the onboarding slides:
+   *
+   *  1. The CACHED user is applied before the network is touched, so a launch
+   *     with no signal opens the app rather than a signed-out shell.
+   *  2. Only an actual 401 clears the session. The previous version cleared on
+   *     ANY error from `/user/me` — a timeout on a train, a 502 during a
+   *     deploy, a captive portal — all of which are temporary, and none of
+   *     which say the token is invalid. The client's refresh interceptor has
+   *     already tried to renew by the time an error reaches here, so a 401
+   *     at this point really does mean the session is over.
+   */
   hydrate: async () => {
     const token = await secureStorage.getItem('access_token');
     const refreshToken = await secureStorage.getItem('refresh_token');
     if (!token) return;
-    set({ token, refreshToken });
+
+    let cached: AppUser | null = null;
+    try {
+      const raw = await secureStorage.getItem('user');
+      if (raw) cached = JSON.parse(raw) as AppUser;
+    } catch { /* a corrupt cache is not worth a failed launch */ }
+    set({ token, refreshToken, user: cached });
+
     try {
       const { data } = await api.get('/user/me');
       set({ user: data.user });
-    } catch {
-      // Invalid token — clear it.
-      await persistTokens(null, null);
-      set({ token: null, refreshToken: null });
+      await cacheUser(data.user);
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401 || status === 403) {
+        await persistTokens(null, null);
+        await cacheUser(null);
+        set({ token: null, refreshToken: null, user: null });
+      }
+      // Anything else: keep the session. The token is still good, and the next
+      // successful request fills in whatever this one could not.
     }
   },
 
@@ -91,6 +135,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     try {
       const { data } = await api.post('/auth/login', { email, password });
       await persistTokens(data.token, data.refreshToken);
+      await cacheUser(data.user);
       set({ token: data.token, refreshToken: data.refreshToken, user: data.user });
     } finally {
       set({ loading: false });
@@ -102,6 +147,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     try {
       const { data } = await api.post('/auth/register', { email, password, name, language });
       await persistTokens(data.token, data.refreshToken);
+      await cacheUser(data.user);
       set({ token: data.token, refreshToken: data.refreshToken, user: data.user });
     } finally {
       set({ loading: false });
@@ -113,6 +159,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     try {
       const { data } = await api.post('/auth/google', { idToken, language });
       await persistTokens(data.token, data.refreshToken);
+      await cacheUser(data.user);
       set({ token: data.token, refreshToken: data.refreshToken, user: data.user });
     } finally {
       set({ loading: false });
@@ -131,6 +178,7 @@ export const useAuth = create<AuthState>((set, get) => ({
       // strand someone on a screen they asked to leave.
       await unregisterPush();
       await persistTokens(null, null);
+      await cacheUser(null);
       set({ token: null, refreshToken: null, user: null });
       // The balance belongs to the account, not to the app. Leaving it behind
       // would show the next person to sign in the previous one's minutes.
@@ -145,10 +193,24 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (!token) return;
     const { data } = await api.get('/user/me');
     set({ user: data.user });
+    await cacheUser(data.user);
   },
 }));
 
 // Wire the 401 interceptor to the store.
 AuthEvents.on401 = () => {
   useAuth.getState().logout().catch(() => {});
+};
+
+/**
+ * A silent renewal happened inside the API client.
+ *
+ * The client has already written the new pair to secure storage — every
+ * request reads the token from there, so nothing is broken without this. It
+ * exists so the store's own copy does not drift: `logout` and anything else
+ * reading `refreshToken` from state would otherwise be holding a token the
+ * server replaced fifteen minutes ago.
+ */
+AuthEvents.onTokens = (token, refreshToken) => {
+  useAuth.setState({ token, refreshToken });
 };

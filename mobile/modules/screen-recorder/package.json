@@ -1,0 +1,7 @@
+{
+  "name": "screen-recorder",
+  "version": "1.0.0",
+  "description": "MediaProjection screen capture for the interview recording.",
+  "main": "index.ts",
+  "private": true
+}

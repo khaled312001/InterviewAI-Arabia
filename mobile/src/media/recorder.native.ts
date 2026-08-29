@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { AppStateStatus } from 'react-native';
-import type { CameraView } from 'expo-camera';
 /*
  * `expo-file-system/legacy`, deliberately.
  *
@@ -20,7 +19,14 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library';
 import * as Sharing from 'expo-sharing';
 
-import { readCaptureHandle } from './contract';
+import i18n from '../i18n';
+import {
+  cancelScreenRecording,
+  isScreenRecordingAvailable,
+  ScreenRecorderError,
+  startScreenRecording,
+  stopScreenRecording,
+} from '../../modules/screen-recorder';
 import { capabilities } from './capabilities.native';
 import type {
   CaptureHandle,
@@ -31,9 +37,6 @@ import type {
   UseSessionRecorder,
 } from './contract';
 import { REC_STOP_GRACE_MS, recordingFileName } from './tuning';
-
-/** One hour. Longer than any interview, and a hard stop against a runaway file. */
-const MAX_RECORDING_SECONDS = 3600;
 
 /**
  * How long a mid-call stop waits for CameraX / AVFoundation to hand back the
@@ -48,15 +51,6 @@ type NoticeTone = 'info' | 'danger' | 'success';
 
 /** The web build downloads a `.webm`; the native camera writes MPEG-4. */
 const CONTAINER = 'mp4';
-
-/**
- * The capture handle is the mounted `CameraView`. Nothing outside this module
- * knows that, which is what keeps MeetingScreen free of platform branches.
- */
-function cameraFromHandle(handle: CaptureHandle | null): CameraView | null {
-  const view = readCaptureHandle<CameraView>(handle);
-  return view && typeof view.recordAsync === 'function' ? view : null;
-}
 
 async function safeDelete(uri: string) {
   try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch { /* noop */ }
@@ -97,7 +91,6 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
   const [recording, setRecording] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
 
-  const viewRef = useRef<CameraView | null>(null);
   const recordingRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
   const durationRef = useRef(0);
@@ -207,7 +200,6 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
     if (deliveredRef.current) return;
     deliveredRef.current = true;
     const durationMs = settleState();
-    viewRef.current = null;
     const result = await deliver(uri, saveRef.current, durationMs);
     resolvePending(result);
   }, [deliver, resolvePending, settleState]);
@@ -235,19 +227,30 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
     }, ms);
   }, [notice, resolvePending, settleState]);
 
+  /*
+   * The foreground service must post a notification, so it may as well say
+   * something true in the reader's language. Read from the i18n instance
+   * rather than a hook, because this module has no component to hang
+   * `useTranslation` on and the value is only needed at the moment of start.
+   */
+  const notificationTitle = i18n.t('meeting.recordNotificationTitle');
+  const notificationBody = i18n.t('meeting.recordNotificationBody');
+
   const start = useCallback(async () => {
     if (recordingRef.current || releasedRef.current) return;
 
-    const view = cameraFromHandle(handle);
-    // No permission work here: `useCamera` already holds CAMERA, and the
-    // recorder deliberately never asks for the microphone.
-    //
-    // A missing handle therefore is not a permissions problem and must not
-    // claim to be one: it means there is no live preview to record from —
-    // the camera is off, or its first frame has not landed yet. Sending a
-    // candidate to check permissions they already granted is the single most
-    // confusing thing this screen can say, so it says the true thing instead.
-    if (!view) { notice('recordNeedsCamera', 'info'); return; }
+    /*
+     * The camera is no longer the source.
+     *
+     * This used to require a mounted `CameraView` and record its preview, so
+     * the file showed the candidate's face and nothing else — not the
+     * question on screen, not the interviewer, not the captions. It now
+     * captures the DISPLAY through MediaProjection, which means the camera may
+     * be off, may be toggled mid-take, and the recording still shows the
+     * interview as it happened. `handle` is left in the signature because the
+     * contract is shared with the web build, which still needs it.
+     */
+    if (!isScreenRecordingAvailable()) { notice('recordFailed', 'danger'); return; }
 
     settledRef.current = false;
     deliveredRef.current = false;
@@ -255,7 +258,6 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
     saveRef.current = true;
     durationRef.current = 0;
     startedAtRef.current = Date.now();
-    viewRef.current = view;
     recordingRef.current = true;
     setRecording(true);
     setElapsedMs(0);
@@ -266,24 +268,31 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
     // REC chip already says that a recording is running.
     notice('recordVideoOnly', 'info');
 
-    let pending: Promise<{ uri: string } | undefined>;
+    /*
+     * The system consent dialog opens here, and it opens EVERY time — Android
+     * gives no way to remember it, by design. So the optimistic state above is
+     * rolled back rather than never set: the REC chip appearing for the second
+     * the dialog is up, and then leaving, is the honest rendering of "you were
+     * asked and you said no".
+     */
     try {
-      pending = view.recordAsync({ maxDuration: MAX_RECORDING_SECONDS });
-    } catch {
+      await startScreenRecording(notificationTitle, notificationBody);
+    } catch (err) {
       settledRef.current = true;
       deliveredRef.current = true;
       recordingRef.current = false;
       startedAtRef.current = null;
-      viewRef.current = null;
       setRecording(false);
-      notice('recordFailed', 'danger');
+      const code = (err as { message?: string })?.message ?? '';
+      // Declining is a decision, not a failure, and saying "recording failed"
+      // to someone who just pressed Cancel is both wrong and alarming.
+      if (!code.includes(ScreenRecorderError.denied)) notice('recordFailed', 'danger');
       return;
     }
 
-    pending
-      .then((result) => finalize(result?.uri ?? null))
-      .catch(() => finalize(null));
-  }, [finalize, handle, notice]);
+    // Re-stamp: the clock starts when frames start, not when the dialog opened.
+    startedAtRef.current = Date.now();
+  }, [notice, notificationBody, notificationTitle]);
 
   const stop = useCallback((opts: { save: boolean }): Promise<RecordingResult | null> => {
     if (!recordingRef.current) return Promise.resolve(null);
@@ -297,10 +306,18 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
       resolveRef.current = resolve;
     });
     pendingStopRef.current = pending;
-    try { viewRef.current?.stopRecording(); } catch { /* noop */ }
+
+    // MediaProjection hands the file back from `stop()` itself, so unlike the
+    // camera there is no separate promise that might never resolve. The grace
+    // timer stays as a net for the one case that remains: a muxer that hangs
+    // on finalisation and never returns at all.
     armGrace(STOP_SETTLE_MS, true);
+    stopScreenRecording()
+      .then((result) => finalize(result?.uri ?? null))
+      .catch(() => finalize(null));
+
     return pending;
-  }, [armGrace]);
+  }, [armGrace, finalize]);
 
   const release = useCallback((opts: { save: boolean }) => {
     releasedRef.current = true;
@@ -317,14 +334,25 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
 
     saveRef.current = opts.save;
 
-    // Synchronous by contract: teardown stops the camera in the same block, and
-    // a capture session whose surface disappears mid-flush can leave
-    // `recordAsync` pending forever. Delivery still runs if the file lands
-    // afterwards — the share sheet appearing over the results screen is the
-    // native analogue of the browser download firing during teardown.
-    try { viewRef.current?.stopRecording(); } catch { /* noop */ }
-    armGrace(REC_STOP_GRACE_MS, false);
-  }, [armGrace]);
+    /*
+     * Synchronous by contract, so the work is started and not awaited.
+     *
+     * A projection left running would keep both the capture session and its
+     * foreground notification alive after the screen is gone — the user would
+     * see "recording" on a call that ended. Delivery still runs if the file
+     * lands afterwards: the share sheet appearing over the results screen is
+     * the native analogue of the browser download firing during teardown.
+     */
+    if (opts.save) {
+      armGrace(REC_STOP_GRACE_MS, false);
+      stopScreenRecording()
+        .then((result) => finalize(result?.uri ?? null))
+        .catch(() => finalize(null));
+    } else {
+      void cancelScreenRecording();
+      settleState();
+    }
+  }, [armGrace, finalize, settleState]);
 
   useEffect(() => {
     if (!recording) return undefined;
@@ -354,9 +382,10 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
     mountedRef.current = false;
     releasedRef.current = true;
     if (graceRef.current) { clearTimeout(graceRef.current); graceRef.current = null; }
-    // An encoder left running would hold the camera open past the screen.
+    // A projection left running would keep capturing the screen — and showing
+    // its notification — after this screen is gone.
     if (recordingRef.current) {
-      try { viewRef.current?.stopRecording(); } catch { /* noop */ }
+      void cancelScreenRecording();
     }
     // Clearing the grace timer above removes the only thing that would ever
     // have settled an in-flight `stop()`. Anyone awaiting it — the end-meeting
@@ -369,10 +398,9 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
   }, []);
 
   return useMemo<SessionRecorder>(() => ({
-    // Recording needs a mounted CameraView, which only exists once the camera
-    // has been granted and is previewing. Claiming support before that lights
-    // up a control that cannot work yet.
-    supported: capabilities.recorder.available,
+    // No longer gated on the camera: the display is the source, so the control
+    // works whether or not the candidate is on screen.
+    supported: capabilities.recorder.available && isScreenRecordingAvailable(),
     recording,
     elapsedMs,
     start,

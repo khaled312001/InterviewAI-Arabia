@@ -15,6 +15,9 @@ export type { ButtonVariant, ButtonSize } from './Button';
 export { Card } from './Card';
 export type { CardVariant, CardPadding } from './Card';
 export { Input } from './Input';
+export { Avatar } from './Avatar';
+export type { AvatarProps } from './Avatar';
+
 export { Badge } from './Badge';
 export type { BadgeTone, BadgeSize } from './Badge';
 export { EmptyState } from './EmptyState';

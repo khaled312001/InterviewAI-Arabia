@@ -604,8 +604,10 @@ export default {
     recordUnsupported: 'This browser cannot record the session — use Chrome or Edge.',
     recordFailed: "Couldn't start recording. Check your camera and microphone permissions.",
     /** Shown under the record button *before* the take, not after it. */
-    recordVideoOnly: 'Video only, no sound — the microphone is reserved for transcribing your answers.',
+    recordVideoOnly: 'Records the whole screen and the interviewer’s voice — not your own: the microphone is reserved for transcribing your answers.',
     recordNeedsCamera: 'Turn the camera on first — the recording captures the camera.',
+    recordNotificationTitle: 'Interprova is recording the screen',
+    recordNotificationBody: 'Recording continues until the interview ends.',
     camLockedWhileRecording: 'The camera cannot be turned off while recording — stop the recording first.',
 
     endTitle: 'End the interview?',

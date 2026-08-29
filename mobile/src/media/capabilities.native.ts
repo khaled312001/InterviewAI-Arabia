@@ -11,15 +11,14 @@
  *     holds it for the whole interview, so the session recording captures
  *     video only — mixing the candidate's own audio in would mean giving up
  *     live transcription, which is the feature.
- *  2. There is no `getDisplayMedia` equivalent available to us here. Capturing
- *     the whole screen needs `MediaProjection` behind a foreground service of
- *     type `mediaProjection`, which Android 14 (targetSdk 34) additionally
- *     gates on the `FOREGROUND_SERVICE_MEDIA_PROJECTION` permission and a
- *     per-session consent dialog. That is a custom native module, not a
- *     configuration flag.
- *  3. `CameraView` owns the recording. Unmounting it — which is what turning
- *     the camera "off" does — ends the recording, so the camera and flip
- *     controls lock while a recording is running.
+ *  2. Capturing the whole screen IS available now, through the local
+ *     `modules/screen-recorder` module: `MediaProjection` behind a foreground
+ *     service of type `mediaProjection`, which Android 14 additionally gates
+ *     on `FOREGROUND_SERVICE_MEDIA_PROJECTION` and a consent dialog the system
+ *     shows on every single start — there is no way to remember it, by design.
+ *  3. Because the recording no longer comes from `CameraView`, unmounting the
+ *     preview no longer ends it. The camera and flip controls stay usable for
+ *     the whole take, which is what `locksCameraControls: false` below says.
  */
 
 import { Platform } from 'react-native';
@@ -74,10 +73,20 @@ export const capabilities: MediaCapabilities = {
     available: true,
     mimeType: 'video/mp4',
     fileExtension: 'mp4',
-    capturesScreen: false,
+    // MediaProjection, not the camera preview — see modules/screen-recorder.
+    // The whole call is in the file: the interviewer, the question, the
+    // captions and the candidate's own tile.
+    capturesScreen: true,
+    // Still false, and for the same reason as ever: the recogniser owns the one
+    // microphone client Android gives an app, so the candidate's own voice
+    // cannot be in the file without giving up live transcription.
     capturesMicAudio: false,
-    capturesInterviewerAudio: false,
+    // True now. AudioPlaybackCapture, scoped to this app's own UID, puts the
+    // interviewer's voice in the recording without touching the microphone.
+    capturesInterviewerAudio: true,
     delivery: 'media-library',
-    locksCameraControls: true,
+    // The recording no longer comes from CameraView, so unmounting the preview
+    // cannot end it: the camera and flip controls stay live throughout.
+    locksCameraControls: false,
   },
 };

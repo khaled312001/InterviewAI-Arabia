@@ -1,0 +1,29 @@
+// Same shape as every module shipped inside expo-modules-core, deliberately.
+//
+// A hand-rolled `com.android.library` block has to restate compileSdk, the
+// Kotlin version, the Java target and the expo-modules-core dependency, and
+// each of those is a way for a LOCAL module to drift from the SDK the app is
+// built against — a drift that surfaces as a Kotlin metadata mismatch several
+// minutes into a Gradle run. `expo-module-gradle-plugin` takes all of them
+// from the project it is linked into, so this file says only what is specific
+// to this module: nothing.
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.interprova.screenrecorder'
+version = '1.0.0'
+
+android {
+  namespace 'com.interprova.screenrecorder'
+  // Both are REQUIRED by expo-module-gradle-plugin, and the failure when they
+  // are missing names the wrong project: Gradle reports
+  // "Failed to apply plugin 'com.facebook.react'" against async-storage, with
+  // "'android.defaultConfig.versionName' is not defined" for :screen-recorder
+  // buried underneath it.
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
