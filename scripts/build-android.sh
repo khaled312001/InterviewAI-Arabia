@@ -49,15 +49,20 @@ KEYSTORE="${KEYSTORE:-C:/Users/KHALE/localbuild/ks/interviewai-upload.jks}"
 KEY_ALIAS="${KEY_ALIAS:-interviewai-upload}"
 KEY_PASS="${KEY_PASS:-InterviewAI#2026Key}"
 
-WANT_APK=1; WANT_AAB=0
+WANT_APK=1; WANT_AAB=0; BUMP=0; REUSE_CODE=0; ARTIFACT_FLAGS=0
 for a in "$@"; do
   case "$a" in
-    --aab) WANT_AAB=1; WANT_APK=0 ;;
-    --apk) WANT_APK=1 ;;
+    --aab) WANT_AAB=1; ARTIFACT_FLAGS=$((ARTIFACT_FLAGS + 1)) ;;
+    --apk) WANT_APK=1; ARTIFACT_FLAGS=$((ARTIFACT_FLAGS + 1)) ;;
+    --bump) BUMP=1 ;;                       # take the next free versionCode
+    --reuse-version-code) REUSE_CODE=1 ;;   # build a code the ledger already has
     *) echo "unknown flag: $a"; exit 2 ;;
   esac
 done
-[ $# -gt 1 ] && { WANT_APK=1; WANT_AAB=1; }
+# `--aab` alone means the bundle ONLY; `--apk --aab` means both. This counts the
+# ARTIFACT flags rather than $#, because `--aab --bump` is also two arguments and
+# must not silently start building an APK as well.
+if [ "$WANT_AAB" = 1 ] && [ "$ARTIFACT_FLAGS" = 1 ]; then WANT_APK=0; fi
 
 # Unbuffered: when this script is backgrounded its output is otherwise held
 # until exit, so a 25-minute build is indistinguishable from a hung one.
@@ -66,6 +71,56 @@ exec 1>&2
 say() { printf '\n\033[1;34m▸ %s\033[0m\n' "$*"; }
 
 [ -f "$KEYSTORE" ] || { echo "keystore missing: $KEYSTORE"; exit 1; }
+
+# ------------------------------------------------------- Play versionCode guard
+#
+# Play burns a versionCode permanently the moment an upload is ACCEPTED. Sending
+# the same number again is refused at the door — "Version code N has already been
+# used" — after the build, after the 70 MB upload, after the wait. That happened
+# on 2026-08-29 with code 3, so every code this script produces is recorded and a
+# repeat is refused BEFORE the build instead of after it.
+#
+#   ./scripts/build-android.sh --aab --bump    # take the next free code
+#
+# The ledger only knows what THIS machine built; it cannot see the Play console.
+# So --bump is the safe habit, and --reuse-version-code is the escape hatch for
+# rebuilding a code that was never uploaded.
+LEDGER="$ROOT/release/version-codes.log"
+APP_JSON="$ROOT/mobile/app.json"
+
+# Read with grep, not `node -p require(...)`: $ROOT is an MSYS path (/f/...) and
+# Windows node resolves that against the CURRENT drive, not F:.
+version_code_now() { grep -oE '"versionCode"[[:space:]]*:[[:space:]]*[0-9]+' "$APP_JSON" | grep -oE '[0-9]+' | head -1; }
+
+VERSION_CODE="$(version_code_now)"
+# `"version"` cannot match `"versionCode"` or `"sdkVersion"` — the quote is
+# required on both sides of the word.
+VERSION_NAME="$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' "$APP_JSON" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')"
+[ -n "$VERSION_CODE" ] || { echo "could not read android.versionCode from $APP_JSON"; exit 1; }
+
+if [ "$BUMP" = 1 ]; then
+  HIGHEST="$VERSION_CODE"
+  if [ -f "$LEDGER" ]; then
+    SEEN="$(awk '{print $1}' "$LEDGER" | grep -E '^[0-9]+$' | sort -n | tail -1)"
+    if [ -n "$SEEN" ] && [ "$SEEN" -gt "$HIGHEST" ]; then HIGHEST="$SEEN"; fi
+  fi
+  NEXT=$((HIGHEST + 1))
+  sed -i "s/\"versionCode\"[[:space:]]*:[[:space:]]*$VERSION_CODE/\"versionCode\": $NEXT/" "$APP_JSON"
+  VERSION_CODE="$(version_code_now)"
+  [ "$VERSION_CODE" = "$NEXT" ] || { echo "failed to bump versionCode in $APP_JSON"; exit 1; }
+fi
+
+if [ "$WANT_AAB" = 1 ] && [ "$REUSE_CODE" = 0 ] && [ -f "$LEDGER" ] \
+   && awk '{print $1}' "$LEDGER" | grep -qx "$VERSION_CODE"; then
+  echo "" >&2
+  echo "versionCode $VERSION_CODE has already been built here, so Play may already" >&2
+  echo "hold it — and Play only says so after the upload." >&2
+  echo "  --bump                 take the next free code" >&2
+  echo "  --reuse-version-code   this one was never uploaded, build it anyway" >&2
+  exit 1
+fi
+
+say "Version $VERSION_NAME (versionCode $VERSION_CODE)"
 
 set -o pipefail   # a half-finished sync must not look like success
 say "Syncing sources to a space-free path ($BUILD_DIR)"
@@ -427,5 +482,14 @@ for f in $(find "$BUILD_DIR/android/app/build/outputs" \( -name '*.apk' -o -name
   cp "$f" "$out"
   echo "  $out  ($(du -h "$out" | cut -f1))"
 done
+
+# Record what was actually produced, so the guard above can refuse a repeat.
+# Written only after Gradle succeeded: a code that never became an artifact was
+# never burned.
+KINDS=""
+if [ "$WANT_APK" = 1 ]; then KINDS="apk"; fi
+if [ "$WANT_AAB" = 1 ]; then KINDS="${KINDS:+$KINDS+}aab"; fi
+printf '%s %s %s %s\n' "$VERSION_CODE" "$VERSION_NAME" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$KINDS" >> "$LEDGER"
+echo "  recorded versionCode $VERSION_CODE in $LEDGER"
 
 say "Done"
