@@ -283,7 +283,15 @@ export const useSessionRecorder: UseSessionRecorder = ({ handle, onNotice }) => 
       recordingRef.current = false;
       startedAtRef.current = null;
       setRecording(false);
-      const code = (err as { message?: string })?.message ?? '';
+      /*
+       * `code`, then `message`. An Expo `CodedException(code, message, cause)`
+       * arrives in JS with the code on `.code` and the human sentence on
+       * `.message` — reading only the message would never match, and every
+       * cancelled dialog would have been reported as a failed recording.
+       * `message` stays in the test as the fallback for a plain Error.
+       */
+      const thrown = err as { code?: string; message?: string };
+      const code = `${thrown?.code ?? ''} ${thrown?.message ?? ''}`;
       // Declining is a decision, not a failure, and saying "recording failed"
       // to someone who just pressed Cancel is both wrong and alarming.
       if (!code.includes(ScreenRecorderError.denied)) notice('recordFailed', 'danger');

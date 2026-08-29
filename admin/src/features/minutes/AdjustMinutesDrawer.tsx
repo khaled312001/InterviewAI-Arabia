@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
+import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 import InputAdornment from '@mui/material/InputAdornment';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -11,10 +13,15 @@ import Typography from '@mui/material/Typography';
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
 
 import { FormDrawer } from '../../components/common/FormDrawer';
+import { StatusChip } from '../../components/common/StatusChip';
 import { useConfirm } from '../../components/common/ConfirmDialog';
 import { useToast } from '../../components/common/ToastProvider';
+import { useDebouncedValue } from '../../lib/hooks/useDebouncedValue';
+import { effectivePlan } from '../../lib/permissions';
 import { MINUTE_FORMS, countAr, formatNumber, formatDurationAr, secondsToMinutes } from '../../lib/format';
-import { useAdjustMinutes } from './api';
+import { useUserSearch } from '../users/api';
+import type { AdminUser } from '../users/types';
+import { useAdjustMinutes, useUserMinutes } from './api';
 import { minutesFieldErrors } from './formErrors';
 import type { MinuteBalance, MinutesAdjustBody } from './types';
 
@@ -26,11 +33,17 @@ const MAX_MINUTES = 6000;
 export interface AdjustMinutesDrawerProps {
   open: boolean;
   onClose: () => void;
-  userId: string;
-  userEmail: string | null;
-  userDisabled: boolean;
+  /**
+   * The account to move. Omit all four and the drawer grows a picker instead —
+   * that is how it opens from the subscriptions page, which has no user in
+   * context. When `userId` is given the caller already knows the account and
+   * the picker would be a step backwards.
+   */
+  userId?: string;
+  userEmail?: string | null;
+  userDisabled?: boolean;
   /** The current balance, so the preview is the server's figure, not a guess. */
-  balance: MinuteBalance | undefined;
+  balance?: MinuteBalance | undefined;
 }
 
 /**
@@ -52,13 +65,39 @@ export interface AdjustMinutesDrawerProps {
 export function AdjustMinutesDrawer({
   open,
   onClose,
-  userId,
-  userEmail,
-  userDisabled,
-  balance,
+  userId: presetUserId,
+  userEmail: presetUserEmail,
+  userDisabled: presetUserDisabled,
+  balance: presetBalance,
 }: AdjustMinutesDrawerProps) {
   const toast = useToast();
   const confirm = useConfirm();
+
+  /*
+   * Picking mode is decided by the caller, once, and never changes while the
+   * drawer is open — so the hooks below are called unconditionally in both
+   * modes and only their arguments differ.
+   */
+  const picking = !presetUserId;
+  const [picked, setPicked] = useState<AdminUser | null>(null);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
+  const userQuery = useUserSearch(debouncedSearch, open && picking);
+
+  const userId = presetUserId ?? picked?.id;
+  const userEmail = picking ? picked?.email ?? null : presetUserEmail ?? null;
+  const userDisabled = picking ? Boolean(picked?.isDisabled) : Boolean(presetUserDisabled);
+
+  /*
+   * The balance behind the preview. When the caller passed one it already has
+   * it on screen and a second request would be waste; in picking mode there is
+   * nothing to inherit, so it is fetched for whichever account was chosen.
+   * `useUserMinutes` is disabled on an undefined id, so "nothing picked yet"
+   * costs no request.
+   */
+  const pickedBalance = useUserMinutes(picking ? userId : undefined);
+  const balance = picking ? pickedBalance.data?.balance : presetBalance;
+
   const adjust = useAdjustMinutes(userId);
 
   const [direction, setDirection] = useState<Direction>('credit');
@@ -68,6 +107,8 @@ export function AdjustMinutesDrawer({
 
   useEffect(() => {
     if (!open) return;
+    setPicked(null);
+    setSearch('');
     setDirection('credit');
     setMinutes('60');
     setAmountEgp('');
@@ -76,7 +117,7 @@ export function AdjustMinutesDrawer({
     // adjust.reset is stable; re-running on every render would clear the error
     // the operator is reading.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, userId]);
+  }, [open, presetUserId]);
 
   const isCredit = direction === 'credit';
   const parsedMinutes = Number(minutes);
@@ -117,7 +158,7 @@ export function AdjustMinutesDrawer({
   }, [balance, isCredit, minutesValid, seconds]);
 
   const blocked =
-    !minutesValid || reasonInvalid || !amountValid || (isCredit && userDisabled);
+    !userId || !minutesValid || reasonInvalid || !amountValid || (isCredit && userDisabled);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -202,6 +243,59 @@ export function AdjustMinutesDrawer({
       dirty={Boolean(reason) && !adjust.isPending}
       noValidate
     >
+      {picking && (
+        <Autocomplete<AdminUser>
+          options={userQuery.data?.users ?? []}
+          value={picked}
+          onChange={(_e, value) => setPicked(value)}
+          onInputChange={(_e, value, changeReason) => {
+            if (changeReason !== 'reset') setSearch(value);
+          }}
+          filterOptions={(options) => options}
+          isOptionEqualToValue={(a, b) => a.id === b.id}
+          getOptionLabel={(option) => option.email}
+          loading={userQuery.isFetching}
+          noOptionsText={search ? 'لا مستخدم مطابق' : 'اكتب بريدًا أو اسمًا للبحث'}
+          renderOption={(props, option) => {
+            const { key, ...rest } = props as React.HTMLAttributes<HTMLLIElement> & { key: string };
+            return (
+              <Box component="li" key={key} {...rest}>
+                <Stack gap={0.25} sx={{ minWidth: 0 }}>
+                  <Stack direction="row" gap={1} alignItems="center">
+                    <Typography variant="body2" noWrap>
+                      {option.email}
+                    </Typography>
+                    <StatusChip kind="plan" value={effectivePlan(option)} />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary" noWrap>
+                    {option.name}
+                    {option.isDisabled ? ' · حساب موقوف' : ''}
+                  </Typography>
+                </Stack>
+              </Box>
+            );
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="المستخدم"
+              placeholder="ابحث بالبريد أو الاسم…"
+              required
+              helperText="ابحث ثم اختر الحساب الذي سيتغيّر رصيده"
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {userQuery.isFetching ? <CircularProgress size={16} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+      )}
+
       <Stack gap={1}>
         <Typography variant="caption" color="text.secondary">
           نوع الحركة
@@ -258,7 +352,13 @@ export function AdjustMinutesDrawer({
         />
       )}
 
-      <BalancePreview balance={balance} preview={preview} isCredit={isCredit} />
+      <BalancePreview
+        balance={balance}
+        preview={preview}
+        isCredit={isCredit}
+        awaitingUser={picking && !userId}
+        loading={picking && pickedBalance.isFetching}
+      />
 
       <TextField
         label={isCredit ? 'سبب الإضافة' : 'سبب الخصم'}
@@ -294,16 +394,24 @@ function BalancePreview({
   balance,
   preview,
   isCredit,
+  awaitingUser,
+  loading,
 }: {
   balance: MinuteBalance | undefined;
   preview: { applied: number; unapplied: number; perpetualAfter: number } | null;
   isCredit: boolean;
+  /** No account chosen yet — not the same thing as a balance we failed to read. */
+  awaitingUser?: boolean;
+  loading?: boolean;
 }) {
   if (!balance) {
     return (
       <Alert severity="info">
-        لم يُقرأ الرصيد الحالي بعد، فلا يمكن عرض أثر الحركة. سيطبّق الخادم الحركة على الرصيد الفعلي
-        وقت التنفيذ.
+        {awaitingUser
+          ? 'اختر الحساب أولًا ليظهر رصيده الحالي وأثر الحركة عليه.'
+          : loading
+            ? 'جارٍ قراءة الرصيد الحالي…'
+            : 'لم يُقرأ الرصيد الحالي بعد، فلا يمكن عرض أثر الحركة. سيطبّق الخادم الحركة على الرصيد الفعلي وقت التنفيذ.'}
       </Alert>
     );
   }

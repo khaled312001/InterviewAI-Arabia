@@ -18,7 +18,8 @@ import { useDebouncedValue } from '../../lib/hooks/useDebouncedValue';
 import { effectivePlan } from '../../lib/permissions';
 import { formatAbsolute } from '../../lib/format';
 import type { AdminUser } from '../users/types';
-import { useGrantSubscription, useUserSearch } from './api';
+import { useUserSearch } from '../users/api';
+import { useGrantSubscription } from './api';
 import { subscriptionFieldErrors } from './formErrors';
 import {
   MAX_GRANT_DAYS,

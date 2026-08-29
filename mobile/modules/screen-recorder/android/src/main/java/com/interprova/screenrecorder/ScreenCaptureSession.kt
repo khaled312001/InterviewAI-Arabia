@@ -14,6 +14,7 @@ import android.media.MediaMuxer
 import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.Process
+import android.util.Log
 import android.view.Surface
 import androidx.annotation.RequiresApi
 import java.nio.ByteBuffer
@@ -44,8 +45,13 @@ import kotlin.concurrent.withLock
  * The two hard parts, and how they are handled
  *   1. A MediaMuxer cannot start until every track is added, and each encoder
  *      only reports its format after it has produced output. So both drain
- *      loops park at `maybeStartMuxer()` until the expected number of tracks
- *      is present, and nothing is written before that.
+ *      loops park at `maybeStartMuxer()` until the expected tracks are
+ *      present, and nothing is written before that. But "until" cannot mean
+ *      "forever": someone who taps record before the interviewer has said a
+ *      word has nothing playing to capture, and an audio track that never
+ *      arrives would hold back every video frame and produce an empty file.
+ *      So the wait for audio has a deadline, after which the recording
+ *      continues as video-only. A silent recording beats no recording.
  *   2. Audio timestamps have to be generated: `AudioRecord.read` gives PCM
  *      with no clock. They are derived from the frame count so the audio track
  *      stays in step with itself, and offset from the same start instant as
@@ -63,6 +69,7 @@ class ScreenCaptureSession(
 ) {
 
   companion object {
+    private const val TAG = ScreenRecordService.TAG
     private const val VIDEO_MIME = MediaFormat.MIMETYPE_VIDEO_AVC
     private const val AUDIO_MIME = MediaFormat.MIMETYPE_AUDIO_AAC
     private const val FRAME_RATE = 30
@@ -72,6 +79,18 @@ class ScreenCaptureSession(
     private const val SAMPLE_RATE = 44_100
     private const val CHANNELS = 2
     private const val TIMEOUT_US = 10_000L
+
+    /**
+     * How long the muxer waits for an audio track before giving up on it and
+     * writing video alone. Playback capture yields nothing at all while the
+     * app is silent, and the interviewer's first sentence can be several
+     * seconds out — but the video frames arriving meanwhile have to go
+     * somewhere, and holding them is how a recording ends up empty.
+     */
+    private const val AUDIO_GRACE_MS = 4_000L
+
+    /** How long a drain loop keeps waiting for output after end-of-stream. */
+    private const val EOS_GRACE_MS = 3_000L
 
     /** True when playback capture exists at all on this OS. */
     fun audioCaptureSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -86,9 +105,11 @@ class ScreenCaptureSession(
 
   private var videoTrack = -1
   private var audioTrack = -1
-  /** Drops to 1 if the audio pipeline refuses to start — see `start()`. */
+  /** Drops to 1 when audio refuses to start, or misses its deadline. */
   private var expectedTracks = if (withAudio) 2 else 1
   private var muxerStarted = false
+  /** Set when the audio deadline passes; tells the audio pump to give up. */
+  @Volatile private var audioAbandoned = false
   /*
    * A ReentrantLock rather than `synchronized` + wait/notify. Kotlin's `Any`
    * has no wait/notify — those live on java.lang.Object — and reaching for it
@@ -104,29 +125,44 @@ class ScreenCaptureSession(
   private var audioThread: Thread? = null
 
   /** Shared zero point so the two tracks agree on when the recording began. */
-  private var startNs = 0L
+  @Volatile private var startNs = 0L
 
   /** Set when a drain loop dies, so `stop()` can report an unusable file. */
   @Volatile private var failure: Throwable? = null
 
   fun start() {
-    muxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+    // One guard around the whole set-up: each step below owns a native
+    // resource, and a throw halfway through must not leave an encoder or a
+    // muxer holding the file. The caller still sees the original cause.
+    try {
+      muxer = MediaMuxer(outputPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+      Log.i(TAG, "Muxer open at $outputPath")
 
-    startVideo()
+      startVideo()
+      Log.i(TAG, "Video encoder and virtual display running")
+    } catch (e: Throwable) {
+      Log.e(TAG, "Video pipeline failed to start", e)
+      releaseEverything()
+      throw e
+    }
+
     if (withAudio) {
       try {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) throw IllegalStateException("API < 29")
         startAudio()
+        Log.i(TAG, "Playback capture running")
       } catch (e: Throwable) {
         // Audio is a bonus; a recording without it is still worth having, and
         // failing the whole take because playback capture was refused would be
         // the wrong trade. The track count is fixed up so the muxer does not
         // wait forever for a track that will never arrive.
+        Log.w(TAG, "Playback capture unavailable; recording video only", e)
         audioEncoder?.let { runCatching { it.release() } }
         audioEncoder = null
         audioRecord?.let { runCatching { it.release() } }
         audioRecord = null
-        expectedTracks = 1
+        muxerLock.withLock { expectedTracks = 1 }
+        audioAbandoned = true
       }
     }
 
@@ -146,9 +182,12 @@ class ScreenCaptureSession(
     // Video first: signalling EOS lets the encoder flush what the display has
     // already produced instead of dropping the tail.
     runCatching { videoEncoder?.signalEndOfInputStream() }
+    // Anything still parked waiting for a track it will never get should wake
+    // up and unwind rather than sit out its full timeout.
+    muxerLock.withLock { muxerReady.signalAll() }
 
-    runCatching { audioThread?.join(3_000) }
-    runCatching { videoThread?.join(3_000) }
+    runCatching { audioThread?.join(EOS_GRACE_MS + 1_000) }
+    runCatching { videoThread?.join(EOS_GRACE_MS + 1_000) }
 
     runCatching { virtualDisplay?.release() }; virtualDisplay = null
     runCatching { inputSurface?.release() }; inputSurface = null
@@ -166,12 +205,25 @@ class ScreenCaptureSession(
         // "stopped within a second of starting" case and the file is useless
         // either way.
         complete = runCatching { muxer?.stop() }.isSuccess
+      } else {
+        Log.e(TAG, "Muxer never started: no track ever produced output")
       }
       runCatching { muxer?.release() }
       muxer = null
       muxerStarted = false
     }
+    failure?.let { Log.e(TAG, "A drain loop failed during the recording", it) }
     return complete && failure == null
+  }
+
+  /** Best-effort release of whatever `start()` managed to build before it threw. */
+  private fun releaseEverything() {
+    runCatching { virtualDisplay?.release() }; virtualDisplay = null
+    runCatching { inputSurface?.release() }; inputSurface = null
+    runCatching { videoEncoder?.release() }; videoEncoder = null
+    runCatching { audioRecord?.release() }; audioRecord = null
+    runCatching { audioEncoder?.release() }; audioEncoder = null
+    runCatching { muxer?.release() }; muxer = null
   }
 
   /* ----------------------------------------------------------------- video */
@@ -208,23 +260,31 @@ class ScreenCaptureSession(
   private fun drainVideo() {
     val encoder = videoEncoder ?: return
     val info = MediaCodec.BufferInfo()
+    var idleSinceMs = 0L
     try {
       while (true) {
         val index = encoder.dequeueOutputBuffer(info, TIMEOUT_US)
         when {
           index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+            // After end-of-stream the encoder owes us its tail. If it never
+            // arrives, leave anyway: a thread that never exits turns every
+            // stop() into a stall and then leaks the encoder behind it.
             if (!running.get()) {
-              // EOS was signalled and the encoder has nothing left to give.
-              if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+              if (idleSinceMs == 0L) idleSinceMs = System.currentTimeMillis()
+              if (System.currentTimeMillis() - idleSinceMs > EOS_GRACE_MS) {
+                Log.w(TAG, "Video encoder produced no end-of-stream; leaving the drain loop")
+                break
+              }
             }
           }
           index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
             muxerLock.withLock {
-              videoTrack = muxer!!.addTrack(encoder.outputFormat)
+              if (videoTrack < 0) videoTrack = muxer!!.addTrack(encoder.outputFormat)
               maybeStartMuxer()
             }
           }
           index >= 0 -> {
+            idleSinceMs = 0L
             val buffer = encoder.getOutputBuffer(index)
             writeSample(buffer, info, videoTrack)
             encoder.releaseOutputBuffer(index, false)
@@ -300,7 +360,7 @@ class ScreenCaptureSession(
     val bytesPerFrame = 2 * CHANNELS
 
     try {
-      while (running.get()) {
+      while (running.get() && !audioAbandoned) {
         val read = record.read(chunk, 0, chunk.size)
         if (read > 0) {
           val inputIndex = encoder.dequeueInputBuffer(TIMEOUT_US)
@@ -314,6 +374,11 @@ class ScreenCaptureSession(
           }
         }
         drainAudio(encoder, info, endOfStream = false)
+      }
+
+      if (audioAbandoned) {
+        Log.w(TAG, "Audio abandoned; the recording continues without a sound track")
+        return
       }
 
       // Tell the encoder there is nothing more, then flush what it holds.
@@ -334,13 +399,29 @@ class ScreenCaptureSession(
   }
 
   private fun drainAudio(encoder: MediaCodec, info: MediaCodec.BufferInfo, endOfStream: Boolean) {
+    val deadlineMs = System.currentTimeMillis() + EOS_GRACE_MS
     while (true) {
+      if (audioAbandoned) return
       val index = encoder.dequeueOutputBuffer(info, TIMEOUT_US)
       when {
-        index == MediaCodec.INFO_TRY_AGAIN_LATER -> if (!endOfStream) return
+        index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+          if (!endOfStream) return
+          if (System.currentTimeMillis() > deadlineMs) {
+            Log.w(TAG, "Audio encoder produced no end-of-stream; leaving the drain loop")
+            return
+          }
+        }
         index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> muxerLock.withLock {
-          audioTrack = muxer!!.addTrack(encoder.outputFormat)
-          maybeStartMuxer()
+          // The deadline may already have passed and the muxer started without
+          // us. Adding a track after that throws, and there is nothing to do
+          // with the audio but drop it.
+          if (muxerStarted) {
+            Log.w(TAG, "Audio format arrived after the muxer started; dropping the sound track")
+            audioAbandoned = true
+          } else if (audioTrack < 0) {
+            audioTrack = muxer!!.addTrack(encoder.outputFormat)
+            maybeStartMuxer()
+          }
         }
         index >= 0 -> {
           val buffer = encoder.getOutputBuffer(index)
@@ -357,10 +438,25 @@ class ScreenCaptureSession(
   /** Caller must hold `muxerLock`. */
   private fun maybeStartMuxer() {
     if (muxerStarted) return
-    val ready = (videoTrack >= 0).let { v -> if (expectedTracks == 2) v && audioTrack >= 0 else v }
-    if (!ready) return
+    if (videoTrack < 0) return
+
+    if (expectedTracks == 2 && audioTrack < 0) {
+      // Give playback capture its grace period, then go without it. See the
+      // AUDIO_GRACE_MS note: an interviewer who has not spoken yet produces no
+      // audio at all, and the video frames piling up behind it are the whole
+      // recording.
+      val startedAt = startNs
+      if (startedAt == 0L) return
+      val waitedMs = (System.nanoTime() - startedAt) / 1_000_000
+      if (waitedMs < AUDIO_GRACE_MS) return
+      Log.w(TAG, "No audio after ${waitedMs}ms; starting the muxer video-only")
+      expectedTracks = 1
+      audioAbandoned = true
+    }
+
     muxer?.start()
     muxerStarted = true
+    Log.i(TAG, "Muxer started with $expectedTracks track(s)")
     muxerReady.signalAll()
   }
 
@@ -373,9 +469,13 @@ class ScreenCaptureSession(
     muxerLock.withLock {
       // The other track's format may not have arrived yet. Waiting here rather
       // than dropping the sample is what keeps the first second of the
-      // recording from being silent or black.
+      // recording from being silent or black — and `maybeStartMuxer` is
+      // re-tried on every pass, because once video is the only track producing
+      // output this loop is the only place still checking the audio deadline.
       var waited = 0L
-      while (!muxerStarted && running.get() && waited < 2_000) {
+      while (!muxerStarted && running.get() && waited < AUDIO_GRACE_MS + 1_000) {
+        maybeStartMuxer()
+        if (muxerStarted) break
         muxerReady.await(50, TimeUnit.MILLISECONDS)
         waited += 50
       }

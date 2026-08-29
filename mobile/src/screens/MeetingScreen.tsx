@@ -1579,7 +1579,26 @@ export function MeetingScreen({ route, navigation }: any) {
     + theme.spacing.sm * 2;
 
   const topChromeHeight = insets.top + theme.layout.control.md + theme.spacing.xl;
-  const bottomChromeHeight = insets.bottom + theme.spacing.lg + controlBarHeight + theme.spacing.md;
+
+  /*
+   * The control bar is not the whole bottom chrome. The record footnote sits
+   * under it, inside the same anchored block, and in Arabic it wraps to two
+   * lines — so a `bottomChromeHeight` computed from `controlBarHeight` alone
+   * places the start CTA a footnote's worth too low and the green button lands
+   * on top of the controls. Measure the block instead of predicting it; the
+   * footnote's length, the locale and the reader's text size all change it.
+   *
+   * `controlBarHeight` stays as the first-frame estimate, before onLayout has
+   * anything to report.
+   */
+  const [controlsH, setControlsH] = useState(0);
+  const onControlsLayout = useCallback((e: LayoutChangeEvent) => {
+    const next = Math.ceil(e.nativeEvent.layout.height);
+    setControlsH((prev) => (Math.abs(prev - next) > 1 ? next : prev));
+  }, []);
+
+  const bottomChromeHeight =
+    insets.bottom + theme.spacing.lg + Math.max(controlBarHeight, controlsH) + theme.spacing.md;
 
   /*
    * The lower third — notice, captions, start CTA — floats over the stage, and
@@ -2189,6 +2208,7 @@ export function MeetingScreen({ route, navigation }: any) {
       />
 
       <View
+        onLayout={onControlsLayout}
         style={{
           position: 'absolute',
           bottom: insets.bottom + theme.spacing.lg,

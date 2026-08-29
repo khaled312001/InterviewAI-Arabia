@@ -44,22 +44,6 @@ export function useSubscriptions(params: SubscriptionListParams) {
   });
 }
 
-/**
- * The grant drawer's user picker. GET /admin/users is readable by every admin
- * role and already supports `q`, so no new endpoint is needed — and the row it
- * returns carries `premiumUntil`, which is what the drawer previews the
- * extension against without a second request.
- */
-export function useUserSearch(q: string, enabled: boolean) {
-  return useQuery<{ users: AdminUser[]; total: number }>({
-    queryKey: qk.users.list({ q, limit: 10, page: 1, picker: true }),
-    queryFn: async () =>
-      (await api.get('/admin/users', { params: { q, page: 1, limit: 10 } })).data,
-    enabled: enabled && q.trim().length > 0,
-    placeholderData: keepPreviousData,
-  });
-}
-
 /** The rows behind one account, for a per-user view of what covers them. */
 export function useUserSubscriptions(userId: string | undefined) {
   return useQuery<{ subscriptions: Subscription[] }>({

@@ -122,14 +122,34 @@ const PRE_SESSION = /\/auth\/(login|register|google|refresh|forgot-password|rese
  *
  * Returns the new access token, or null when the session is genuinely over.
  */
-let refreshInFlight: Promise<string | null> | null = null;
+let refreshInFlight: Promise<RefreshOutcome> | null = null;
 
-function refreshAccessToken(): Promise<string | null> {
+/**
+ * Three answers, not two.
+ *
+ * `refused` is the only one that ends a session: the server looked at the
+ * refresh token and said no. `unavailable` means we never got an answer worth
+ * acting on — no network, a 5xx, a 429 — and the session is still perfectly
+ * good; the request simply fails and the next one will try again.
+ *
+ * Collapsing those two into `null` is not a theoretical problem. On
+ * 2026-08-29 the API rate limiter was returning 429 to everyone, and every app
+ * whose fifteen-minute access token expired during it refreshed, got a 429,
+ * and was signed out and returned to the onboarding slides — with a refresh
+ * token that was valid the whole time.
+ */
+type RefreshOutcome =
+  | { status: 'ok'; token: string }
+  | { status: 'refused' }
+  | { status: 'unavailable' };
+
+function refreshAccessToken(): Promise<RefreshOutcome> {
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = (async () => {
+  refreshInFlight = (async (): Promise<RefreshOutcome> => {
     try {
       const refreshToken = await secureStorage.getItem('refresh_token');
-      if (!refreshToken) return null;
+      // Nothing to refresh WITH is a genuinely dead session, not an outage.
+      if (!refreshToken) return { status: 'refused' };
       // A bare axios call, NOT `api`: our own request interceptor would attach
       // the access token that just expired, and our response interceptor would
       // catch the resulting 401 and call this function again.
@@ -138,16 +158,17 @@ function refreshAccessToken(): Promise<string | null> {
         { refreshToken },
         { timeout: 20000 },
       );
-      if (!data?.token || !data?.refreshToken) return null;
+      // A 200 with no tokens in it is a broken server, not a rejected session.
+      if (!data?.token || !data?.refreshToken) return { status: 'unavailable' };
       await secureStorage.setItem('access_token', data.token);
       await secureStorage.setItem('refresh_token', data.refreshToken);
       AuthEvents.onTokens(data.token, data.refreshToken);
-      return data.token as string;
-    } catch {
-      // A refused refresh ends the session; a network failure does not, but we
-      // cannot tell the caller to retry later, so it reports the same. The
-      // caller only signs out on an actual 401 from the original request.
-      return null;
+      return { status: 'ok', token: data.token as string };
+    } catch (e) {
+      // Only the server rejecting the TOKEN ends the session. Everything else
+      // — offline, timeout, 429, 502 — leaves it alone.
+      const status = axios.isAxiosError(e) ? e.response?.status : undefined;
+      return status === 401 || status === 403 ? { status: 'refused' } : { status: 'unavailable' };
     } finally {
       refreshInFlight = null;
     }
@@ -179,10 +200,15 @@ api.interceptors.response.use(
     original._retried = true;
 
     const fresh = await refreshAccessToken();
-    if (!fresh) { AuthEvents.on401(); return Promise.reject(err); }
+    if (fresh.status !== 'ok') {
+      // Sign out only when the refresh token itself was refused. An outage must
+      // not look like an expired session — see RefreshOutcome.
+      if (fresh.status === 'refused') AuthEvents.on401();
+      return Promise.reject(err);
+    }
 
     original.headers = original.headers ?? {};
-    (original.headers as Record<string, string>).Authorization = `Bearer ${fresh}`;
+    (original.headers as Record<string, string>).Authorization = `Bearer ${fresh.token}`;
     return api(original);
   },
 );

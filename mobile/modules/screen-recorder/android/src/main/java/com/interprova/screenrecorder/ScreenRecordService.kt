@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 
 /**
  * The foreground service that makes screen capture legal.
@@ -22,6 +23,17 @@ import android.os.IBinder
  *   2. start THIS service and wait for it to be foreground
  *   3. only then `getMediaProjection(...)`
  *
+ * Step 2 says "wait", and that word is the whole reason this class has a
+ * callback. `startForegroundService()` does not start anything — it queues the
+ * service start on the caller's main looper. A caller that goes straight on to
+ * step 3 in the same main-thread turn is running BEFORE `onStartCommand` here,
+ * and if it then hits an error and stops the service, Android sees a foreground
+ * service that was started and brought down without ever calling
+ * `startForeground` and kills the whole process with
+ * `ForegroundServiceDidNotStartInTimeException`. That is not a hypothetical:
+ * it is what versionCode 6 did on the first real device it ran on. So the
+ * module hands over `onForeground` and does nothing until it fires.
+ *
  * The notification is not decoration either — a foreground service must post
  * one, and on a screen recorder it is the honest signal that the screen is
  * being captured. Android shows its own recording indicator as well; both are
@@ -30,12 +42,29 @@ import android.os.IBinder
 class ScreenRecordService : Service() {
 
   companion object {
+    const val TAG = "ScreenRecorder"
+
     private const val CHANNEL_ID = "interprova.screen_recording"
     private const val NOTIFICATION_ID = 8731
 
     /** Set by the module before start, so the text can be localised in JS. */
     @Volatile var title: String = "Recording"
     @Volatile var body: String = ""
+
+    /**
+     * Fired on the main thread once `startForeground` has returned — with the
+     * failure if it threw instead. Cleared by the module as soon as it runs;
+     * a service start with nobody listening is a leaked notification, so the
+     * service stops itself in that case.
+     */
+    @Volatile var onForeground: ((Throwable?) -> Unit)? = null
+
+    /**
+     * True between a successful `startForeground()` and `onDestroy()`. The
+     * module reads it to know whether `stopService` is safe to call now or has
+     * to be posted behind a start that has not landed yet.
+     */
+    @Volatile var isForeground: Boolean = false
 
     fun start(context: Context) {
       val intent = Intent(context, ScreenRecordService::class.java)
@@ -54,21 +83,47 @@ class ScreenRecordService : Service() {
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    val notification = buildNotification()
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      startForeground(
-        NOTIFICATION_ID,
-        notification,
-        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
-      )
-    } else {
-      startForeground(NOTIFICATION_ID, notification)
+    // Nothing here may throw past this point: an exception escaping
+    // onStartCommand leaves the service started-but-not-foreground, which is
+    // the exact state that kills the process a few hundred milliseconds later.
+    val failure = try {
+      val notification = buildNotification()
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        startForeground(
+          NOTIFICATION_ID,
+          notification,
+          ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION,
+        )
+      } else {
+        startForeground(NOTIFICATION_ID, notification)
+      }
+      isForeground = true
+      Log.i(TAG, "Recording service is foreground")
+      null
+    } catch (e: Throwable) {
+      Log.e(TAG, "startForeground failed", e)
+      isForeground = false
+      e
     }
+
+    val listener = onForeground
+    if (listener == null) {
+      // Started with nobody waiting — a stale restart, or a start whose caller
+      // has already given up. Do not leave a recording notification behind.
+      Log.w(TAG, "Recording service started with no listener; stopping")
+      stopSelf()
+      return START_NOT_STICKY
+    }
+    listener(failure)
 
     // The recorder owns the lifetime; a restarted service with no projection
     // would be a notification with nothing behind it.
     return START_NOT_STICKY
+  }
+
+  override fun onDestroy() {
+    isForeground = false
+    super.onDestroy()
   }
 
   private fun buildNotification(): Notification {

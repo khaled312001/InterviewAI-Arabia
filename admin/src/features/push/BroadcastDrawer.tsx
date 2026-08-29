@@ -18,7 +18,7 @@ import { useConfirm } from '../../components/common/ConfirmDialog';
 import { useDebouncedValue } from '../../lib/hooks/useDebouncedValue';
 import { countAr } from '../../lib/format';
 import { effectivePlan } from '../../lib/permissions';
-import { useUserSearch } from '../subscriptions/api';
+import { useUserSearch } from '../users/api';
 import type { AdminUser } from '../users/types';
 import {
   AUDIENCE_OPTIONS,

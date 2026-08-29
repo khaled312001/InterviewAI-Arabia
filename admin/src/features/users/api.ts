@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { qk } from '../../lib/queryKeys';
 import { useToast } from '../../components/common/ToastProvider';
@@ -40,6 +40,29 @@ export function useUsers(params: UserListParams) {
     queryFn: async () => (await api.get<UserListResponse>('/admin/users', { params: query })).data,
     // Rows stay mounted while a page change or a filter refetch is in flight.
     placeholderData: (previous) => previous,
+  });
+}
+
+/**
+ * The account picker behind every drawer that acts on a user it was not opened
+ * from — the subscription grant, the push broadcast, the minute grant.
+ *
+ * It lived in `features/subscriptions/api` while there was one caller, and the
+ * other two imported it across features rather than duplicating it. Three
+ * consumers is not a subscriptions concern; it is a users one, so it lives here.
+ *
+ * GET /admin/users is readable by every admin role and already supports `q`, so
+ * no new endpoint is needed — and the row it returns carries `premiumUntil` and
+ * `isDisabled`, which is what the drawers preview against without a second
+ * request.
+ */
+export function useUserSearch(q: string, enabled: boolean) {
+  return useQuery<UserListResponse>({
+    queryKey: qk.users.list({ q, limit: 10, page: 1, picker: true }),
+    queryFn: async () =>
+      (await api.get<UserListResponse>('/admin/users', { params: { q, page: 1, limit: 10 } })).data,
+    enabled: enabled && q.trim().length > 0,
+    placeholderData: keepPreviousData,
   });
 }
 

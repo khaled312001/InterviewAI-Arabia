@@ -14,6 +14,7 @@ import MoreTimeRounded from '@mui/icons-material/MoreTimeRounded';
 import TaskAltRounded from '@mui/icons-material/TaskAltRounded';
 import HourglassBottomRounded from '@mui/icons-material/HourglassBottomRounded';
 import VolunteerActivismRounded from '@mui/icons-material/VolunteerActivismRounded';
+import AvTimerRounded from '@mui/icons-material/AvTimerRounded';
 import type { GridColDef } from '@mui/x-data-grid';
 
 import { DataTable } from '../components/common/DataTable';
@@ -33,6 +34,7 @@ import { useDebouncedValue } from '../lib/hooks/useDebouncedValue';
 import { useServerPagination } from '../lib/hooks/useServerPagination';
 import { useRevokeSubscription, useSubscriptions } from '../features/subscriptions/api';
 import { GrantSubscriptionDrawer } from '../features/subscriptions/GrantSubscriptionDrawer';
+import { AdjustMinutesDrawer } from '../features/minutes/AdjustMinutesDrawer';
 import { ExtendSubscriptionDrawer } from '../features/subscriptions/ExtendSubscriptionDrawer';
 import { CataloguePanel } from '../features/catalogue/CataloguePanel';
 import { planLabel, useCatalogue } from '../features/catalogue/api';
@@ -98,6 +100,7 @@ export function SubscriptionsPage() {
   const [status, setStatus] = useState('');
   const [provider, setProvider] = useState('');
   const [granting, setGranting] = useState(false);
+  const [grantingMinutes, setGrantingMinutes] = useState(false);
   const [extending, setExtending] = useState<Subscription | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -301,14 +304,29 @@ export function SubscriptionsPage() {
         // Payment and a ledger entry and no subscription row — it is not
         // recurring access — so an operator looking for a pack purchase on this
         // page would find nothing and conclude the payment failed.
-        description="اشتراكات المنصّة المتجددة — الحالة، الخطة، المصدر، وتاريخ الانتهاء. باقات الدقائق ليست اشتراكات وتظهر في صفحة المدفوعات وفي رصيد المستخدم."
+        description="اشتراكات المنصّة المتجددة — الحالة، الخطة، المصدر، وتاريخ الانتهاء. باقات الدقائق ليست اشتراكات، فلا تظهر في الجدول أدناه: تُشترى من صفحة المدفوعات وتعيش في رصيد المستخدم. زر «شحن دقائق» هنا يضيف إلى ذلك الرصيد مباشرةً دون إنشاء اشتراك."
         icon={<CardMembershipRounded />}
         actions={
-          <Can action="subscriptions.grant">
-            <Button startIcon={<VolunteerActivismRounded />} onClick={() => setGranting(true)}>
-              منح اشتراك
-            </Button>
-          </Can>
+          <>
+            {/* Two different grants, side by side and deliberately distinct:
+                a SUBSCRIPTION is recurring access with an expiry, MINUTES are
+                perpetual balance. Naming both "منح" would invite the operator
+                to reach for whichever is nearer. */}
+            <Can action="minutes.adjust">
+              <Button
+                variant="outlined"
+                startIcon={<AvTimerRounded />}
+                onClick={() => setGrantingMinutes(true)}
+              >
+                شحن دقائق
+              </Button>
+            </Can>
+            <Can action="subscriptions.grant">
+              <Button startIcon={<VolunteerActivismRounded />} onClick={() => setGranting(true)}>
+                منح اشتراك
+              </Button>
+            </Can>
+          </>
         }
       />
 
@@ -506,6 +524,9 @@ export function SubscriptionsPage() {
       />
 
       <GrantSubscriptionDrawer open={granting} onClose={() => setGranting(false)} />
+      {/* No user in context on this page, so the drawer is opened without one and
+          grows its own account picker. */}
+      <AdjustMinutesDrawer open={grantingMinutes} onClose={() => setGrantingMinutes(false)} />
       <ExtendSubscriptionDrawer
         open={Boolean(extending)}
         subscription={extending}

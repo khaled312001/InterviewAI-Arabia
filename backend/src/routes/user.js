@@ -31,6 +31,11 @@ function toPublicUser(u) {
     name: u.name,
     language: u.language,
     plan: u.plan,
+    // Emitted here as well as from /auth/google, and that is the whole point:
+    // the app caches whatever /user/me returns, so a payload without the avatar
+    // ERASES the picture the Google sign-in had just supplied. The account
+    // photo appeared once and became an initial on the next launch.
+    avatarUrl: u.avatarUrl ?? null,
     premiumUntil: u.premiumUntil ?? null,
     // The balance, in both units: seconds are exact and drive the client's
     // countdown, minutes are floored for display. Floored, never rounded —
