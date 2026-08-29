@@ -39,13 +39,17 @@ import type {
 import { REC_STOP_GRACE_MS, recordingFileName } from './tuning';
 
 /**
- * How long a mid-call stop waits for CameraX / AVFoundation to hand back the
- * file before it gives up and releases the UI. Finalisation normally takes a
- * few hundred milliseconds; without a ceiling a session that never resolves
- * would leave the REC chip running for the rest of the call. A late file is
- * still delivered — this net only unsticks the interface.
+ * How long a mid-call stop waits for the file before it gives up and releases
+ * the UI.
+ *
+ * It has to be LONGER than the native side's own teardown deadline, or this
+ * timer wins every slow stop and reports a failure while the recorder is still
+ * finishing a perfectly good file. The native module gives the capture session
+ * 7s and then releases the projection regardless, so anything past ~10s here is
+ * genuinely stuck. A late file is still delivered — this net only unsticks the
+ * interface.
  */
-const STOP_SETTLE_MS = 8000;
+const STOP_SETTLE_MS = 12000;
 
 type NoticeTone = 'info' | 'danger' | 'success';
 

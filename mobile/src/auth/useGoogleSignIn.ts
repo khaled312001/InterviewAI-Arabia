@@ -53,6 +53,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 
 import { api } from '../api/client';
 
@@ -110,8 +111,35 @@ interface GoogleConfig {
   iosClientId: string | null;
 }
 
+/**
+ * The client ids this build was compiled with — `expo.extra` in app.json.
+ *
+ * They are the STARTING value of `config`, not a fallback consulted after a
+ * failure, and that is the whole point: the sign-in button used to appear only
+ * once `GET /auth/google/config` had answered, so it arrived a network
+ * round-trip late on a good day and never at all on a bad one. During the
+ * rate-limit outage on 2026-08-29 it simply was not there, and the screen gave
+ * no hint that a Google button existed.
+ *
+ * These values are public — a client id is in every OAuth URL — so shipping
+ * them costs nothing. The server's answer still arrives and still wins: it is
+ * how the button gets turned OFF, and how a rotated id reaches an installed
+ * build without a store update.
+ */
+const BUNDLED_CONFIG: GoogleConfig | null = (() => {
+  const extra = Constants.expoConfig?.extra as Record<string, string | undefined> | undefined;
+  const webClientId = extra?.googleWebClientId || null;
+  if (!webClientId) return null;
+  return {
+    enabled: true,
+    webClientId,
+    androidClientId: extra?.googleAndroidClientId || null,
+    iosClientId: extra?.googleIosClientId || null,
+  };
+})();
+
 export interface GoogleSignInState {
-  /** Render the button? False until the server says it is configured. */
+  /** Render the button? True from the first frame when the build carries ids. */
   available: boolean;
   /** The browser is open, or the code is being exchanged. */
   busy: boolean;
@@ -128,7 +156,7 @@ export interface GoogleSignInState {
  *   render is fine and will not re-run the flow.
  */
 export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSignInState {
-  const [config, setConfig] = useState<GoogleConfig | null>(null);
+  const [config, setConfig] = useState<GoogleConfig | null>(BUNDLED_CONFIG);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const mounted = useRef(true);
@@ -141,9 +169,12 @@ export function useGoogleSignIn(onIdToken: (idToken: string) => void): GoogleSig
     mounted.current = true;
     api.get('/auth/google/config')
       .then((r) => { if (mounted.current) setConfig(r.data); })
-      // A failure here means "no button", never a visible error: the user has
-      // not asked for anything yet.
-      .catch(() => { if (mounted.current) setConfig(null); })
+      // Keep whatever we already have. A request that failed says nothing
+      // about whether Google sign-in is configured — it says the network or
+      // the server is having a moment — and clearing the config here is what
+      // made the button vanish during an outage. With no bundled ids this
+      // still ends as `null`, which is the old behaviour.
+      .catch(() => { if (mounted.current) setConfig((prev) => prev ?? BUNDLED_CONFIG); })
       .finally(() => { /* keep the ref honest for the unmount guard below */ });
     return () => { mounted.current = false; };
   }, []);

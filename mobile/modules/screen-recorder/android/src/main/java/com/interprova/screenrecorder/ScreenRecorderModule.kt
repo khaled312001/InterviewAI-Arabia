@@ -16,6 +16,8 @@ import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -62,6 +64,20 @@ class ScreenRecorderModule : Module() {
      * leaves the caller with an error rather than a promise that never settles.
      */
     private const val SERVICE_START_TIMEOUT_MS = 5_000L
+
+    /**
+     * How long the capture session gets to close itself down.
+     *
+     * `ScreenCaptureSession.stop()` is a chain of native calls — encoder stop,
+     * AudioRecord stop, muxer stop — and any of them can decline to return.
+     * One did: on 2026-08-29 a recording carried on capturing, notification and
+     * all, long after the user pressed stop, because teardown was waiting on it
+     * and never got to release the projection. Past this deadline we stop
+     * waiting and release everything anyway; the file is whatever the muxer
+     * managed to close, which is a better outcome than a phone that is still
+     * being recorded.
+     */
+    private const val TEARDOWN_TIMEOUT_MS = 7_000L
     /**
      * Longest edge of the recording. Phones are now 1200×2800 and above, and a
      * hardware H.264 encoder will refuse a size it has no profile for — an
@@ -121,6 +137,17 @@ class ScreenRecorderModule : Module() {
           return@AsyncFunction
         }
 
+      /*
+       * A service left foreground by a previous session — a stop that hung, a
+       * process killed mid-recording — would otherwise be inherited: this start
+       * would find `isForeground` already true and the old notification would
+       * never come down. Clear it before asking for a new one.
+       */
+      if (ScreenRecordService.isForeground) {
+        Log.w(TAG, "A recording service was still running; stopping it before starting a new one")
+        runCatching { ScreenRecordService.stop(context) }
+      }
+
       ScreenRecordService.title = title
       ScreenRecordService.body = body
 
@@ -137,6 +164,10 @@ class ScreenRecorderModule : Module() {
     AsyncFunction("stop") { promise: Promise ->
       val file = outputFile
       if (session == null || file == null) {
+        // Silent until now, and that silence cost an evening: a stop that
+        // found nothing to stop looked identical in the log to a stop that
+        // never arrived.
+        Log.w(TAG, "stop() with nothing running (session=${session != null}, file=${file != null})")
         promise.resolve(null)
         return@AsyncFunction
       }
@@ -322,6 +353,32 @@ class ScreenRecorderModule : Module() {
   }
 
   /**
+   * Run the session's own teardown on a worker, and give up waiting on it after
+   * `ms`. Never called on a thread that matters: the point is that whatever it
+   * is doing, the projection and the foreground service get released.
+   */
+  private fun stopWithDeadline(capture: ScreenCaptureSession, ms: Long): Boolean {
+    val clean = AtomicBoolean(false)
+    val finished = CountDownLatch(1)
+    Thread({
+      try {
+        clean.set(capture.stop())
+      } catch (e: Throwable) {
+        Log.e(TAG, "Capture session did not stop cleanly", e)
+      } finally {
+        finished.countDown()
+      }
+    }, "interprova-stop").start()
+
+    val inTime = try { finished.await(ms, TimeUnit.MILLISECONDS) } catch (_: InterruptedException) { false }
+    if (!inTime) {
+      Log.e(TAG, "capture.stop() did not return within ${ms}ms — releasing the projection anyway")
+      return false
+    }
+    return clean.get()
+  }
+
+  /**
    * Release everything, in the order that survives a half-started session.
    *
    * Every step is independently guarded: a session that failed halfway leaves
@@ -334,10 +391,9 @@ class ScreenRecorderModule : Module() {
 
     session?.let { capture ->
       // The session owns both encoders, the muxer and the virtual display, and
-      // reports whether the muxer actually closed a file.
-      stoppedCleanly = try { capture.stop() } catch (e: Throwable) {
-        Log.e(TAG, "Capture session did not stop cleanly", e); false
-      }
+      // reports whether the muxer actually closed a file — but it is given a
+      // deadline rather than trusted to return. See TEARDOWN_TIMEOUT_MS.
+      stoppedCleanly = stopWithDeadline(capture, TEARDOWN_TIMEOUT_MS)
     }
     session = null
 

@@ -90,7 +90,14 @@ class ScreenCaptureSession(
     private const val AUDIO_GRACE_MS = 4_000L
 
     /** How long a drain loop keeps waiting for output after end-of-stream. */
-    private const val EOS_GRACE_MS = 3_000L
+    private const val EOS_GRACE_MS = 2_000L
+
+    /**
+     * How long `stop()` waits for a drain thread to notice and unwind. It has
+     * to be comfortably under the caller's own deadline, because two of these
+     * run back to back and the encoder and muxer teardown still follow.
+     */
+    private const val JOIN_TIMEOUT_MS = 2_500L
 
     /** True when playback capture exists at all on this OS. */
     fun audioCaptureSupported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -175,28 +182,48 @@ class ScreenCaptureSession(
     }
   }
 
-  /** @return true when the muxer produced a complete file. */
+  /**
+   * @return true when the muxer produced a complete file.
+   *
+   * Every step is logged. A stop that hangs is not hypothetical here — one did,
+   * on 2026-08-29: the recording kept running with its notification up long
+   * after the user had pressed stop, and because nothing in this method said
+   * where it had got to, "somewhere in stop()" was all anyone could tell. The
+   * caller now also runs this under a deadline (ScreenRecorderModule), so a
+   * step that never returns can no longer strand the projection.
+   */
   fun stop(): Boolean {
     if (!running.getAndSet(false)) return false
+    val t0 = System.currentTimeMillis()
+    fun step(what: String) = Log.i(TAG, "stop: $what (+${System.currentTimeMillis() - t0}ms)")
 
     // Video first: signalling EOS lets the encoder flush what the display has
     // already produced instead of dropping the tail.
     runCatching { videoEncoder?.signalEndOfInputStream() }
+    step("end-of-stream signalled")
     // Anything still parked waiting for a track it will never get should wake
     // up and unwind rather than sit out its full timeout.
     muxerLock.withLock { muxerReady.signalAll() }
 
-    runCatching { audioThread?.join(EOS_GRACE_MS + 1_000) }
-    runCatching { videoThread?.join(EOS_GRACE_MS + 1_000) }
+    runCatching { audioThread?.join(JOIN_TIMEOUT_MS) }
+    step("audio thread joined (alive=${audioThread?.isAlive})")
+    runCatching { videoThread?.join(JOIN_TIMEOUT_MS) }
+    step("video thread joined (alive=${videoThread?.isAlive})")
 
+    // The virtual display goes first so the encoder stops being fed, and the
+    // projection stops producing frames for a surface about to be released.
     runCatching { virtualDisplay?.release() }; virtualDisplay = null
+    step("virtual display released")
     runCatching { inputSurface?.release() }; inputSurface = null
     runCatching { videoEncoder?.stop() }
     runCatching { videoEncoder?.release() }; videoEncoder = null
+    step("video encoder released")
     runCatching { audioRecord?.stop() }
     runCatching { audioRecord?.release() }; audioRecord = null
+    step("audio record released")
     runCatching { audioEncoder?.stop() }
     runCatching { audioEncoder?.release() }; audioEncoder = null
+    step("audio encoder released")
 
     var complete = false
     muxerLock.withLock {
@@ -212,6 +239,7 @@ class ScreenCaptureSession(
       muxer = null
       muxerStarted = false
     }
+    step("muxer closed (complete=$complete)")
     failure?.let { Log.e(TAG, "A drain loop failed during the recording", it) }
     return complete && failure == null
   }

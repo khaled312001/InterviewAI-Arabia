@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.interprova.app",
-      "versionCode": 8,
+      "versionCode": 10,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -133,6 +133,8 @@
     "extra": {
       "apiBaseUrl": "https://interprova.com/api",
       "webAppUrl": "https://interprova.com",
+      "googleWebClientId": "567239383014-lrvvdalkldj3b3t9k7lqeoi3da9njri1.apps.googleusercontent.com",
+      "googleAndroidClientId": "567239383014-p6ukp9sc5p4chl684fk73tpnt4bkq62j.apps.googleusercontent.com",
       "eas": {
         "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
       }
