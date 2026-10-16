@@ -114,6 +114,8 @@ export const WIRED_KEYS = {
   free_trial_seconds: int(600, 0, 86_400),
   /** The first use of each AI career tool costs nothing (routes/career.js, migration 012). */
   career_first_use_free: bool(true),
+  /** Live Jooble searches allowed per day (its free key has 500 requests; US jobs only). 0 turns Jooble off. */
+  jooble_daily_calls: int(15, 0, 100_000),
   /** How often the client heartbeats a live meeting. Echoed to the client. */
   meeting_tick_seconds: int(15, 5, 120),
   /**

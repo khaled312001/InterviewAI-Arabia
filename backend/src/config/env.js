@@ -146,6 +146,7 @@ const schema = z.object({
   JSEARCH_API_HOST: z.string().optional().default(''),
   ADZUNA_APP_ID: z.string().optional().default(''),
   ADZUNA_APP_KEY: z.string().optional().default(''),
+  JOOBLE_API_KEY: z.string().optional().default(''),
 
   /**
    * Google Calendar / Meet / Tasks (routes/calendar.js).

@@ -16,7 +16,7 @@ import {
   himalayasSearch, jobicySearch, remoteokSearch, jooble, joobleConfigured,
 } from './sources.js';
 import { touchKnown, upsertJobs, closeMissing, logRun, lastRuns, prune } from './store.js';
-import { countryName } from './countries.js';
+import { setting } from '../appSettings.js';
 
 const MAX_AGE_MS = 60 * 86400_000;
 let running = false;
@@ -208,10 +208,36 @@ function liveSources({ query, country, remoteOnly, page }) {
   if (adzunaConfigured() && cc && ADZUNA_COUNTRIES.includes(cc)) {
     list.push({ id: 'adzuna', label: 'Adzuna', run: () => adzuna({ country: cc, query, page, perPage: 50 }) });
   }
-  if (joobleConfigured()) {
-    list.push({ id: 'jooble', label: 'Jooble', run: () => jooble({ query, location: country ? countryName(country) : '', page, timeout: LIVE_TIMEOUT }) });
+  // The API key is for jooble.org, which lists US jobs only (a search for
+  // "accountant" in Dubai returns nothing; the country sites refuse the key),
+  // so it is only asked when the search is not tied to another country.
+  if (joobleConfigured() && (!cc || cc === 'us') && setting('jooble_daily_calls') > 0 && Date.now() > joobleRestUntil) {
+    list.push({ id: 'jooble', label: 'Jooble', run: () => joobleBudgeted({ query, location: '', page, timeout: LIVE_TIMEOUT }) });
   }
   return list;
+}
+
+/** After Jooble refuses the key (allowance spent, or revoked), leave it alone for a while. */
+let joobleRestUntil = 0;
+
+/**
+ * Jooble's free key is a fixed allowance (500 requests), so every live call
+ * first takes one unit from today's shared counter (migration 013) and is
+ * skipped once the daily cap is reached. Repeat searches never get here: the
+ * live cache answers them.
+ */
+async function joobleBudgeted(args) {
+  const res = await query(
+    `INSERT INTO api_daily_usage (provider, day, calls) VALUES ('jooble', UTC_DATE(), LAST_INSERT_ID(1))
+     ON DUPLICATE KEY UPDATE calls = LAST_INSERT_ID(calls + 1)`,
+  );
+  if (Number(res.insertId) > setting('jooble_daily_calls')) return [];
+  try {
+    return await jooble(args);
+  } catch (err) {
+    if (/^(401|403|429) /.test(err.message)) joobleRestUntil = Date.now() + 6 * 3600_000;
+    throw err;
+  }
 }
 
 /** Index ids of the raw items just folded in, so the search can put them first. */

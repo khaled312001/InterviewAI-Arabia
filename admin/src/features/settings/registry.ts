@@ -114,6 +114,16 @@ export const SETTING_GROUPS: SettingGroup[] = [
         defaultValue: 'true',
         effect: 'live',
       },
+      {
+        key: 'jooble_daily_calls',
+        labelAr: 'حد بحث Jooble اليومي',
+        help: 'عدد مرات سؤال Jooble في البحث اللحظي كل يوم. مفتاح Jooble المجاني فيه ٥٠٠ طلب فقط ويغطي وظائف أمريكا وحدها (يُسأل فقط في البحث بلا دولة أو بدولة الولايات المتحدة)، فالقيمة ١٥ تكفي قرابة شهر. ارفعها بعد زيادة الحد من Jooble، أو اجعلها صفرًا لإيقافه.',
+        type: 'int',
+        defaultValue: '15',
+        effect: 'live',
+        min: 0,
+        max: 100000,
+      },
     ],
   },
   {
