@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { I18nManager, Platform, Text, View, ActivityIndicator } from 'react-native';
+import { Platform, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import './src/i18n';
+import { initLanguage, onLanguageChanged, useLanguage } from './src/i18n';
+import { api } from './src/api/client';
+import { useAppTheme } from './src/theme/useTheme';
 // Side-effect import: completes an OAuth redirect before anything renders.
 import { authRedirectLanded } from './src/auth/completeAuthSession';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef, onNavigationReady } from './src/navigation/navigationRef';
-import { usePushNotifications } from './src/push';
+import { usePushNotifications, useReminderPlanner } from './src/push';
 import { useAuth } from './src/store/auth';
 import { colors } from './src/theme/tokens';
 
@@ -60,16 +62,28 @@ export default function App() {
   // still up. Nothing here prompts for permission; see src/push/registration.ts
   // for the two moments where we are allowed to ask.
   usePushNotifications();
+  // Local practice / weekly reminders, re-planned as the streak and the
+  // switches change. Nothing here prompts either.
+  useReminderPlanner();
+
+  const theme = useAppTheme();
+  const { isRTL } = useLanguage();
+
+  // The server keeps the account's language for what it sends on its own —
+  // emails, push copy, the evaluation language when a request does not say.
+  // Told on every explicit switch, and never allowed to fail the switch.
+  useEffect(() => onLanguageChanged((lng) => {
+    if (useAuth.getState().token) api.patch('/user/me', { language: lng }).catch(() => {});
+  }), []);
 
   useEffect(() => {
     (async () => {
       try {
+        // Before anything is drawn: the saved language decides the direction
+        // of the very first frame. See src/i18n for how native and web differ.
+        await initLanguage();
         if (Platform.OS === 'web') {
-          // Web: set RTL at the document level AND tell react-native-web so it
-          // flips logical styles (marginStart/End, textAlign: 'start', etc.).
           if (typeof document !== 'undefined') {
-            document.documentElement.setAttribute('dir', 'rtl');
-            document.documentElement.setAttribute('lang', 'ar');
             // Inject the Cairo Google Fonts stylesheet once. Loading TTFs via
             // expo-font's Font.loadAsync 404s because Google rotates asset
             // hashes; the CSS2 API is the stable, canonical loader.
@@ -93,11 +107,6 @@ export default function App() {
               document.head.appendChild(style);
             }
           }
-          I18nManager.allowRTL(true);
-          I18nManager.forceRTL(true);
-        } else if (!I18nManager.isRTL) {
-          I18nManager.allowRTL(true);
-          I18nManager.forceRTL(true);
         }
         await hydrate();
       } finally {
@@ -137,12 +146,44 @@ export default function App() {
     );
   }
 
+  /*
+   * React Navigation paints its own container, cards and the gap under a
+   * transition. Left on its default (light) theme those showed as white flashes
+   * between dark screens.
+   */
+  const navTheme = {
+    ...(theme.isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(theme.isDark ? DarkTheme : DefaultTheme).colors,
+      primary: theme.colors.primary,
+      background: theme.colors.bg,
+      card: theme.colors.surface,
+      text: theme.colors.text,
+      border: theme.colors.border,
+      notification: theme.colors.danger,
+    },
+  };
+
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
-      <NavigationContainer ref={navigationRef} onReady={onNavigationReady}>
-        <RootNavigator />
-      </NavigationContainer>
+      {/*
+        Dark icons on the light theme, light icons on the dark one. The old
+        global `light` drew white icons on a white page — the clock and battery
+        were simply invisible on every light screen. Screens with a coloured
+        hero behind the status bar mount their own `light` StatusBar, which
+        wins while they are on top.
+      */}
+      <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      {/*
+        The one place layout direction is decided. Yoga applies `direction` to
+        every descendant, so switching language re-lays the whole app at once —
+        rows, margins, start/end — without the restart the native flag needs.
+      */}
+      <View style={{ flex: 1, direction: isRTL ? 'rtl' : 'ltr', backgroundColor: theme.colors.bg }}>
+        <NavigationContainer ref={navigationRef} onReady={onNavigationReady} theme={navTheme}>
+          <RootNavigator />
+        </NavigationContainer>
+      </View>
     </SafeAreaProvider>
   );
 }

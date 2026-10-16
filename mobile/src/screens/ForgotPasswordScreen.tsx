@@ -10,12 +10,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import { Button, Card, EmptyState, Input, Screen, Text } from '../components';
+import { Button, Card, EmptyState, Input, Screen, ScreenStatusBar, Text } from '../components';
 import { useAppTheme, useDirection } from '../theme/useTheme';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -111,7 +110,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
   if (sentTo) {
     return (
       <Screen scroll edges={['top', 'bottom']} testID="forgot-password-sent">
-        <StatusBar style="auto" />
+        <ScreenStatusBar />
         {header}
 
         <MotiView
@@ -174,7 +173,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
 
   return (
     <Screen scroll keyboardAvoiding edges={['top', 'bottom']} testID="forgot-password">
-      <StatusBar style="auto" />
+      <ScreenStatusBar />
       {header}
 
       <MotiView

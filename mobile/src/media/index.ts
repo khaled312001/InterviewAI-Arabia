@@ -32,5 +32,6 @@ export { capabilities } from './capabilities';
 export { useCamera } from './camera';
 export { useSpeechRecognizer } from './speech';
 export { useInterviewerVoice } from './tts';
+export { useVoiceAgent } from './voiceAgent';
 export { useLevelMeter } from './level';
 export { useSessionRecorder } from './recorder';

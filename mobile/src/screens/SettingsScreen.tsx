@@ -14,22 +14,29 @@
  * of "on" against a permission revoked in system settings reads as off, because
  * that is what the user will actually experience.
  *
- * The three topic switches below it are still local-only — the API has no
- * per-topic endpoint yet — so they persist per device via AsyncStorage.
+ * The three topic switches below it are real too (see src/push/topics.ts):
+ * the practice and weekly reminders are scheduled on the device, and "product
+ * news" travels with the device registration so broadcasts skip a device that
+ * switched it off. Each shows its effective state as well — a reminder switch
+ * without the OS permission reads as off, because nothing would arrive.
  */
 
 import { memo, useCallback, useEffect, useState } from 'react';
-import { View, StyleSheet, Pressable, Switch, Linking, Platform, Alert, AppState, Modal } from 'react-native';
+import { View, StyleSheet, Pressable, Switch, Linking, Platform, Alert, AppState, Modal, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 import { setAppLanguage } from '../i18n';
+import { useBalance } from '../store/balance';
 import { useAuth } from '../store/auth';
-import { disablePush, enablePush, isPushSupported, pushSnapshot, type PushSnapshot } from '../push';
+import {
+  disablePush, enablePush, ensureNotificationPermission, isPushSupported, pushSnapshot,
+  readTopics, writeTopics, syncPushRegistration, DEFAULT_TOPICS, REMINDER_HOURS,
+  type NotificationTopic, type PushSnapshot, type TopicPrefs,
+} from '../push';
 import { useAppTheme, useThemePreference } from '../theme/useTheme';
 import { useMarketPreference, MARKET_CODES } from '../store/market';
 import { Screen, Text, Card, Badge, ListRow, SectionHeader, Skeleton, Button, Input } from '../components';
@@ -44,18 +51,20 @@ import { api } from '../api/client';
 const WEBSITE_URL = 'https://interprova.com';
 const PRIVACY_URL = 'https://interprova.com/privacy';
 const TERMS_URL = 'https://interprova.com/terms';
-
-const NOTIF_STORAGE_KEY = 'settings:notifications';
+const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.interprova.app';
+const PLAY_STORE_NATIVE = 'market://details?id=com.interprova.app';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 type ThemePreference = 'system' | 'light' | 'dark';
-type NotificationKey = 'practice' | 'weekly' | 'product';
-type NotificationPrefs = Record<NotificationKey, boolean>;
 
-const DEFAULT_NOTIFS: NotificationPrefs = { practice: true, weekly: true, product: false };
+/** "8:00 م" / "8:00 PM" — hours only, so no locale-dependent Intl needed. */
+function hourLabel(hour: number, t: (k: string) => string): string {
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:00 ${hour < 12 ? t('settings.am') : t('settings.pm')}`;
+}
 
 const NOTIFICATION_ROWS: {
-  key: NotificationKey;
+  key: NotificationTopic;
   icon: IconName;
   titleKey: string;
   hintKey: string;
@@ -204,32 +213,21 @@ export function SettingsScreen() {
   const theme = useAppTheme();
   const navigation = useNavigation<any>();
   const user = useAuth((s) => s.user);
+  const balance = useBalance((s) => s.balance);
   const { preference, setPreference } = useThemePreference();
   const marketPreference = useMarketPreference((s) => s.preference);
   const setMarketPreference = useMarketPreference((s) => s.setPreference);
 
-  const [notifs, setNotifs] = useState<NotificationPrefs>(DEFAULT_NOTIFS);
+  const [topics, setTopics] = useState<TopicPrefs>(DEFAULT_TOPICS);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    AsyncStorage.getItem(NOTIF_STORAGE_KEY)
-      .then((raw) => {
-        if (cancelled || !raw) return;
-        const parsed = JSON.parse(raw);
-        setNotifs({ ...DEFAULT_NOTIFS, ...parsed });
-      })
+    readTopics()
+      .then((prefs) => { if (!cancelled) setTopics(prefs); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setReady(true); });
     return () => { cancelled = true; };
-  }, []);
-
-  const toggleNotif = useCallback((key: NotificationKey) => {
-    setNotifs((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      AsyncStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
   }, []);
 
   /* ---- push ---- */
@@ -298,6 +296,73 @@ export function SettingsScreen() {
     }
   }, [push.enabled, pushBusy, t]);
 
+  /**
+   * What each topic switch shows: the preference AND the thing it depends on.
+   * A reminder without the OS permission, or news without a registered
+   * device, would never arrive — so the switch says off.
+   */
+  const topicOn = useCallback((key: NotificationTopic) => (
+    key === 'product'
+      ? topics.product && push.enabled
+      : topics[key] && push.permission === 'granted'
+  ), [push.enabled, push.permission, topics]);
+
+  const [topicBusy, setTopicBusy] = useState(false);
+
+  const onToggleTopic = useCallback(async (key: NotificationTopic) => {
+    if (topicBusy) return;
+    setTopicBusy(true);
+    try {
+      if (topicOn(key)) {
+        setTopics(await writeTopics({ [key]: false }));
+        // Tell the server this device is out of broadcasts now.
+        if (key === 'product') await syncPushRegistration({ force: true });
+        return;
+      }
+
+      if (key === 'product') {
+        setTopics(await writeTopics({ product: true }));
+        // News rides on the device registration: with push off there is no
+        // registration, so turning news on turns push on (which registers
+        // with news included). With push on, just re-register.
+        if (!push.enabled) await onTogglePush();
+        else await syncPushRegistration({ force: true });
+        return;
+      }
+
+      const permission = await ensureNotificationPermission();
+      if (permission === 'blocked') {
+        Alert.alert(t('settings.notifyBlockedTitle'), t('settings.notifyBlockedBody'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('settings.pushOpenSettings'), onPress: () => { Linking.openSettings().catch(() => {}); } },
+        ]);
+        return;
+      }
+      if (permission !== 'granted') return;
+      setTopics(await writeTopics({ [key]: true }));
+    } finally {
+      setPush(await pushSnapshot());
+      setTopicBusy(false);
+    }
+  }, [onTogglePush, push.enabled, t, topicBusy, topicOn]);
+
+  const onPickReminderHour = useCallback(async (hour: number) => {
+    setTopics(await writeTopics({ reminderHour: hour }));
+  }, []);
+
+  const onShareApp = useCallback(() => {
+    Share.share({ message: t('settings.shareMessage') }).catch(() => {});
+  }, [t]);
+
+  const onRateApp = useCallback(() => {
+    if (Platform.OS === 'android') {
+      // The Play app when it is there, the web listing when it is not.
+      Linking.openURL(PLAY_STORE_NATIVE).catch(() => openUrl(PLAY_STORE_URL));
+    } else {
+      openUrl(PLAY_STORE_URL);
+    }
+  }, []);
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -365,7 +430,10 @@ export function SettingsScreen() {
     }
   }, [deletePassword, needsPassword, logout, t]);
 
-  const isPremium = user?.plan === 'premium';
+  // The balance's plan first, like Home and Profile: it is computed from the
+  // expiry, where `user.plan` was the raw column and once said "Premium" for
+  // an account every other screen correctly called free.
+  const isPremium = (balance?.plan ?? user?.plan) === 'premium';
   const appVersion = (Constants.expoConfig?.version as string | undefined) ?? '—';
 
   if (!ready) {
@@ -527,14 +595,14 @@ export function SettingsScreen() {
       </View>
 
       {/* -------------------------- Notifications ------------------------- */}
-      <View style={{ marginTop: theme.spacing['2xl'] }}>
-        <SectionHeader title={t('settings.notifications')} />
-        <Card variant="outlined" padding="none">
-          {/* Hidden rather than disabled on web: browser push needs a service
-              worker and a VAPID key this deployment does not have, and the
-              backend only speaks FCM device tokens. A switch that can never do
-              anything is worse than no switch. */}
-          {push.supported ? (
+      {/* Hidden rather than disabled on web: browser push needs a service
+          worker and a VAPID key this deployment does not have, the backend only
+          speaks FCM device tokens, and there is no scheduler for reminders. A
+          switch that can never do anything is worse than no switch. */}
+      {push.supported ? (
+        <View style={{ marginTop: theme.spacing['2xl'] }}>
+          <SectionHeader title={t('settings.notifications')} />
+          <Card variant="outlined" padding="none">
             <NotificationRow
               icon="notifications-outline"
               title={t('settings.pushEnabled')}
@@ -543,20 +611,67 @@ export function SettingsScreen() {
               onToggle={() => { void onTogglePush(); }}
               divider
             />
-          ) : null}
-          {NOTIFICATION_ROWS.map((row, i) => (
-            <NotificationRow
-              key={row.key}
-              icon={row.icon}
-              title={t(row.titleKey)}
-              hint={t(row.hintKey)}
-              value={notifs[row.key]}
-              onToggle={() => toggleNotif(row.key)}
-              divider={i < NOTIFICATION_ROWS.length - 1}
-            />
-          ))}
-        </Card>
-      </View>
+            {NOTIFICATION_ROWS.map((row, i) => (
+              <View key={row.key}>
+                <NotificationRow
+                  icon={row.icon}
+                  title={t(row.titleKey)}
+                  hint={t(row.hintKey)}
+                  value={topicOn(row.key)}
+                  onToggle={() => { void onToggleTopic(row.key); }}
+                  divider={i < NOTIFICATION_ROWS.length - 1 || (row.key === 'practice' && topicOn('practice'))}
+                />
+                {row.key === 'practice' && topicOn('practice') ? (
+                  <View
+                    style={{
+                      paddingHorizontal: theme.spacing.lg,
+                      paddingVertical: theme.spacing.md,
+                      gap: theme.spacing.sm,
+                      borderBottomWidth: theme.layout.hairline,
+                      borderBottomColor: theme.colors.divider,
+                    }}
+                  >
+                    <Text role="caption" tone="muted">{t('settings.reminderTime')}</Text>
+                    <View
+                      style={[styles.chipWrap, { gap: theme.spacing.sm }]}
+                      accessibilityRole="radiogroup"
+                      accessibilityLabel={t('settings.reminderTime')}
+                    >
+                      {REMINDER_HOURS.map((hour) => {
+                        const selected = topics.reminderHour === hour;
+                        return (
+                          <Pressable
+                            key={hour}
+                            onPress={() => { void onPickReminderHour(hour); }}
+                            accessibilityRole="radio"
+                            accessibilityState={{ selected }}
+                            style={({ pressed }) => [
+                              styles.chip,
+                              {
+                                minHeight: theme.layout.touchTarget - theme.spacing.sm,
+                                paddingHorizontal: theme.spacing.md,
+                                borderRadius: theme.radii.pill,
+                                borderWidth: 1.5,
+                                borderColor: selected ? theme.colors.primary : theme.colors.border,
+                                backgroundColor: selected ? theme.colors.primaryMuted : theme.colors.surface,
+                                opacity: pressed ? 0.8 : 1,
+                              },
+                            ]}
+                          >
+                            <Text role="caption" weight={selected ? 'bold' : 'regular'} tone={selected ? 'primary' : 'secondary'}>
+                              {hourLabel(hour, t)}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ))}
+          </Card>
+        </View>
+      ) : null}
 
       {/* ------------------------------ Legal ----------------------------- */}
       <View style={{ marginTop: theme.spacing['2xl'] }}>
@@ -587,13 +702,28 @@ export function SettingsScreen() {
             divider
             onPress={() => openUrl(WEBSITE_URL)}
           />
-          {/* Email is the last row, so no divider — a trailing rule under the
-              final item draws a line to nothing. */}
           <ListRow
             icon="mail-outline"
             title={t('settings.email')}
             subtitle={t('settings.supportEmail')}
+            divider
             onPress={() => openUrl(`mailto:${t('settings.supportEmail')}`)}
+          />
+          <ListRow
+            icon="share-social-outline"
+            title={t('settings.shareApp')}
+            subtitle={t('settings.shareAppHint')}
+            divider
+            onPress={onShareApp}
+          />
+          {/* Last row, so no divider — a trailing rule under the final item
+              draws a line to nothing. */}
+          <ListRow
+            icon="star-outline"
+            iconTone="accent"
+            title={t('settings.rateApp')}
+            subtitle={t('settings.rateAppHint')}
+            onPress={onRateApp}
           />
         </Card>
       </View>
@@ -702,4 +832,6 @@ const styles = StyleSheet.create({
   // on a phone, and the percentage leaves room for the gap between them.
   tileWrap: { flexDirection: 'row', flexWrap: 'wrap' },
   tileCell: { flexGrow: 1, flexBasis: '30%', minWidth: 96 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap' },
+  chip: { alignItems: 'center', justifyContent: 'center' },
 });

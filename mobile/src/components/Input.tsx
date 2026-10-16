@@ -1,12 +1,12 @@
 import { ReactNode, forwardRef, useState } from 'react';
 import {
   TextInput, View, StyleSheet, TextInputProps, Pressable,
-  StyleProp, ViewStyle, I18nManager,
+  StyleProp, ViewStyle, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Text } from './Text';
-import { useAppTheme } from '../theme/useTheme';
+import { useAppTheme, useDirection } from '../theme/useTheme';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -41,6 +41,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   ref,
 ) {
   const theme = useAppTheme();
+  const { isRTL } = useDirection();
   const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
@@ -70,11 +71,30 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             borderRadius: theme.radii.sm,
             borderColor,
             borderWidth: 1.5,
-            backgroundColor: editable ? theme.colors.surface : theme.colors.surfaceSunken,
+            // A tinted fill is the focus cue that is safe on every platform.
+            backgroundColor: !editable
+              ? theme.colors.surfaceSunken
+              : focused ? theme.colors.primaryMuted : theme.colors.surface,
             paddingHorizontal: theme.spacing.md,
             gap: theme.spacing.sm,
           },
-          focused ? { ...(theme.shadow.sm as object) } : null,
+          /*
+           * The focus lift is iOS and web ONLY — never Android.
+           *
+           * On Android the shadow is `elevation`, and toggling elevation on
+           * the TextInput's own parent at the moment it gains focus makes the
+           * new-architecture renderer rebuild that view. Android then drops
+           * focus from the EditText and hands it to the next focusable field,
+           * whose focus toggles ITS parent, and so on: focus ping-pongs
+           * between fields and keystrokes land in whichever one holds it at
+           * that instant. Typing «Khaled» into the name field produced
+           * name="ha", email="le", password="d". That was the sign-up screen
+           * that "hangs" — and the login screen had it too.
+           *
+           * The border colour and the tinted fill carry focus on Android.
+           * Neither changes the native hierarchy.
+           */
+          focused && Platform.OS !== 'android' ? { ...(theme.shadow.sm as object) } : null,
         ]}
       >
         {iconLeft ? (
@@ -99,8 +119,10 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             theme.text('body'),
             {
               color: editable ? theme.colors.text : theme.colors.textMuted,
-              // Follow the app's writing direction instead of forcing RTL.
-              textAlign: I18nManager.isRTL ? 'right' : 'left',
+              // The LANGUAGE's direction. The native RTL flag only changes on
+              // the next launch, so after switching to English it kept every
+              // field right-aligned until the app was restarted.
+              textAlign: isRTL ? 'right' : 'left',
             },
             style,
           ]}

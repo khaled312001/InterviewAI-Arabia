@@ -181,6 +181,11 @@ export function secondCountLabel(n: number, t: TFn) {
   return countLabel(n, t, 'units.seconds');
 }
 
+/** «٤ أيام» / "4 days" — for streaks. */
+export function dayCountLabel(n: number, t: TFn) {
+  return countLabel(n, t, 'units.days');
+}
+
 /**
  * A duration in words: "٧ دقائق و٢٢ ثانية" / "7 minutes and 22 seconds".
  *

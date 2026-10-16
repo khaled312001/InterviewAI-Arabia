@@ -89,8 +89,67 @@ export const CREDENTIAL_COPY: Record<string, CredentialCopy> = {
   },
   ANTHROPIC_API_KEY: {
     labelAr: 'مفتاح Anthropic',
-    help: 'مفتاح Claude — المزوّد الأساسي لتقييم الإجابات.',
+    help: 'مفتاح Claude — المزوّد الأساسي لتقييم الإجابات، وعقل المقابلة الصوتية. '
+      + 'بدونه تعمل المقابلة المكتوبة عبر مزوّد احتياطي، أما المقابلة الصوتية فلا تعمل إطلاقًا.',
     whereAr: 'console.anthropic.com ← API Keys',
+  },
+  DEEPGRAM_API_KEY: {
+    labelAr: 'مفتاح Deepgram',
+    help: 'يشغّل المقابلة الصوتية الحيّة: يسمع المتحدّث ويدير دوره في الحوار. '
+      + 'بدونه تعمل المقابلة المكتوبة كالمعتاد ولا يُعرض الصوت أصلًا.',
+    whereAr: 'console.deepgram.com ← API Keys',
+  },
+  VOICE_LLM_MODEL: {
+    labelAr: 'نموذج المقابلة الصوتية',
+    help: 'نموذج Claude المستخدم في الحوار المنطوق وحده. هذا الرقم هو الصمت الذي يسمعه '
+      + 'المرشّح بعد كل إجابة: claude-haiku-5-5 يصل لأول كلمة في 1.27 ثانية، و claude-opus-5-5 '
+      + 'في 2.28. إن تُرك فارغًا يُستخدم «نموذج Claude» نفسه.',
+  },
+  VOICE_SPEAK_MODEL: {
+    labelAr: 'صوت المقابلة الإنجليزية',
+    help: 'صوت Deepgram المستخدم في المقابلات بالإنجليزية. إن تُرك فارغًا يُستخدم flux-kit-en. '
+      + 'لا يمسّ العربية: صوتها مجاني ويأتي من الخادم نفسه، فلا شيء هنا يضبطه.',
+  },
+  JOBS_INGEST_ENABLED: {
+    labelAr: 'تحديث الوظائف تلقائيًا',
+    help: 'عند التشغيل يجلب الخادم الوظائف الجديدة من كل المصادر كل بضع دقائق. الإيقاف يجمّد الفهرس كما هو.',
+  },
+  JSEARCH_API_KEY: {
+    labelAr: 'مفتاح JSearch (Google for Jobs)',
+    help: 'يضيف للبحث وظائف LinkedIn و Indeed و Glassdoor ومواقع الشركات في كل الدول، عبر Google for Jobs بطريقة قانونية. يُستخدم عند البحث فقط لأنه مدفوع بالطلب.',
+    whereAr: 'rapidapi.com ← JSearch (OpenWeb Ninja) ← Subscribe ← X-RapidAPI-Key',
+  },
+  JSEARCH_API_HOST: {
+    labelAr: 'عنوان خادم JSearch',
+    help: 'اتركه فارغًا ليُستخدم jsearch.p.rapidapi.com.',
+  },
+  ADZUNA_APP_ID: {
+    labelAr: 'Adzuna — App ID',
+    help: 'يضيف وظائف 19 دولة منها بريطانيا وألمانيا وسويسرا وأمريكا والهند وسنغافورة، مع بيانات الرواتب.',
+    whereAr: 'developer.adzuna.com ← Register ← Dashboard',
+  },
+  ADZUNA_APP_KEY: {
+    labelAr: 'Adzuna — App Key',
+    help: 'المفتاح المرافق لـ App ID.',
+    whereAr: 'developer.adzuna.com ← Dashboard',
+  },
+  JOOBLE_API_KEY: {
+    labelAr: 'مفتاح Jooble',
+    help: 'محرك بحث وظائف في نحو 70 دولة منها الخليج ومصر وشمال أفريقيا. يُسأل لحظيًا عند كل بحث. المفتاح مجاني.',
+    whereAr: 'jooble.org/api/about ← Get API key',
+  },
+  GOOGLE_OAUTH_CLIENT_ID: {
+    labelAr: 'Google OAuth — Client ID',
+    help: 'معرّف عميل OAuth من نوع «Web application» المستخدم لربط تقويم Google ومهامه. '
+      + 'اتركه فارغًا ليُستخدم معرّف تسجيل الدخول بجوجل للويب نفسه.',
+    whereAr: 'console.cloud.google.com ← APIs & Services ← Credentials ← OAuth 2.0 Client IDs',
+  },
+  GOOGLE_OAUTH_CLIENT_SECRET: {
+    labelAr: 'Google OAuth — Client Secret',
+    help: 'السرّ المرافق للمعرّف أعلاه. بدونه يبقى ربط التقويم مخفيًا في التطبيق.',
+    whereAr: 'console.cloud.google.com ← Credentials ← العميل نفسه ← Client secrets',
+    caution: 'يجب أن يحتوي العميل على عنوان التحويل https://interprova.com/api/calendar/google/callback '
+      + 'ضمن Authorized redirect URIs، وإلا ترفض Google الربط.',
   },
   GEMINI_API_KEY: {
     labelAr: 'مفتاح Google Gemini',
@@ -190,6 +249,30 @@ export const AI_PAGE: IntegrationPageSpec = {
       labelAr: 'الاختيار والنماذج',
       description: 'أي مزوّد يُجرَّب أولًا، وبأي نموذج.',
       keys: ['AI_ENABLED', 'AI_PROVIDER', 'CLAUDE_MODEL', 'AI_MODEL'],
+    },
+    {
+      id: 'voice',
+      labelAr: 'المقابلة الصوتية',
+      description:
+        'المقابلة المنطوقة تحتاج مفتاحين: Deepgram ليسمع، و Anthropic أعلاه ليفكّر. '
+        + 'الصوت العربي مجاني ولا يحتاج شيئًا. وبدون أيٍّ منهما ترجع المقابلة مكتوبة بدل أن تتعطّل.',
+      keys: ['DEEPGRAM_API_KEY', 'VOICE_LLM_MODEL', 'VOICE_SPEAK_MODEL'],
+    },
+    {
+      id: 'jobs',
+      labelAr: 'مصادر الوظائف',
+      description:
+        'كل بحث يُرسَل لحظيًا إلى Himalayas و Jobicy و Remote OK دون مفاتيح، مع فهرس لوحات الشركات الذي يتحدّث كل بضع دقائق. '
+        + 'مفتاح JSearch يضيف وظائف LinkedIn و Indeed و Glassdoor عبر Google for Jobs، و Adzuna يضيف 19 دولة، و Jooble يضيف الخليج ومصر و70 دولة.',
+      keys: ['JOBS_INGEST_ENABLED', 'JSEARCH_API_KEY', 'JSEARCH_API_HOST', 'ADZUNA_APP_ID', 'ADZUNA_APP_KEY', 'JOOBLE_API_KEY'],
+    },
+    {
+      id: 'calendar',
+      labelAr: 'تقويم Google و Meet والمهام',
+      description:
+        'يتيح للمستخدم ربط تقويم Google لعرض مقابلاته وجدولة مقابلة برابط Meet وإضافة مهام التحضير. '
+        + 'ملف ‎.ics يعمل دائمًا بدون أي مفتاح.',
+      keys: ['GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET'],
     },
   ],
 };

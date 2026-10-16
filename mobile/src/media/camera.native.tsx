@@ -212,14 +212,57 @@ export const useCamera: UseCamera = ({ active, initialFacing = 'front', onFault 
   const clearReadyTimer = useCallback(() => {
     if (readyTimerRef.current) { clearTimeout(readyTimerRef.current); readyTimerRef.current = null; }
   }, []);
+  const armReadyTimer = useCallback(() => {
+    clearReadyTimer();
+    readyTimerRef.current = setTimeout(() => {
+      readyTimerRef.current = null;
+      const snapshot = store.getSnapshot();
+      // Anything that already settled the question wins: a refusal, a
+      // teardown, or a view that has since been unmounted.
+      if (snapshot.released || snapshot.fault !== null || !viewRef.current) return;
+      store.set({ previewReady: true });
+    }, PREVIEW_READY_FALLBACK_MS);
+  }, [clearReadyTimer, store]);
+
+  /** A session has opened at least once — later mount errors are not about the lens. */
+  const everReadyRef = useRef(false);
+  /** The one-time switch to the other lens has been spent. */
+  const triedOtherLensRef = useRef(false);
 
   const handlersRef = useRef<PreviewHandlers>({
-    onReady: () => { clearReadyTimer(); store.set({ previewReady: true }); },
+    onReady: () => {
+      clearReadyTimer();
+      everReadyRef.current = true;
+      store.set({ previewReady: true });
+    },
     onMountError: () => {
+      clearReadyTimer();
+      const snapshot = store.getSnapshot();
+      /*
+       * A device without the requested lens refuses the session outright:
+       * CameraX logs "No available camera can be found … LENS_FACING_FRONT"
+       * and we land here before a single frame. Rear-camera-only tablets and
+       * Chromebooks do that, and so does the default emulator AVD. Treating
+       * it as "camera broken" put the whole interview behind a wall even
+       * though the other lens was right there — and the interview is spoken,
+       * so being filmed from the back camera costs the candidate nothing.
+       *
+       * Only before the camera has ever opened, and only once: a mid-call
+       * error (CameraX failing to rebind after a background round trip) is
+       * not a missing lens, and silently turning the camera round in the
+       * middle of an interview would be worse than the notice it gets now.
+       */
+      if (!everReadyRef.current && !triedOtherLensRef.current && !snapshot.released) {
+        triedOtherLensRef.current = true;
+        store.set({ previewReady: false, facing: snapshot.facing === 'front' ? 'back' : 'front' });
+        // `facing` rebinds the same view instead of remounting it, so the
+        // ref callback will not re-arm the readiness fallback on its own.
+        if (viewRef.current) armReadyTimer();
+        return;
+      }
       // The view mounted but the device refused to open a session — a camera
       // held by another app, or none at all. Reported as `unsupported` rather
       // than `denied` so the UI offers the right recovery.
-      clearReadyTimer();
       store.set({ previewReady: false, fault: 'unsupported' });
       faultRef.current?.('unsupported');
     },
@@ -227,14 +270,7 @@ export const useCamera: UseCamera = ({ active, initialFacing = 'front', onFault 
       viewRef.current = view;
       clearReadyTimer();
       if (!view) { store.set({ previewReady: false }); return; }
-      readyTimerRef.current = setTimeout(() => {
-        readyTimerRef.current = null;
-        const snapshot = store.getSnapshot();
-        // Anything that already settled the question wins: a refusal, a
-        // teardown, or a view that has since been unmounted.
-        if (snapshot.released || snapshot.fault !== null || !viewRef.current) return;
-        store.set({ previewReady: true });
-      }, PREVIEW_READY_FALLBACK_MS);
+      armReadyTimer();
     },
   });
 
@@ -306,6 +342,8 @@ export const useCamera: UseCamera = ({ active, initialFacing = 'front', onFault 
   }, [store]);
 
   const retry = useCallback(async () => {
+    // An explicit Retry starts over, lens fallback included.
+    triedOtherLensRef.current = false;
     store.set({ released: false, previewReady: false, fault: null });
     await acquire();
   }, [acquire, store]);

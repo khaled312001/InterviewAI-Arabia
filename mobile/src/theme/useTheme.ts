@@ -1,27 +1,54 @@
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, useColorScheme, useWindowDimensions, I18nManager } from 'react-native';
+import { AccessibilityInfo, useColorScheme, useWindowDimensions } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { getTheme, ThemeMode, AppTheme, layout } from './tokens';
+import { useLanguage } from '../i18n';
 
-type Preference = 'system' | 'light' | 'dark';
+export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface ThemeState {
-  preference: Preference;
-  setPreference: (p: Preference) => void;
+  preference: ThemePreference;
+  setPreference: (p: ThemePreference) => void;
 }
 
+/**
+ * Light first. The app opens in the light theme on every device, and the
+ * reader switches to dark — or back to following the system — themselves.
+ *
+ * Version 1 moves existing installs across: version 0 defaulted to 'system',
+ * and a stored 'system' cannot tell "chose it" from "never touched it". Nearly
+ * everyone is the second, so they get the new default; anyone who really
+ * wants the system back is one tap away in Settings.
+ */
 export const useThemePreference = create<ThemeState>()(
   persist(
     (set) => ({
-      preference: 'system',
+      preference: 'light',
       setPreference: (preference) => set({ preference }),
     }),
-    { name: 'theme-pref', storage: createJSONStorage(() => AsyncStorage) },
+    {
+      name: 'theme-pref',
+      version: 1,
+      storage: createJSONStorage(() => AsyncStorage),
+      migrate: (persisted: any, version) => {
+        if (version < 1 && (!persisted || persisted.preference === 'system')) {
+          return { ...(persisted ?? {}), preference: 'light' } as ThemeState;
+        }
+        return persisted as ThemeState;
+      },
+    },
   ),
 );
+
+/** The resolved mode — what is actually on screen, after 'system' is looked up. */
+export function useThemeMode(): ThemeMode {
+  const system = useColorScheme();
+  const preference = useThemePreference((s) => s.preference);
+  return preference === 'system' ? (system === 'dark' ? 'dark' : 'light') : preference;
+}
 
 /**
  * Whether the reader has asked the system to reduce motion.
@@ -48,11 +75,8 @@ export function useReducedMotion(): boolean {
 }
 
 export function useAppTheme(): AppTheme {
-  const system = useColorScheme();
-  const preference = useThemePreference((s) => s.preference);
+  const mode = useThemeMode();
   const reducedMotion = useReducedMotion();
-  const mode: ThemeMode =
-    preference === 'system' ? (system === 'dark' ? 'dark' : 'light') : preference;
   // Every animation in the app reads its duration from `theme.motion`, so
   // swapping the set here turns motion down everywhere at once — there is no
   // list of animated components to keep in step, and none can be forgotten.
@@ -96,14 +120,15 @@ export function useResponsive() {
 /**
  * Direction helper.
  *
- * `I18nManager.isRTL` is the source of truth on native, but on react-native-web
- * it is only true after `forceRTL` runs at boot. Components that need to flip a
- * directional icon (chevrons, arrows) should use `chevronBack`/`chevronForward`
- * rather than hardcoding `chevron-back`, which is what left the old screens
- * pointing the wrong way once English was selected.
+ * Follows the LANGUAGE, not `I18nManager.isRTL`. The native flag is fixed for
+ * the life of the process, so reading it left every chevron pointing the
+ * Arabic way after a switch to English until the app was restarted. The root
+ * view's `direction` style (App.tsx) flips layout immediately; this flips the
+ * glyphs to match. Components must use `chevronBack`/`chevronForward` rather
+ * than hardcoding `chevron-back`.
  */
 export function useDirection() {
-  const isRTL = I18nManager.isRTL;
+  const { isRTL } = useLanguage();
   // Typed as the Ionicons glyph union rather than `as const` — a conditional
   // expression is not a literal, so `as const` is invalid on it.
   type Glyph = keyof typeof Ionicons.glyphMap;

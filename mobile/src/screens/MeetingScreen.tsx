@@ -50,16 +50,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
-import { api, API_BASE } from '../api/client';
-import { secureStorage } from '../storage/secureStorage';
+import { api, authFetch } from '../api/client';
 import { useAuth } from '../store/auth';
 import { useBalance, formatClock } from '../store/balance';
+import { useProgress } from '../store/progress';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
-import { Screen, Text, Button, Card, Badge, ScoreRing, Avatar } from '../components';
+import { Screen, ScreenStatusBar, Text, Button, Card, Badge, ScoreRing, Avatar } from '../components';
 import { balanceLabel, durationLabel } from './mainShared';
 import {
   capabilities, useCamera, useInterviewerVoice, useLevelMeter,
-  useSessionRecorder, useSpeechRecognizer,
+  useSessionRecorder, useSpeechRecognizer, useVoiceAgent,
 } from '../media';
 import type { SpeechLang } from '../media';
 import type { ImageSourcePropType } from 'react-native';
@@ -976,17 +976,14 @@ export function MeetingScreen({ route, navigation }: any) {
   const voice = useInterviewerVoice({
     /**
      * The one call that bypasses the axios client — it wants the raw audio
-     * body, not JSON — and the only reason it stays in the screen: the token
-     * lives with the auth store here, not in the media layer.
+     * body, not JSON — and the only reason it stays in the screen: the session
+     * lives with the API client here, not in the media layer. authFetch keeps
+     * the token renewal the axios calls get.
      */
     fetchServerTts: async ({ text, gender, language: lang }) => {
-      const token = await secureStorage.getItem('access_token');
-      const res = await fetch(`${API_BASE}/tts`, {
+      const res = await authFetch('/tts', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, gender, language: lang }),
       });
       if (!res.ok) throw new Error(`TTS HTTP ${res.status}`);
@@ -1047,6 +1044,104 @@ export function MeetingScreen({ route, navigation }: any) {
     () => turnsRef.current.map((x) => ({ role: x.role, content: x.content })),
     [],
   );
+
+  /* -------------------- the live voice interview -------------------- *
+   *
+   * A SECOND, WHOLE INTERVIEW, chosen at `startMeeting` and never mixed with
+   * the one below it. When this is running, Deepgram holds a websocket for the
+   * entire call and owns what the three hooks above own in the typed flow —
+   * the microphone, the turn-taking and the interviewer's voice. So
+   * `recognizer` is never started, `speak` is never called, and `/meeting/turn`
+   * is never posted; the model is reached through /api/voice/think instead.
+   *
+   * What the screen keeps either way: the billing clock, the transcript that
+   * the final evaluation is written from, and the decision to hang up.
+   *
+   * `voiceModeRef` is the switch every shared control reads. It is a ref and
+   * not state because the controls that read it — mute, teardown, the socket's
+   * own close handler — run from closures and destructors where a render-old
+   * value would mute the wrong microphone or evaluate a call that never ran.
+   * ------------------------------------------------------------------ */
+
+  const voiceModeRef = useRef(false);
+
+  /**
+   * True from the moment the call is attempted, not from the moment it works.
+   *
+   * The two flags are not the same question and conflating them loses data at
+   * one end or hangs the call at the other. `voiceAttemptRef` answers "is this
+   * screen's voice agent the source of what just arrived" — the interviewer's
+   * greeting is transcribed before `start()` has resolved, so gating the
+   * transcript on the committed flag would drop the first line of every
+   * interview. `voiceModeRef` answers "is the voice interview the one actually
+   * running", which is what decides whether a dropped connection should end
+   * the meeting or is just an attempt that failed on its way up.
+   */
+  const voiceAttemptRef = useRef(false);
+
+  const agent = useVoiceAgent({
+    fetchSession: async () => {
+      const { data } = await api.post('/voice/session', {
+        meetingId: meetingIdRef.current,
+        language,
+        gender: hrGender,
+        context,
+      });
+      return data;
+    },
+
+    /**
+     * The transcript, and the only copy of it.
+     *
+     * No audio is kept, and `/meeting/finish` evaluates what is in `turnsRef`,
+     * so a line dropped here is a hole in the candidate's report.
+     */
+    onTurn: ({ role, content }) => {
+      if (endedRef.current || !voiceAttemptRef.current) return;
+      const text = content.trim();
+      if (!text) return;
+      pushTurn({ role, content: text, at: Date.now() });
+    },
+
+    onSpeakerChange: (who, analysable) => {
+      if (endedRef.current || !voiceAttemptRef.current) return;
+      // There is no "thinking" gap to show: Deepgram starts speaking from the
+      // first sentence of the reply, so the stage goes straight from listening
+      // to speaking.
+      setThinking(false);
+      setAiSpeaking(who === 'interviewer');
+      if (who === 'interviewer') meter.startTtsWaveform(analysable);
+      else meter.stop();
+    },
+
+    onStateChange: (next) => {
+      if (endedRef.current || !voiceModeRef.current) return;
+      if (next === 'live') setThinking(false);
+      /*
+       * The call stopped on its own: the minutes ran out, the interviewer
+       * finished, or the network went. `failed` counts exactly as much as
+       * `ended` here and is the more dangerous of the two to miss — a dropped
+       * socket mid-interview emits only `failed`, and ignoring it leaves the
+       * candidate on a live stage with a running clock and no interviewer,
+       * waiting for something that is never coming.
+       *
+       * The `voiceModeRef` guard above is what keeps this from firing for a
+       * failure during the initial connect; that one belongs to `startMeeting`,
+       * which is awaiting the rejection and falls back to the typed interview.
+       *
+       * The conversation so far is still worth evaluating — /finish is free
+       * and is never refused.
+       */
+      if (next === 'ended' || next === 'failed') concludeRef.current({ saveRecording: true });
+    },
+
+    onError: (code) => {
+      // Reported, not recovered from: `startMeeting` is awaiting the promise
+      // this rejects and falls back to the typed interview, which works.
+      if (endedRef.current) return;
+      if (code === 'mic-denied') showNotice(t(MEDIA_COPY.deniedBody), 'danger');
+    },
+  });
 
   /* -------------------- listening -------------------- */
 
@@ -1148,11 +1243,18 @@ export function MeetingScreen({ route, navigation }: any) {
     if (resumeRef.current) { clearTimeout(resumeRef.current); resumeRef.current = null; }
     if (noticeTimerRef.current) { clearTimeout(noticeTimerRef.current); noticeTimerRef.current = null; }
 
+    // Before the voice and the meter: it owns its own microphone and its own
+    // playback, and a socket left open would go on speaking into a released
+    // audio graph.
+    agent.release();
+    voiceModeRef.current = false;
+    voiceAttemptRef.current = false;
+
     voice.release();
     meter.release();
     recorder.release({ save: opts?.saveRecording ?? true });
     camera.release();
-  }, [camera, meter, recognizer, recorder, voice]);
+  }, [agent, camera, meter, recognizer, recorder, voice]);
 
   useEffect(() => { teardownRef.current = teardown; });
 
@@ -1395,6 +1497,44 @@ export function MeetingScreen({ route, navigation }: any) {
     startedAtRef.current = Date.now();
     setElapsed(0);
     setMeetingState('active');
+
+    /*
+     * THE LIVE VOICE INTERVIEW FIRST, the typed one if it cannot be had.
+     *
+     * The attempt is awaited rather than fired off, and `start()` resolves
+     * only once Deepgram has accepted the settings and the call is genuinely
+     * live. Anything short of that — no audio transport in this build, a
+     * refused microphone, no Arabic voice configured on the server, a network
+     * that ate the handshake — rejects, and the interview carries on exactly
+     * as it did before any of this existed.
+     *
+     * It is deliberately NOT attempted before /meeting/start: a voice session
+     * is bound to a live meeting, and opening one against a meeting the
+     * balance check refused would be an unmetered interview.
+     */
+    if (agent.supported && meetingIdRef.current) {
+      setThinking(true);
+      voiceAttemptRef.current = true;
+      try {
+        await agent.start();
+        voiceModeRef.current = true;
+      } catch {
+        // The agent has already released its microphone and socket by the time
+        // this rejects, so the typed interview below starts on a clean device.
+        voiceAttemptRef.current = false;
+        voiceModeRef.current = false;
+      }
+    }
+
+    if (voiceModeRef.current) {
+      // The interviewer opens the call herself, over the socket. Posting an
+      // opening turn here as well would have her greet the candidate twice.
+      setThinking(false);
+      startingRef.current = false;
+      return;
+    }
+
+    setThinking(false);
     // A device with no recognizer at all is a supported path, not an edge case:
     // the interview still runs, the candidate just cannot answer out loud.
     if (!recognizer.supported) showNotice(t(MEDIA_COPY.sttUnsupported), 'danger');
@@ -1402,7 +1542,7 @@ export function MeetingScreen({ route, navigation }: any) {
     const ok = await runTurn([], '');
     startingRef.current = false;
     if (!ok && !endedRef.current) setMeetingState('preparing');
-  }, [applyBilling, camera.ready, categoryId, recognizer.supported, rememberMeeting,
+  }, [agent, applyBilling, camera.ready, categoryId, recognizer.supported, rememberMeeting,
     runTurn, showNotice, t]);
 
   /* -------------------- ending -------------------- */
@@ -1459,6 +1599,9 @@ export function MeetingScreen({ route, navigation }: any) {
       // by time, printed on the user's own bill.
       setReceipt(data?.billing ?? null);
       refreshBalance().catch(() => {});
+      // The interview is a day of practice: the streak moves, and tonight's
+      // reminder is re-planned away even if the app is closed from here.
+      useProgress.getState().refresh().catch(() => {});
     } catch (err: any) {
       setEvalErrorKind(apiErrorKind(err));
       setEvalError(apiErrorMessage(err, t, 'meeting.evalFailedBody'));
@@ -1528,12 +1671,23 @@ export function MeetingScreen({ route, navigation }: any) {
     const next = !micOn;
     camera.setMicEnabled(next);
 
+    /*
+     * The voice agent opens its OWN microphone, separate from the camera's.
+     * Flipping the camera track alone would leave the candidate muted on
+     * screen and perfectly audible to the interviewer — the worst possible
+     * reading of a mute button.
+     */
+    if (voiceModeRef.current) {
+      agent.setMuted(!next);
+      return;
+    }
+
     if (!next) {
       recognizer.stop();
       return;
     }
     if (stateRef.current === 'active' && !aiSpeaking && !thinking) recognizer.start();
-  }, [aiSpeaking, camera, micOn, recognizer, thinking]);
+  }, [agent, aiSpeaking, camera, micOn, recognizer, thinking]);
 
   const toggleCam = useCallback(() => {
     // Where the camera view *is* the recorder, switching it off ends the take —
@@ -1702,6 +1856,7 @@ export function MeetingScreen({ route, navigation }: any) {
     const denied = mediaFault === 'denied';
     return (
       <Screen scroll edges={['top', 'bottom']} contentStyle={{ justifyContent: 'center' }}>
+        <ScreenStatusBar />
         <View style={[styles.center, { gap: theme.spacing.md, paddingVertical: theme.spacing['5xl'] }]}>
           <View
             style={[
@@ -1745,6 +1900,10 @@ export function MeetingScreen({ route, navigation }: any) {
 
   if (meetingState === 'ended') {
     return (
+      <>
+      {/* Back to the page theme: the call below forced light icons, and on a
+          light result page they would be white on white. */}
+      <ScreenStatusBar />
       <ResultView
         phase={evalPhase}
         evaluation={evaluation}
@@ -1760,6 +1919,7 @@ export function MeetingScreen({ route, navigation }: any) {
         onRetry={() => { void requestEvaluation(); }}
         onHome={leaveScreen}
       />
+      </>
     );
   }
 
@@ -1769,6 +1929,9 @@ export function MeetingScreen({ route, navigation }: any) {
 
   return (
     <View style={[styles.fill, { backgroundColor: STAGE.bg }]}>
+      {/* The stage is dark in both themes. Without this the call inherited the
+          setup form's dark icons and the clock vanished into the backdrop. */}
+      <ScreenStatusBar tone="onBrand" />
       {/* Stage backdrop */}
       <LinearGradient
         colors={[STAGE.bg, STAGE.bgDeep]}

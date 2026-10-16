@@ -7,6 +7,7 @@ import { api, AuthEvents } from '../api/client';
 // other. `registration` imports nothing from `store/`.
 import { unregisterPush } from '../push/registration';
 import { useBalance } from './balance';
+import { useProgress } from './progress';
 
 export interface AppUser {
   id: string;
@@ -182,7 +183,9 @@ export const useAuth = create<AuthState>((set, get) => ({
       set({ token: null, refreshToken: null, user: null });
       // The balance belongs to the account, not to the app. Leaving it behind
       // would show the next person to sign in the previous one's minutes.
+      // Same for the streak.
       useBalance.getState().clear();
+      useProgress.getState().clear();
     } finally {
       signingOut = false;
     }

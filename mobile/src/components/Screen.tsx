@@ -1,7 +1,7 @@
 import { ReactNode, RefObject } from 'react';
 import {
   View, ScrollView, StyleSheet, RefreshControl, ViewStyle,
-  KeyboardAvoidingView, Platform, StyleProp,
+  KeyboardAvoidingView, Platform, StyleProp, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { useAppTheme, useResponsive } from '../theme/useTheme';
@@ -43,6 +43,8 @@ interface Props {
   /** Extra bottom padding so content clears a floating CTA. */
   bottomInset?: number;
   keyboardAvoiding?: boolean;
+  /** Scroll position, for a screen whose chrome depends on it (Home's status bar). */
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   testID?: string;
 }
 
@@ -70,6 +72,7 @@ export function Screen({
   contentStyle,
   bottomInset = 0,
   keyboardAvoiding = false,
+  onScroll,
   testID,
 }: Props) {
   const theme = useAppTheme();
@@ -99,6 +102,8 @@ export function Screen({
       ]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll ? 32 : undefined}
       refreshControl={
         onRefresh ? (
           <RefreshControl
@@ -122,9 +127,23 @@ export function Screen({
   );
 
   const content = keyboardAvoiding ? (
+    /*
+     * `padding` on Android too, not only iOS.
+     *
+     * The app is edge-to-edge (Expo SDK 54 turns it on, and Android 15 makes
+     * it mandatory), and edge-to-edge means the system no longer shrinks the
+     * window for the keyboard — `adjustResize` only reports the IME inset and
+     * leaves the handling to us. The old setup (`adjustPan` + no avoidance on
+     * Android) slid the whole window up just far enough to show the focused
+     * field, so everything below it — the submit button, the Google button —
+     * sat behind the keyboard with no way to scroll to it. Padding shrinks the
+     * scroll viewport instead, and every field and button stays reachable.
+     * Paired with `softwareKeyboardLayoutMode: "resize"` in app.json; with
+     * `pan` the two would move the content twice.
+     */
     <KeyboardAvoidingView
       style={styles.fill}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'web' ? undefined : 'padding'}
     >
       {body}
     </KeyboardAvoidingView>

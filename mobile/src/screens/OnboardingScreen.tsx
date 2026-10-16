@@ -24,11 +24,10 @@ import Svg, {
   Circle, Defs, G, LinearGradient as SvgGradient, Path, Polyline, Rect, Stop,
 } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar } from 'expo-status-bar';
 import { MotiView } from 'moti';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Badge, Button, Logo, Screen, Text } from '../components';
+import { Badge, Button, LanguageToggle, Logo, Screen, ScreenStatusBar, Text } from '../components';
 import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import { motion, spacing, type AppTheme } from '../theme/tokens';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -379,7 +378,7 @@ export function OnboardingScreen({ navigation }: Props) {
 
   return (
     <Screen bleed edges={['top', 'bottom']} header={wash} testID="onboarding">
-      <StatusBar style="auto" />
+      <ScreenStatusBar />
 
       <View style={styles.fill}>
         {/* ---------- top bar ---------- */}
@@ -395,23 +394,26 @@ export function OnboardingScreen({ navigation }: Props) {
             <Logo size={theme.layout.icon['2xl']} />
             <Text role="body" weight="bold" numberOfLines={1}>Interprova</Text>
           </View>
-          <Pressable
-            onPress={goLogin}
-            hitSlop={theme.spacing.md}
-            accessibilityRole="button"
-            accessibilityLabel={t('common.skip')}
-            accessibilityHint={t('onboarding.skipHint')}
-            style={({ pressed }) => [
-              styles.skip,
-              {
-                minHeight: theme.layout.touchTarget,
-                paddingHorizontal: theme.spacing.md,
-                opacity: pressed ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Text role="bodySm" weight="bold" tone="secondary">{t('common.skip')}</Text>
-          </Pressable>
+          <View style={[styles.brand, { gap: theme.spacing.xxs }]}>
+            <LanguageToggle />
+            <Pressable
+              onPress={goLogin}
+              hitSlop={theme.spacing.md}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.skip')}
+              accessibilityHint={t('onboarding.skipHint')}
+              style={({ pressed }) => [
+                styles.skip,
+                {
+                  minHeight: theme.layout.touchTarget,
+                  paddingHorizontal: theme.spacing.md,
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Text role="bodySm" weight="bold" tone="secondary">{t('common.skip')}</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* ---------- pager ---------- */}

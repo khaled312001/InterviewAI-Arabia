@@ -46,6 +46,7 @@ import {
   permissionStatus,
   requestPermission,
 } from './device';
+import { readTopics } from './topics';
 
 const PREFS_KEY = 'push:prefs';
 
@@ -115,10 +116,13 @@ export interface PushResult {
  */
 let lastSentPayload: string | null = null;
 
-function registrationBody(token: string) {
+function registrationBody(token: string, newsOptOut: boolean) {
   const appVersion = Constants.expoConfig?.version as string | undefined;
   return {
     token,
+    // Leaves this device out of admin broadcasts. The reader's own account
+    // notifications are addressed by account and ignore it.
+    newsOptOut,
     platform: Platform.OS,
     // The backend groups recipients by language and sends one FCM message per
     // group, so this field is the difference between an Arabic reader getting
@@ -143,7 +147,7 @@ function registrationBody(token: string) {
  * than prompting.
  */
 export async function registerForPush(
-  opts: { ask?: boolean; force?: boolean } = {},
+  opts: { ask?: boolean; force?: boolean; muted?: boolean } = {},
 ): Promise<PushResult> {
   if (!isPushSupported) return { ok: false, reason: 'unsupported', permission: 'unsupported' };
 
@@ -159,7 +163,10 @@ export async function registerForPush(
   const token = await deviceToken();
   if (!token) return { ok: false, reason: 'no-token', permission };
 
-  const body = registrationBody(token);
+  // `muted` is the master switch going off: out of broadcasts whatever the
+  // news switch says, since the reader just said "no notifications".
+  const newsOptOut = opts.muted === true || !(await readTopics()).product;
+  const body = registrationBody(token, newsOptOut);
   const payload = JSON.stringify(body);
   if (!opts.force && payload === lastSentPayload) return { ok: true, permission };
 
@@ -241,7 +248,26 @@ export async function enablePush(): Promise<PushResult> {
  *  racing the old one. */
 export async function disablePush(): Promise<void> {
   await writePrefs({ enabled: false });
+  // Detaching alone was not enough. It unlinks the account, which stops the
+  // account's own notifications — but broadcasts are addressed to DEVICES, so a
+  // switched-off phone went on receiving every one of them. Tell the server to
+  // leave it out first, while we still hold the credentials to say so.
+  await registerForPush({ force: true, muted: true });
   await unregisterPush();
+}
+
+/**
+ * Permission for LOCAL notifications — the reminder switches in Settings.
+ *
+ * A sanctioned moment to prompt for the same reason `enablePush()` is: the
+ * reader tapped a switch asking for exactly this. Does not register anything
+ * with the server; reminders are scheduled on the device.
+ */
+export async function ensureNotificationPermission(): Promise<PushPermission> {
+  if (!isPushSupported) return 'unsupported';
+  await ensureChannels();
+  const permission = await permissionStatus();
+  return permission === 'undetermined' ? requestPermission() : permission;
 }
 
 /* ---- launch, sign-in, token rotation ---- */

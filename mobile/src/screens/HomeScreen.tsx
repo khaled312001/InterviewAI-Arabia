@@ -5,21 +5,27 @@ import { MotiView } from 'moti';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
 import { useBalance } from '../store/balance';
+import { useProgress } from '../store/progress';
 import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import { accentForCategory, scoreTone } from '../theme/tokens';
 import {
   Screen, Text, Card, Badge, Button, SectionHeader, ListRow, EmptyState,
-  SkeletonTile, SkeletonRow, Avatar,
+  SkeletonTile, SkeletonRow, Avatar, ScreenStatusBar, ThemeToggle, Skeleton,
 } from '../components';
 import {
   balanceLabel, categoryIcon, categoryName, durationLabel, formatShortDate,
   sessionAverage, sessionKind, sessionMeta,
   type CategoryLike, type SessionLike,
 } from './mainShared';
+import { StreakCard } from './progressWidgets';
+import { AssistEntryCard } from './assist/AssistEntryCard';
+import { CalendarEntryCard } from './calendar/CalendarEntryCard';
+import { takeCalendarReturn } from './calendar/calendarReturn';
 
 const RECENT_LIMIT = 5;
 
@@ -122,6 +128,9 @@ export function HomeScreen({ navigation }: any) {
   const theme = useAppTheme();
   const { columns, maxWidth, screenPadding } = useResponsive();
   const { chevronForward } = useDirection();
+  // The hero is drawn under the status bar (edge-to-edge), so it pays the
+  // inset itself instead of leaving a strip of page colour above the gradient.
+  const insets = useSafeAreaInsets();
 
   const user = useAuth((s) => s.user);
   const refreshMe = useAuth((s) => s.refreshMe);
@@ -132,6 +141,10 @@ export function HomeScreen({ navigation }: any) {
   const balance = useBalance((s) => s.balance);
   const balanceFailed = useBalance((s) => s.failed);
   const refreshBalance = useBalance((s) => s.refresh);
+  // Streak and week — shared with Stats and Profile, see store/progress.
+  const progress = useProgress((s) => s.stats);
+  const progressFailed = useProgress((s) => s.failed);
+  const refreshProgress = useProgress((s) => s.refresh);
 
   const [categories, setCategories] = useState<(CategoryLike & { id: number })[] | null>(null);
   const [recent, setRecent] = useState<SessionLike[] | null>(null);
@@ -152,7 +165,7 @@ export function HomeScreen({ navigation }: any) {
   const loadAll = useCallback(async () => {
     setFailed(false);
     const results = await Promise.allSettled([
-      loadCategories(), loadRecent(), refreshMe(), refreshBalance(),
+      loadCategories(), loadRecent(), refreshMe(), refreshBalance(), refreshProgress(),
     ]);
     // Only the two data calls decide the error state; a stale /user/me or a
     // stale balance is survivable and must not blank out a screen that already
@@ -162,7 +175,7 @@ export function HomeScreen({ navigation }: any) {
       setCategories((c) => c ?? []);
       setRecent((r) => r ?? []);
     }
-  }, [loadCategories, loadRecent, refreshBalance, refreshMe]);
+  }, [loadCategories, loadRecent, refreshBalance, refreshMe, refreshProgress]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -177,7 +190,9 @@ export function HomeScreen({ navigation }: any) {
       // Coming back from an interview, a practice session or a purchase — the
       // three things that move the balance — always lands here.
       refreshBalance().catch(() => {});
-    }, [loadRecent, refreshBalance, refreshMe]),
+      // A finished session moves the streak too.
+      refreshProgress().catch(() => {});
+    }, [loadRecent, refreshBalance, refreshMe, refreshProgress]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -200,7 +215,37 @@ export function HomeScreen({ navigation }: any) {
 
   const goPremium = useCallback(() => navigation.navigate('Subscription'), [navigation]);
   const goMeeting = useCallback(() => navigation.navigate('MeetingSetup'), [navigation]);
+  const goAssist = useCallback(() => navigation.navigate('AssistSetup'), [navigation]);
+  const goCalendar = useCallback(() => navigation.navigate('Calendar'), [navigation]);
+
+  // Back from Google's consent page on the web: the SPA reloaded onto Home, so
+  // carry the result on to the screen the person started from.
+  useEffect(() => {
+    const result = takeCalendarReturn();
+    if (result) navigation.navigate('Calendar', { result: result.status, reason: result.reason });
+  }, [navigation]);
   const goHistory = useCallback(() => navigation.navigate('History'), [navigation]);
+  const goStats = useCallback(() => navigation.navigate('Stats'), [navigation]);
+
+  // Tip of the day: the same tip all day, a different one tomorrow, and a
+  // "another tip" tap for the curious. Indexed by the local day number so every
+  // reader sees the same tip on the same day.
+  const tips = useMemo(() => {
+    const value = t('home.tips', { returnObjects: true }) as unknown;
+    return Array.isArray(value) ? (value as string[]) : [];
+  }, [t]);
+  const [tipOffset, setTipOffset] = useState(0);
+
+  // Light status-bar icons belong on the gradient only. Once the hero has
+  // scrolled away they sat white-on-white, so the clock and battery vanished.
+  const [heroHeight, setHeroHeight] = useState(0);
+  const [pastHero, setPastHero] = useState(false);
+  const onScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const past = heroHeight > 0 && e.nativeEvent.contentOffset.y > heroHeight - insets.top;
+    setPastHero((prev) => (prev === past ? prev : past));
+  }, [heroHeight, insets.top]);
+  const dayNumber = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60_000) / 86_400_000);
+  const tip = tips.length ? tips[(dayNumber + tipOffset) % tips.length] : null;
 
   // `balance.plan` is the same premium flag `/user/me` carries, but it is the
   // one that came back with the minutes, so the badge and the card can never
@@ -235,12 +280,13 @@ export function HomeScreen({ navigation }: any) {
       colors={[...theme.gradients.hero]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
+      onLayout={(e) => setHeroHeight(e.nativeEvent.layout.height)}
       style={[
         styles.hero,
         {
           borderBottomLeftRadius: theme.radii.xl,
           borderBottomRightRadius: theme.radii.xl,
-          paddingTop: theme.spacing.lg,
+          paddingTop: insets.top + theme.spacing.lg,
           // Deep enough that the balance card can ride the bottom edge.
           paddingBottom: theme.spacing['5xl'],
         },
@@ -289,6 +335,8 @@ export function HomeScreen({ navigation }: any) {
               label={isPremium ? t('plan.premium') : t('plan.free')}
             />
           </Pressable>
+
+          <ThemeToggle tone="onBrand" />
         </View>
       </View>
     </LinearGradient>
@@ -310,7 +358,7 @@ export function HomeScreen({ navigation }: any) {
       transition={{ type: 'timing', duration: theme.motion.duration.slow }}
       style={{ marginTop: -theme.spacing['3xl'] }}
     >
-      <Card padding="md">
+      <Card padding="md" style={{ gap: theme.spacing.sm }}>
         <View style={[styles.row, { gap: theme.spacing.md }]}>
           <View
             style={[
@@ -330,16 +378,11 @@ export function HomeScreen({ navigation }: any) {
             />
           </View>
 
-          <View style={styles.grow}>
-            <Text role="body" weight="bold" numberOfLines={1}>
-              {balance
-                ? t('home.balanceTitle', { label: remainingLabel })
-                : t('home.balanceLoading')}
-            </Text>
-            {balanceHint ? (
-              <Text role="caption" tone="muted" numberOfLines={2}>{balanceHint}</Text>
-            ) : null}
-          </View>
+          <Text role="body" weight="bold" numberOfLines={2} flex>
+            {balance
+              ? t('home.balanceTitle', { label: remainingLabel })
+              : t('home.balanceLoading')}
+          </Text>
 
           <Button
             title={t('home.buyMinutes')}
@@ -350,6 +393,9 @@ export function HomeScreen({ navigation }: any) {
             accessibilityLabel={t('plan.upgradeLong')}
           />
         </View>
+        {balanceHint ? (
+          <Text role="caption" tone="muted">{balanceHint}</Text>
+        ) : null}
       </Card>
     </MotiView>
   );
@@ -465,6 +511,66 @@ export function HomeScreen({ navigation }: any) {
     </MotiView>
   );
 
+  /* ----------------------------- streak ----------------------------- *
+   *
+   * Hidden rather than zeroed while the numbers are unknown: "no streak" on a
+   * cold start is a claim, and for someone on day 12 a false one. An older
+   * server without `activity` simply never shows the card.
+   * ------------------------------------------------------------------ */
+
+  const streakSection = progress?.activity ? (
+    <MotiView
+      from={{ opacity: 0, translateY: theme.spacing.md }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: 'timing', duration: theme.motion.duration.slow, delay: theme.motion.stagger * 3 }}
+    >
+      <StreakCard activity={progress.activity} onPress={goStats} />
+    </MotiView>
+  ) : !progress && !progressFailed ? (
+    <Skeleton height={theme.spacing['7xl'] * 2 + theme.spacing['3xl']} radius={theme.radii.lg} />
+  ) : null;
+
+  /* ------------------------------- tip ------------------------------ */
+
+  const tipSection = tip ? (
+    <Card variant="filled" padding="md">
+      <View style={[styles.row, { gap: theme.spacing.md, alignItems: 'flex-start' }]}>
+        <View
+          style={[
+            styles.balanceIcon,
+            {
+              width: theme.layout.avatar.sm + theme.spacing.xs,
+              height: theme.layout.avatar.sm + theme.spacing.xs,
+              borderRadius: theme.radii.md,
+              backgroundColor: theme.colors.accentMuted,
+            },
+          ]}
+        >
+          <Ionicons name="bulb" size={theme.layout.icon.md} color={theme.colors.accent} />
+        </View>
+        <View style={[styles.grow, { gap: theme.spacing.xxs }]}>
+          <Text role="caption" weight="bold" tone="accent">{t('home.tipTitle')}</Text>
+          <MotiView
+            key={tip}
+            from={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ type: 'timing', duration: theme.motion.duration.normal }}
+          >
+            <Text role="body">{tip}</Text>
+          </MotiView>
+          <Pressable
+            onPress={() => setTipOffset((n) => n + 1)}
+            accessibilityRole="button"
+            hitSlop={theme.spacing.sm}
+            style={({ pressed }) => [{ alignSelf: 'flex-start', marginTop: theme.spacing.xs, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text role="caption" weight="bold" tone="primary">{t('home.tipNext')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Card>
+  ) : null;
+
   /* ---------------------------- categories -------------------------- */
 
   const categoriesSection = (
@@ -577,14 +683,29 @@ export function HomeScreen({ navigation }: any) {
   return (
     <Screen
       scroll
+      edges={[]}
       refreshing={refreshing}
       onRefresh={onRefresh}
       header={hero}
+      onScroll={onScroll}
       contentStyle={{ gap: theme.spacing['2xl'] }}
+      // Past the hero, content would scroll under the clock: a strip of page
+      // colour behind the status bar keeps the icons readable.
+      footer={pastHero ? (
+        <View
+          pointerEvents="none"
+          style={[styles.statusScrim, { height: insets.top, backgroundColor: theme.colors.bg }]}
+        />
+      ) : null}
     >
+      <ScreenStatusBar tone={pastHero ? 'theme' : 'onBrand'} />
       {balanceCard}
       {meetingCta}
+      <AssistEntryCard onPress={goAssist} />
+      <CalendarEntryCard onPress={goCalendar} />
+      {streakSection}
       {categoriesSection}
+      {tipSection}
       {recentSection}
     </Screen>
   );
@@ -595,6 +716,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
 
   hero: { width: '100%', overflow: 'hidden' },
+  statusScrim: { position: 'absolute', top: 0, left: 0, right: 0 },
   // Keeps the hero colour full-bleed while its content stays inside the same
   // optical column as the rest of the screen on tablet/desktop. The cap itself
   // comes from `useResponsive().maxWidth` at the call site.

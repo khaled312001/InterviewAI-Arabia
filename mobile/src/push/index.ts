@@ -17,6 +17,7 @@ export { isPushSupported } from './device';
 export {
   disablePush,
   enablePush,
+  ensureNotificationPermission,
   maybeAskForPush,
   pushSnapshot,
   registerForPush,
@@ -26,3 +27,10 @@ export {
 export type { PushFailure, PushResult, PushSnapshot } from './registration';
 
 export { usePushNotifications } from './usePushNotifications';
+
+export { planReminders, cancelReminders } from './reminders';
+export { useReminderPlanner } from './useReminderPlanner';
+export {
+  readTopics, writeTopics, onTopicsChanged, DEFAULT_TOPICS, REMINDER_HOURS,
+  type NotificationTopic, type TopicPrefs,
+} from './topics';

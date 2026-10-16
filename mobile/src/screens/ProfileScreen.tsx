@@ -7,12 +7,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { api } from '../api/client';
 import { useAuth } from '../store/auth';
 import { useBalance } from '../store/balance';
+import { useProgress } from '../store/progress';
 import { setAppLanguage } from '../i18n';
 import { useAppTheme } from '../theme/useTheme';
 import {
   Screen, Text, Card, Badge, Button, Input, ListRow, SectionHeader, Avatar,
 } from '../components';
 import { balanceLabel, formatMonthYear } from './mainShared';
+import { ProgressSummary } from './progressWidgets';
 
 type Lang = 'ar' | 'en';
 
@@ -177,6 +179,10 @@ export function ProfileScreen({ navigation }: any) {
   // trusting whatever the last screen happened to leave in the store.
   useEffect(() => { refreshBalance().catch(() => {}); }, [refreshBalance]);
 
+  // Same numbers as Home and Stats — one store, one request.
+  const progress = useProgress((s) => s.stats);
+  useEffect(() => { useProgress.getState().refresh().catch(() => {}); }, []);
+
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name ?? '');
   const [language, setLanguage] = useState<Lang>((user?.language as Lang) ?? 'ar');
@@ -240,10 +246,14 @@ export function ProfileScreen({ navigation }: any) {
 
   const goSubscription = useCallback(() => navigation.navigate('Subscription'), [navigation]);
   const goSettings = useCallback(() => navigation.navigate('Settings'), [navigation]);
+  const goStats = useCallback(() => navigation.navigate('Stats'), [navigation]);
 
   return (
     <Screen
       scroll
+      // The name editor is on this screen; without avoidance the keyboard
+      // covers the field and its save button.
+      keyboardAvoiding
       contentStyle={{ paddingTop: theme.spacing.lg, gap: theme.spacing.xl }}
       // Rendered outside the ScrollView: react-native-web's Modal lays out in
       // place, and a fixed overlay nested in a scroller misbehaves on web.
@@ -375,6 +385,18 @@ export function ProfileScreen({ navigation }: any) {
         </MotiView>
       ) : null}
 
+      {/* ---------------------------- progress --------------------------- */}
+      {progress ? (
+        <View>
+          <SectionHeader
+            title={t('profile.statsTitle')}
+            actionLabel={t('profile.viewStats')}
+            onAction={goStats}
+          />
+          <ProgressSummary stats={progress} onPress={goStats} />
+        </View>
+      ) : null}
+
       {/* ------------------------------ plan ----------------------------- */}
       <View>
         <SectionHeader title={t('home.yourPlan')} />
@@ -454,6 +476,22 @@ export function ProfileScreen({ navigation }: any) {
             iconTone="accent"
             title={t('subscription.title')}
             onPress={goSubscription}
+            divider
+          />
+          <ListRow
+            icon="briefcase-outline"
+            iconTone="primary"
+            title={t('career.hub.title')}
+            subtitle={t('career.hub.subtitle')}
+            onPress={() => navigation.navigate('CareerHub')}
+            divider
+          />
+          <ListRow
+            icon="calendar-outline"
+            iconTone="primary"
+            title={t('calendar.profileRow')}
+            subtitle={t('calendar.profileRowHint')}
+            onPress={() => navigation.navigate('Calendar')}
             divider
           />
           <ListRow

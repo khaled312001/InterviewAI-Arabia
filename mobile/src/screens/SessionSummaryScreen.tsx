@@ -23,6 +23,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { api } from '../api/client';
 import { maybeAskForPush } from '../push';
+import { useProgress } from '../store/progress';
 import { useAppTheme, useResponsive, useDirection } from '../theme/useTheme';
 import { scoreTone } from '../theme/tokens';
 import {
@@ -268,6 +269,11 @@ export function SessionSummaryScreen({ route, navigation }: Props) {
 
   // A finished session is immutable — load once, never on focus.
   useEffect(() => { load(); }, [load]);
+
+  // A finished session moves the streak; refreshing it here also re-plans
+  // tonight's practice reminder away for someone who closes the app from this
+  // screen instead of going back to Home.
+  useEffect(() => { useProgress.getState().refresh().catch(() => {}); }, []);
 
   /**
    * The notification permission is asked for here and nowhere near first launch.

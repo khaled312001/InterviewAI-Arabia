@@ -24,8 +24,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { MotiView } from 'moti';
 import { useTranslation } from 'react-i18next';
 
-import { api, API_BASE } from '../api/client';
-import { secureStorage } from '../storage/secureStorage';
+import { api, authFetch } from '../api/client';
 import { Screen, Text, Button, Card, Input } from '../components';
 import { useBalance } from '../store/balance';
 import { activeMarket } from '../store/market';
@@ -175,13 +174,14 @@ export function MeetingSetupScreen({ route, navigation }: any) {
     setCvError(null);
     setOutOfMinutes(false);
 
-    // Held outside the try so the catch can prefer the server's own wording
-    // (quota, premium, unsupported CV) over the generic localised fallback,
-    // without leaking a raw "Failed to fetch" at the user.
-    let serverMessage: string | null = null;
+    // Held outside the try so the catch can pick the right localised line.
+    // The server's own `error` text is English for everything but a suspended
+    // account ("Invalid or expired token", "Too many requests"…), so it is
+    // shown only where it is written for the reader — the suspension notice,
+    // which is bilingual — and translated by status everywhere else.
+    let failure: string | null = null;
 
     try {
-      const token = await secureStorage.getItem('access_token');
       const form = new FormData();
       form.append('categoryId', String(categoryId));
       form.append('company', company.trim());
@@ -196,17 +196,21 @@ export function MeetingSetupScreen({ route, navigation }: any) {
         else form.append('cv', { uri: cvFile.uri, name: cvFile.name, type: cvFile.mimeType } as unknown as Blob);
       }
 
-      const res = await fetch(`${API_BASE}/meeting/prepare`, {
-        method: 'POST',
-        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: form,
-      });
+      // authFetch, not a bare fetch: it renews an access token that expired
+      // while the candidate was filling this form in.
+      const res = await authFetch('/meeting/prepare', { method: 'POST', body: form });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        serverMessage = typeof body?.error === 'string' ? body.error : null;
-        // 402 here is the CV-analysis charge, not the interview: say so, and
-        // offer the way out instead of a dead "try again".
-        if (res.status === 402 && body?.code === 'QUOTA_EXCEEDED') setOutOfMinutes(true);
+        if (res.status === 402 && body?.code === 'QUOTA_EXCEEDED') {
+          // 402 here is the CV-analysis charge, not the interview: say so, and
+          // offer the way out instead of a dead "try again".
+          setOutOfMinutes(true);
+          failure = t('meeting.quotaBody');
+        } else if (res.status === 429) {
+          failure = t('auth.errors.tooManyAttempts');
+        } else if (res.status === 403 && typeof body?.error === 'string') {
+          failure = body.error;
+        }
         throw new Error('prepare-failed');
       }
       const data = await res.json();
@@ -234,7 +238,7 @@ export function MeetingSetupScreen({ route, navigation }: any) {
         },
       });
     } catch {
-      setFormError(serverMessage ?? t('meetingSetup.startFailed'));
+      setFormError(failure ?? t('meetingSetup.startFailed'));
     } finally {
       setAnalyzing(false);
     }

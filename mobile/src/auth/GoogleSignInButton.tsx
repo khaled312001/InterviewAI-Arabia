@@ -60,10 +60,22 @@ interface Props {
   onPress: () => void;
   /** `signIn` on the login screen, `signUp` on registration. */
   variant?: 'signIn' | 'signUp';
+  /**
+   * `top`: the button comes FIRST and the divider below it introduces the
+   * email form. `bottom`: the divider comes first and the button closes the
+   * form.
+   *
+   * Both auth screens use `top`. Below the form the button sat under three
+   * fields and a strength meter — past the fold on most phones and behind
+   * the keyboard the moment anyone started typing, which is how "the Google
+   * button is usually missing" was reported. The one-tap path belongs where
+   * it is seen first.
+   */
+  placement?: 'top' | 'bottom';
 }
 
 export function GoogleSignInButton({
-  available, busy, disabled, onPress, variant = 'signIn',
+  available, busy, disabled, onPress, variant = 'signIn', placement = 'bottom',
 }: Props) {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -72,13 +84,19 @@ export function GoogleSignInButton({
 
   const blocked = busy || !!disabled;
 
+  const divider = (
+    <View style={[styles.divider, { gap: theme.spacing.md }]}>
+      <View style={{ flex: 1, height: theme.layout.hairline, backgroundColor: theme.colors.divider }} />
+      <Text role="micro" tone="muted">
+        {t(placement === 'top' ? 'auth.orEmailDivider' : 'auth.orDivider')}
+      </Text>
+      <View style={{ flex: 1, height: theme.layout.hairline, backgroundColor: theme.colors.divider }} />
+    </View>
+  );
+
   return (
     <View style={{ gap: theme.spacing.lg }}>
-      <View style={[styles.divider, { gap: theme.spacing.md }]}>
-        <View style={{ flex: 1, height: theme.layout.hairline, backgroundColor: theme.colors.divider }} />
-        <Text role="micro" tone="muted">{t('auth.orDivider')}</Text>
-        <View style={{ flex: 1, height: theme.layout.hairline, backgroundColor: theme.colors.divider }} />
-      </View>
+      {placement === 'bottom' ? divider : null}
 
       <Pressable
         onPress={onPress}
@@ -112,6 +130,8 @@ export function GoogleSignInButton({
           {t(variant === 'signUp' ? 'auth.googleSignUp' : 'auth.googleSignIn')}
         </Text>
       </Pressable>
+
+      {placement === 'top' ? divider : null}
     </View>
   );
 }

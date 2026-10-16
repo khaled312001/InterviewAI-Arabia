@@ -436,3 +436,108 @@ export type UseSessionRecorder = (opts: {
   /** Live-region feedback, keyed under `meeting.*` in the translations. */
   onNotice?: (key: string, tone: 'info' | 'danger' | 'success') => void;
 }) => SessionRecorder;
+
+/* ------------------------------------------------------------------ *
+ * 7. Live voice agent
+ * ------------------------------------------------------------------ *
+ *
+ * A different shape of interview from the one above, not an addition to it.
+ *
+ * Sections 3 and 4 describe a turn the SCREEN drives: recognise speech, post
+ * the text, wait for a reply, speak it. The voice agent holds one websocket
+ * open for the whole call and does all four inside it — so when this is
+ * running, `useSpeechRecognizer` and `useInterviewerVoice` are not. The screen
+ * picks one pair or the other at the start of the call and never mixes them;
+ * two microphone clients on one call means each hears the other's echo.
+ *
+ * What the screen still owns: the billing clock, the transcript it keeps for
+ * the final evaluation, and the decision to hang up.
+ */
+
+/** Opaque session credentials, minted by our backend at POST /api/voice/session. */
+export interface VoiceAgentSession {
+  /** Deepgram's websocket address. From the server so it is one edit, not two. */
+  url: string;
+  /** Short-lived token. Valid only for the handshake; the call outlives it. */
+  token: string;
+  /**
+   * The Settings frame, forwarded to Deepgram verbatim and never inspected
+   * here. It is deliberately opaque: the persona, the model and the voice are
+   * the server's business, and a client that parsed this would be a client
+   * that could be made to rewrite it.
+   */
+  settings: unknown;
+}
+
+export type VoiceAgentState =
+  | 'idle'
+  /** Credentials fetched, microphone opened, handshake in flight. */
+  | 'connecting'
+  /** Settings accepted. Audio is flowing both ways. */
+  | 'live'
+  /** Closed cleanly, by us or by the server. */
+  | 'ended'
+  | 'failed';
+
+/** Who is talking right now — drives the stage animation and the level meter. */
+export type VoiceAgentSpeaker = 'none' | 'candidate' | 'interviewer';
+
+export type VoiceAgentErrorCode =
+  /** This build has no audio transport (native, today). Fall back silently. */
+  | 'unsupported'
+  | 'mic-denied'
+  /** Token rejected at the handshake — almost always a clock or a key problem. */
+  | 'auth'
+  | 'network'
+  /** Deepgram sent a fatal Error frame, or our think endpoint is failing. */
+  | 'server'
+  | 'unknown';
+
+export interface VoiceAgentOptions {
+  /**
+   * Injected for the same reason `fetchServerTts` is: this layer never imports
+   * the API client or the auth store.
+   */
+  fetchSession: () => Promise<VoiceAgentSession>;
+  /**
+   * One finalised line of the conversation, either side.
+   *
+   * This is the ONLY record of what was said. The audio is not kept, and the
+   * final evaluation is written from these lines, so a dropped one is a hole
+   * in the candidate's report.
+   */
+  onTurn: (turn: { role: 'user' | 'assistant'; content: string }) => void;
+  /**
+   * `analysable` is the interviewer's playback node while she is speaking, so
+   * the level meter can draw her waveform instead of guessing an envelope.
+   * Null for every other transition.
+   */
+  onSpeakerChange?: (who: VoiceAgentSpeaker, analysable: CaptureHandle | null) => void;
+  onStateChange?: (state: VoiceAgentState) => void;
+  onError?: (code: VoiceAgentErrorCode, detail?: string) => void;
+}
+
+export interface VoiceAgentController {
+  /**
+   * Hard gate, checked before anything is shown to the user. False means this
+   * build cannot stream audio at all and the screen must use the typed path —
+   * see the note in `voiceAgent.native.ts` about why that is currently native.
+   */
+  readonly supported: boolean;
+  readonly state: VoiceAgentState;
+  readonly speaker: VoiceAgentSpeaker;
+  readonly muted: boolean;
+
+  /** Resolves once the call is live, or rejects having already reported the code. */
+  start(): Promise<void>;
+  /**
+   * Mutes the candidate without dropping the call: the stream keeps flowing as
+   * silence. Closing it instead would end the turn and make the interviewer
+   * answer the half-sentence she had so far.
+   */
+  setMuted(muted: boolean): void;
+  stop(): void;
+  release(): void;
+}
+
+export type UseVoiceAgent = (opts: VoiceAgentOptions) => VoiceAgentController;

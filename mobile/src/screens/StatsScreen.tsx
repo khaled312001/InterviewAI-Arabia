@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { api } from '../api/client';
-import { useAppTheme, useDirection } from '../theme/useTheme';
+import { useProgress, type StatsResponse } from '../store/progress';
+import { useAppTheme } from '../theme/useTheme';
 import { accentForCategory, scoreColor, scoreTone } from '../theme/tokens';
 import {
   Screen, Text, Card, Badge, SectionHeader, EmptyState, ScoreRing, ScoreBar,
@@ -16,6 +17,7 @@ import {
   answerCount, categoryIcon, categoryName, relativeTime, sessionAverage,
   sessionCountLabel, type CategoryLike, type SessionLike,
 } from './mainShared';
+import { ActivityFigures, WeekBars } from './progressWidgets';
 
 /** Enough sessions for a meaningful trend without a second round-trip. */
 const TREND_LIMIT = 50;
@@ -29,17 +31,6 @@ const TREND_POINTS = 10;
  * chart-geometry ratio, not a spacing value, so it has no token equivalent.
  */
 const MIN_BAR_PERCENT = 6;
-
-interface StatsResponse {
-  totalSessions: number;
-  totalAnswers: number;
-  averageScore: number;
-  categoryBreakdown: {
-    categoryId: number;
-    _count?: { _all?: number };
-    _avg?: { totalScore?: number };
-  }[];
-}
 
 interface BreakdownRow {
   categoryId: number;
@@ -134,11 +125,12 @@ const CategoryStatRow = React.memo(function CategoryStatRow({
 function TrendChart({ points }: { points: { score: number; date: string | null }[] }) {
   const theme = useAppTheme();
   const { t } = useTranslation();
-  const { isRTL } = useDirection();
 
-  // Chronological left-to-right in LTR, right-to-left in RTL, so "later" always
-  // means "further along the reading direction".
-  const ordered = isRTL ? [...points].reverse() : points;
+  // Oldest first. The row flips with the root `direction`, so "later" is
+  // always further along the reading direction — right-to-left in Arabic —
+  // without reversing anything by hand. (Reversing here as well used to flip
+  // it back, which put Arabic readers' newest session on the far right.)
+  const ordered = points;
 
   return (
     <View style={{ gap: theme.spacing.sm }}>
@@ -151,7 +143,13 @@ function TrendChart({ points }: { points: { score: number; date: string | null }
         {ordered.map((p, i) => {
           const pct = Math.max(MIN_BAR_PERCENT, Math.round((p.score / 10) * 100));
           return (
-            <View key={`${p.date ?? i}-${i}`} style={styles.chartCol}>
+            <View key={`${p.date ?? i}-${i}`} style={[styles.chartCol, { gap: theme.spacing.xxs }]}>
+              {/* The score itself, so the chart can be read without guessing
+                  bar heights against an axis it does not have. */}
+              <Text role="micro" weight="bold" align="center" numberOfLines={1}>
+                {p.score.toFixed(1)}
+              </Text>
+              <View style={styles.barTrack}>
               {/* Height is static (percentage heights do not animate reliably
                   on Reanimated's web renderer); the entrance is a fade+rise. */}
               <MotiView
@@ -174,14 +172,15 @@ function TrendChart({ points }: { points: { score: number; date: string | null }
                   backgroundColor: scoreColor(p.score, theme),
                 }}
               />
+              </View>
             </View>
           );
         })}
       </View>
 
       <View style={styles.axis}>
-        <Text role="micro" tone="muted">{isRTL ? t('stats.newest') : t('stats.oldest')}</Text>
-        <Text role="micro" tone="muted">{isRTL ? t('stats.oldest') : t('stats.newest')}</Text>
+        <Text role="micro" tone="muted">{t('stats.oldest')}</Text>
+        <Text role="micro" tone="muted">{t('stats.newest')}</Text>
       </View>
     </View>
   );
@@ -196,7 +195,8 @@ export function StatsScreen() {
   const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
 
-  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const stats = useProgress((s) => s.stats) as StatsResponse | null;
+  const refreshProgress = useProgress((s) => s.refresh);
   const [categories, setCategories] = useState<(CategoryLike & { id: number })[]>([]);
   const [sessions, setSessions] = useState<SessionLike[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,19 +210,20 @@ export function StatsScreen() {
     // names live on `/categories`, so the join happens here. Without it this
     // screen rendered "قسم #5" as a heading, which is what it used to do.
     const [statsRes, catsRes, sessionsRes] = await Promise.allSettled([
-      api.get('/user/stats'),
+      refreshProgress(),
       api.get('/categories'),
       api.get('/sessions', { params: { limit: TREND_LIMIT } }),
     ]);
 
-    if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
-    else setFailed(true);
+    // refreshProgress() keeps the last good response on failure and says so
+    // through the store; a null here means nothing has ever loaded.
+    if (statsRes.status !== 'fulfilled' || !statsRes.value || useProgress.getState().failed) setFailed(true);
 
     if (catsRes.status === 'fulfilled') setCategories(catsRes.value.data.categories ?? []);
     if (sessionsRes.status === 'fulfilled') setSessions(sessionsRes.value.data.sessions ?? []);
 
     setLoading(false);
-  }, []);
+  }, [refreshProgress]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -301,7 +302,7 @@ export function StatsScreen() {
 
   /* ----------------------------- loading ---------------------------- */
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <Screen scroll wide contentStyle={{ paddingTop: theme.spacing.lg, gap: theme.spacing['2xl'] }}>
         <View style={{ gap: theme.spacing.sm }}>
@@ -421,6 +422,17 @@ export function StatsScreen() {
         </Card>
       </MotiView>
 
+      {/* Streak and the last seven days */}
+      {stats.activity ? (
+        <View>
+          <SectionHeader title={t('stats.activityTitle')} subtitle={t('stats.activitySubtitle')} />
+          <Card padding="lg" style={{ gap: theme.spacing.lg }}>
+            <ActivityFigures activity={stats.activity} />
+            <WeekBars days={stats.activity.lastSevenDays} />
+          </Card>
+        </View>
+      ) : null}
+
       {/* Progress over time */}
       {trend.length >= 2 ? (
         <View>
@@ -468,5 +480,6 @@ const styles = StyleSheet.create({
   iconWrap: { alignItems: 'center', justifyContent: 'center' },
   chart: { flexDirection: 'row', alignItems: 'flex-end' },
   chartCol: { flex: 1, height: '100%', justifyContent: 'flex-end' },
+  barTrack: { flex: 1, width: '100%', justifyContent: 'flex-end' },
   axis: { flexDirection: 'row', justifyContent: 'space-between' },
 });

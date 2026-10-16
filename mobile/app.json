@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.interprova.app",
-      "versionCode": 10,
+      "versionCode": 12,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -49,7 +49,7 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE"
       ],
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "resize",
       "allowBackup": false
     },
     "web": {
@@ -57,11 +57,11 @@
       "output": "single",
       "name": "Interprova",
       "shortName": "Interprova",
-      "lang": "ar",
+      "lang": "en",
       "themeColor": "#2D73FD",
       "backgroundColor": "#F7F9FC",
       "favicon": "./assets/favicon.png",
-      "description": "Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي بالعربية والإنجليزية."
+      "description": "Interprova — the AI career platform: jobs worldwide, CV tailoring, AI mock interviews and a live interview assistant."
     },
     "plugins": [
       "expo-localization",
@@ -125,7 +125,14 @@
           "dark": { "backgroundColor": "#2D73FD" }
         }
       ],
-      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "# expo-notifications ships these rules in android/proguard-rules.pro but never\n# declares them as consumerProguardFiles, so R8 never reads them. Without them\n# R8 renames NotificationContent.writeObject() and every scheduled local\n# notification fails with NotSerializableException: org.json.JSONObject.\n-keep class expo.modules.notifications.** { *; }\n-keepclassmembers class * implements java.io.Serializable {\n    static final long serialVersionUID;\n    private static final java.io.ObjectStreamField[] serialPersistentFields;\n    private void writeObject(java.io.ObjectOutputStream);\n    private void readObject(java.io.ObjectInputStream);\n    java.lang.Object writeReplace();\n    java.lang.Object readResolve();\n}"
+          }
+        }
+      ],
       "expo-web-browser",
       "./plugins/withAndroidHardwareFeatures",
       "@react-native-google-signin/google-signin"

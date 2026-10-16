@@ -32,6 +32,9 @@ export interface DeviceCounts {
   byPlatform: Record<string, number>;
   signedIn: number;
   anonymous: number;
+  /** Live devices whose reader switched "product news" off — broadcasts skip
+   *  them. Absent from a backend older than migration 008. */
+  newsOptOut?: number;
 }
 
 /**

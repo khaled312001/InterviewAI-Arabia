@@ -273,23 +273,6 @@ export function LoginPage() {
               </Button>
             </Stack>
           </form>
-
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: 'block', textAlign: 'center', mt: 3 }}
-          >
-            تطوير{' '}
-            <Box
-              component="a"
-              href="https://barmagly.tech/"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ color: 'text.secondary', fontWeight: 700 }}
-            >
-              شركة برمجلي
-            </Box>
-          </Typography>
         </Paper>
       </Box>
     </Box>

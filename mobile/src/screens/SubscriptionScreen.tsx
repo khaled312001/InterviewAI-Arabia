@@ -704,7 +704,7 @@ export function SubscriptionScreen({ navigation }: any) {
   }
 
   return (
-    <Screen scroll edges={['bottom']} footer={footer} testID="subscription">
+    <Screen scroll keyboardAvoiding edges={['bottom']} footer={footer} testID="subscription">
       {/* ---------------------------- Hero ---------------------------- */}
       <Reveal index={0}>
         <LinearGradient

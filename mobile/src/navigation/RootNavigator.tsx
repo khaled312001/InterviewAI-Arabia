@@ -1,10 +1,13 @@
-import { I18nManager, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../store/auth';
 import { useAppTheme } from '../theme/useTheme';
+import { useLanguage } from '../i18n';
+import { AppHeader } from '../components';
 
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { MeetingScreen } from '../screens/MeetingScreen';
@@ -26,6 +29,19 @@ import { SubscriptionScreen } from '../screens/SubscriptionScreen';
 import { LedgerScreen } from '../screens/LedgerScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 
+import { JobsScreen } from '../screens/career/JobsScreen';
+import { JobDetailScreen } from '../screens/career/JobDetailScreen';
+import { CvBuilderScreen } from '../screens/career/CvBuilderScreen';
+import { TailorScreen } from '../screens/career/TailorScreen';
+import { CareerHubScreen } from '../screens/career/CareerHubScreen';
+import { CvVersionsScreen, ApplicationsScreen, SavedSearchesScreen } from '../screens/career/CareerListsScreens';
+import { AssistSetupScreen } from '../screens/assist/AssistSetupScreen';
+import { LiveAssistScreen } from '../screens/assist/LiveAssistScreen';
+import type { AssistSession, AssistSetup } from '../screens/assist/assistApi';
+import { CalendarScreen } from '../screens/calendar/CalendarScreen';
+import { ScheduleInterviewScreen } from '../screens/calendar/ScheduleInterviewScreen';
+import { PrepTaskScreen } from '../screens/calendar/PrepTaskScreen';
+
 export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
@@ -45,6 +61,34 @@ export type RootStackParamList = {
    *  evaluation, so it travels with the route rather than reading the UI
    *  language at call time. */
   Meeting: { categoryId: number; categoryName: string; language?: 'ar' | 'en'; context?: any };
+  JobDetail: { jobId: string; title?: string };
+  CvBuilder: undefined;
+  Tailor: { jobId?: string; title?: string } | undefined;
+  CareerHub: undefined;
+  CvVersions: undefined;
+  Applications: undefined;
+  SavedSearches: undefined;
+  /** Live Interview Assistant. A job from the board arrives preselected. */
+  AssistSetup: {
+    jobId?: string;
+    title?: string;
+    /** From a calendar event: opens in "paste" mode with these filled in. */
+    prefill?: { title?: string; company?: string; notes?: string };
+  } | undefined;
+  /** Opened by the setup screen with the session it already started. */
+  LiveAssist: { setup: AssistSetup; session: AssistSession };
+  /** `result` arrives from the web OAuth redirect (calendarReturn.ts). */
+  Calendar: { result?: 'connected' | 'error'; reason?: string | null } | undefined;
+  ScheduleInterview: {
+    kind?: 'interview' | 'practice' | 'prep';
+    company?: string;
+    role?: string;
+    jobId?: string;
+    applicationId?: string;
+    /** Shown as "For <title>" — the job or application this belongs to. */
+    title?: string;
+  } | undefined;
+  PrepTask: { company?: string; role?: string; jobId?: string; title?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -53,10 +97,16 @@ const Tabs = createBottomTabNavigator();
 function MainTabs() {
   const theme = useAppTheme();
   const { t } = useTranslation();
+  // The app is edge-to-edge, so the bar has to make room for the gesture
+  // handle itself. A fixed 68px height put the handle across the labels.
+  const insets = useSafeAreaInsets();
   return (
     <Tabs.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        // With the keyboard up there is nothing to switch to, and a tab bar
+        // floating over the keyboard eats the rows of the form being typed in.
+        tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarStyle: {
@@ -64,8 +114,8 @@ function MainTabs() {
           borderTopColor: theme.colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
           paddingTop: 8,
-          paddingBottom: 10,
-          height: 68,
+          paddingBottom: 10 + insets.bottom,
+          height: 68 + insets.bottom,
         },
         tabBarLabelStyle: {
           fontFamily: theme.typography.fontFamilyBold,
@@ -75,6 +125,7 @@ function MainTabs() {
         tabBarIcon: ({ color, focused }) => {
           const map: Record<string, { filled: any; outlined: any }> = {
             Home: { filled: 'home', outlined: 'home-outline' },
+            Jobs: { filled: 'briefcase', outlined: 'briefcase-outline' },
             History: { filled: 'time', outlined: 'time-outline' },
             Stats: { filled: 'stats-chart', outlined: 'stats-chart-outline' },
             Profile: { filled: 'person', outlined: 'person-outline' },
@@ -85,6 +136,7 @@ function MainTabs() {
       })}
     >
       <Tabs.Screen name="Home" component={HomeScreen} options={{ title: t('tabs.home') }} />
+      <Tabs.Screen name="Jobs" component={JobsScreen} options={{ title: t('tabs.jobs') }} />
       <Tabs.Screen name="History" component={HistoryScreen} options={{ title: t('tabs.history') }} />
       <Tabs.Screen name="Stats" component={StatsScreen} options={{ title: t('tabs.stats') }} />
       <Tabs.Screen name="Profile" component={ProfileScreen} options={{ title: t('tabs.profile') }} />
@@ -96,27 +148,17 @@ export function RootNavigator() {
   const token = useAuth((s) => s.token);
   const theme = useAppTheme();
   const { t } = useTranslation();
+  const { isRTL, language } = useLanguage();
 
   /**
-   * Stack headers were previously unstyled, so they rendered with the
-   * platform default — a white bar sitting above a dark screen in dark mode.
-   * Titles were also hardcoded Arabic, which left them untranslated in
-   * English. Both come from the theme and i18n now.
+   * Pushed screens share one header, drawn in React (AppHeader) rather than
+   * natively. The native header takes its direction from the process, which
+   * only changes on a restart, so it stayed Arabic-shaped after a switch to
+   * English. Colours and titles come from the theme and i18n.
    */
-  // `headerTitleStyle` accepts only fontFamily/fontSize/fontWeight/color, so
-  // the full TextStyle from the scale is narrowed rather than spread whole.
-  const titleStyle = theme.text('h4', 'bold');
   const headerOptions = {
     headerShown: true,
-    headerStyle: { backgroundColor: theme.colors.bg },
-    headerTintColor: theme.colors.text,
-    headerTitleStyle: {
-      fontFamily: titleStyle.fontFamily,
-      fontSize: titleStyle.fontSize,
-      color: theme.colors.text,
-    },
-    headerShadowVisible: false,
-    headerBackTitleVisible: false,
+    header: (props: any) => <AppHeader {...props} />,
   } as const;
 
   /*
@@ -134,7 +176,7 @@ export function RootNavigator() {
    */
   const pushAnimation = theme.motion.reduced
     ? ('none' as const)
-    : I18nManager.isRTL ? ('slide_from_left' as const) : ('slide_from_right' as const);
+    : isRTL ? ('slide_from_left' as const) : ('slide_from_right' as const);
 
   return (
     <Stack.Navigator
@@ -155,7 +197,17 @@ export function RootNavigator() {
       ) : (
         <>
           <Stack.Screen name="Main" component={MainTabs} />
-          <Stack.Screen name="CategoryDetails" component={CategoryDetailsScreen} options={{ ...headerOptions, title: t('category.title') }} />
+          <Stack.Screen
+            name="CategoryDetails"
+            component={CategoryDetailsScreen}
+            // The field's own name, in the reading language — the generic
+            // "field details" only when a deep link arrived without one.
+            options={({ route }) => {
+              const { nameAr, nameEn } = route.params ?? ({} as RootStackParamList['CategoryDetails']);
+              const name = language === 'en' ? nameEn || nameAr : nameAr || nameEn;
+              return { ...headerOptions, title: name || t('category.title') };
+            }}
+          />
           <Stack.Screen name="Interview" component={InterviewScreen} options={{ ...headerOptions, title: t('interview.title') }} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} options={{ ...headerOptions, title: t('feedback.title') }} />
           <Stack.Screen name="SessionSummary" component={SessionSummaryScreen} options={{ ...headerOptions, title: t('summary.title') }} />
@@ -164,6 +216,18 @@ export function RootNavigator() {
           <Stack.Screen name="MeetingSetup" component={MeetingSetupScreen} options={{ ...headerOptions, title: t('meeting.setupTitle') }} />
           <Stack.Screen name="Meeting" component={MeetingScreen} options={{ headerShown: false, animation: theme.motion.reduced ? 'none' : 'fade' }} />
           <Stack.Screen name="Settings" component={SettingsScreen} options={{ ...headerOptions, title: t('settings.title') }} />
+          <Stack.Screen name="JobDetail" component={JobDetailScreen} options={{ ...headerOptions, title: t('career.tab') }} />
+          <Stack.Screen name="CvBuilder" component={CvBuilderScreen} options={{ ...headerOptions, title: t('career.cv.title') }} />
+          <Stack.Screen name="Tailor" component={TailorScreen} options={{ ...headerOptions, title: t('career.tailorScreen.title') }} />
+          <Stack.Screen name="CareerHub" component={CareerHubScreen} options={{ ...headerOptions, title: t('career.hub.title') }} />
+          <Stack.Screen name="CvVersions" component={CvVersionsScreen} options={{ ...headerOptions, title: t('career.versions.title') }} />
+          <Stack.Screen name="Applications" component={ApplicationsScreen} options={{ ...headerOptions, title: t('career.apps.title') }} />
+          <Stack.Screen name="SavedSearches" component={SavedSearchesScreen} options={{ ...headerOptions, title: t('career.alerts.title') }} />
+          <Stack.Screen name="AssistSetup" component={AssistSetupScreen} options={{ ...headerOptions, title: t('assist.title') }} />
+          <Stack.Screen name="LiveAssist" component={LiveAssistScreen} options={{ ...headerOptions, title: t('assist.title'), gestureEnabled: false }} />
+          <Stack.Screen name="Calendar" component={CalendarScreen} options={{ ...headerOptions, title: t('calendar.title') }} />
+          <Stack.Screen name="ScheduleInterview" component={ScheduleInterviewScreen} options={{ ...headerOptions, title: t('calendar.schedule.title') }} />
+          <Stack.Screen name="PrepTask" component={PrepTaskScreen} options={{ ...headerOptions, title: t('calendar.task.title') }} />
         </>
       )}
     </Stack.Navigator>

@@ -273,7 +273,11 @@ export function NotificationsPage() {
             value={devices?.live}
             icon={<DevicesRounded />}
             tone="brand"
-            hint="الأجهزة الحيّة — وهي مدى أي إشعار عام"
+            hint={
+              devices?.newsOptOut
+                ? `الأجهزة الحيّة. منها ${devices.newsOptOut.toLocaleString('ar-EG')} أوقفت «الأخبار والعروض» فلا يصلها الإشعار العام`
+                : 'الأجهزة الحيّة — وهي مدى أي إشعار عام'
+            }
             loading={overview.isLoading}
             error={overview.isError}
           />

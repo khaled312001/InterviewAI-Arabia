@@ -11,7 +11,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiView } from 'moti';
@@ -20,7 +19,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../store/auth';
 import { useGoogleSignIn } from '../auth/useGoogleSignIn';
 import { GoogleSignInButton } from '../auth/GoogleSignInButton';
-import { Button, Card, Input, Logo, Screen, Text } from '../components';
+import {
+  Button, Card, Input, LanguageToggle, Logo, Screen, ScreenStatusBar, Text, ThemeToggle,
+} from '../components';
 import { useAppTheme, useDirection, useResponsive } from '../theme/useTheme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -171,29 +172,38 @@ export function LoginScreen({ navigation }: Props) {
           { maxWidth, paddingHorizontal: screenPadding, gap: theme.spacing.md },
         ]}
       >
-        {canGoBack ? (
-          <Pressable
-            onPress={goBack}
-            accessibilityRole="button"
-            accessibilityLabel={t('common.back')}
-            hitSlop={theme.spacing.sm}
-            style={({ pressed }) => [
-              styles.backBtn,
-              {
-                width: theme.layout.touchTarget,
-                height: theme.layout.touchTarget,
-                borderRadius: theme.radii.md,
-                opacity: pressed ? 0.6 : 1,
-              },
-            ]}
-          >
-            <Ionicons
-              name={chevronBack}
-              size={theme.layout.icon.lg}
-              color={theme.colors.textOnBrand}
-            />
-          </Pressable>
-        ) : null}
+        {/* Back at the start of the reading direction; language and theme at
+            the other end, so a signed-out reader can change both before the
+            form asks them anything. */}
+        <View style={styles.topRow}>
+          {canGoBack ? (
+            <Pressable
+              onPress={goBack}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.back')}
+              hitSlop={theme.spacing.sm}
+              style={({ pressed }) => [
+                styles.backBtn,
+                {
+                  width: theme.layout.touchTarget,
+                  height: theme.layout.touchTarget,
+                  borderRadius: theme.radii.md,
+                  opacity: pressed ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Ionicons
+                name={chevronBack}
+                size={theme.layout.icon.lg}
+                color={theme.colors.textOnBrand}
+              />
+            </Pressable>
+          ) : <View />}
+          <View style={[styles.topRow, { gap: theme.spacing.sm }]}>
+            <LanguageToggle tone="onBrand" />
+            <ThemeToggle tone="onBrand" />
+          </View>
+        </View>
 
         <MotiView
           from={{ opacity: 0, translateY: -theme.spacing.sm }}
@@ -230,7 +240,7 @@ export function LoginScreen({ navigation }: Props) {
 
   return (
     <Screen scroll keyboardAvoiding edges={['bottom']} header={hero} testID="login">
-      <StatusBar style="light" />
+      <ScreenStatusBar tone="onBrand" />
 
       <MotiView
         from={{ opacity: 0, translateY: theme.spacing.lg }}
@@ -277,6 +287,15 @@ export function LoginScreen({ navigation }: Props) {
           ) : null}
 
           <View style={{ gap: theme.spacing.lg }}>
+            <GoogleSignInButton
+              available={google.available}
+              busy={google.busy}
+              disabled={loading}
+              onPress={google.start}
+              variant="signIn"
+              placement="top"
+            />
+
             <Input
               ref={emailRef}
               label={t('auth.email')}
@@ -342,14 +361,6 @@ export function LoginScreen({ navigation }: Props) {
               accessibilityLabel={t('auth.login')}
               testID="login-submit"
             />
-
-            <GoogleSignInButton
-              available={google.available}
-              busy={google.busy}
-              disabled={loading}
-              onPress={google.start}
-              variant="signIn"
-            />
           </View>
 
           <View
@@ -388,7 +399,8 @@ const styles = StyleSheet.create({
   hero: { overflow: 'hidden' },
   bloom: { position: 'absolute', opacity: 0.1 },
   heroInner: { width: '100%', alignSelf: 'center' },
-  backBtn: { alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
+  backBtn: { alignItems: 'center', justifyContent: 'center' },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { alignItems: 'center' },
   logoTile: { alignItems: 'center', justifyContent: 'center' },
   tagline: { opacity: 0.85 },

@@ -212,3 +212,51 @@ api.interceptors.response.use(
     return api(original);
   },
 );
+
+/**
+ * `fetch` with the same session handling as `api`.
+ *
+ * Two calls cannot go through axios: `/meeting/prepare` sends the CV as a
+ * multipart body, and `/tts` wants the raw audio back. Both used to read the
+ * access token themselves and send it as it was, so the renewal above never
+ * ran for them. Fifteen minutes on the interview setup screen — and pasting a
+ * job description is exactly where people spend that long — and "Start"
+ * answered with the server's own "Invalid or expired token", in English, in
+ * the middle of an Arabic form. Same rules as the interceptor: one renewal
+ * attempt, and only a refused refresh token ends the session.
+ *
+ * `path` is relative to API_BASE. The body is sent twice at most; FormData
+ * and strings both survive being sent again.
+ */
+export async function authFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const iid = await installId();
+  const send = (token: string | null) => fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      ...(init.headers as Record<string, string> | undefined),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(iid ? { 'X-Install-Id': iid } : {}),
+    },
+  });
+
+  const first = await send(await secureStorage.getItem('access_token'));
+  if (first.status !== 401) return first;
+
+  const fresh = await refreshAccessToken();
+  if (fresh.status === 'ok') return send(fresh.token);
+  if (fresh.status === 'refused') AuthEvents.on401();
+  return first;
+}
+
+/**
+ * Renew the session for a transport axios cannot carry — the live
+ * assistant's streamed answer, which needs `expo/fetch` to read the body as
+ * it arrives. Returns the new access token, or null when there is none; a
+ * refused refresh token ends the session exactly as it does above.
+ */
+export async function renewSession(): Promise<string | null> {
+  const fresh = await refreshAccessToken();
+  if (fresh.status === 'ok') return fresh.token;
+  if (fresh.status === 'refused') AuthEvents.on401();
+  return null;
+}
