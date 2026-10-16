@@ -49,7 +49,7 @@ const schema = z.object({
    * claude-haiku-4-5 ~20%). Cost per call is recorded in claude_api_logs, so
    * measure before switching.
    */
-  CLAUDE_MODEL: z.string().default('claude-opus-5'),
+  CLAUDE_MODEL: z.string().default('claude-opus-5-5'),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   GROQ_API_KEY: z.string().optional().default(''),
 
@@ -60,6 +60,32 @@ const schema = z.object({
   PUSH_ENABLED: z.string().optional().default('true'),
   GEMINI_API_KEY: z.string().optional().default(''),
   AI_MODEL: z.string().optional().default(''),
+
+  /* ------------------------------ Voice ----------------------------- */
+  /**
+   * Deepgram Voice Agent — the live spoken interview.
+   *
+   * Unset means the feature is simply absent: /api/voice/session answers 503
+   * and the client falls back to the typed interview it has always had. That
+   * is the correct behaviour for a deployment without a Deepgram project, and
+   * it is why there is no separate VOICE_ENABLED flag to get out of step with
+   * whether a key actually exists.
+   */
+  DEEPGRAM_API_KEY: z.string().optional().default(''),
+  /**
+   * Which Claude answers on a live call.
+   *
+   * Empty falls through to CLAUDE_MODEL. It exists as its own setting because
+   * the two jobs have opposite priorities: the written evaluation is read
+   * minutes later and should be the best model available, while a spoken reply
+   * is a silence on a phone call and every hundred milliseconds is audible.
+   * Opus 5.5 cannot switch its thinking off, so if the pauses are too long the
+   * lever is here — claude-haiku-5-5 and claude-sonnet-5-5 are both markedly
+   * faster, and the written evaluation keeps using CLAUDE_MODEL regardless.
+   */
+  VOICE_LLM_MODEL: z.string().optional().default(''),
+  /** Deepgram speak model for English calls. Empty uses flux-kit-en. */
+  VOICE_SPEAK_MODEL: z.string().optional().default(''),
 
   /* ---------------------------- EasyKash ---------------------------- */
   EASYKASH_ENABLED: bool(false),
@@ -106,6 +132,37 @@ const schema = z.object({
   RECAPTCHA_SITE_KEY: z.string().optional().default(''),
   RECAPTCHA_SECRET: z.string().optional().default(''),
   RECAPTCHA_MIN_SCORE: z.string().optional().default(''),
+
+  /**
+   * Career platform — job feeds.
+   *
+   * The public feeds need no key and run whenever JOBS_INGEST_ENABLED is on.
+   * JSearch (Google for Jobs: LinkedIn, Indeed, Glassdoor, company sites) and
+   * Adzuna are metered and run only once a key is set — from here or from the
+   * admin panel (secrets/registry.js). Declared so cfg() has an env fallback.
+   */
+  JOBS_INGEST_ENABLED: bool(true),
+  JSEARCH_API_KEY: z.string().optional().default(''),
+  JSEARCH_API_HOST: z.string().optional().default(''),
+  ADZUNA_APP_ID: z.string().optional().default(''),
+  ADZUNA_APP_KEY: z.string().optional().default(''),
+
+  /**
+   * Google Calendar / Meet / Tasks (routes/calendar.js).
+   *
+   * Server-side OAuth web flow, so it needs a client SECRET — unlike Google
+   * sign-in, which only verifies ID tokens. The client id is optional here:
+   * empty falls back to the web sign-in client id (app_settings
+   * `google_client_id_web`), which is a "Web application" client and can
+   * carry the extra redirect URI. Both are also settable from the admin panel
+   * (secrets/registry.js). With no secret the feature reports
+   * `configured:false` and the app hides the connect button.
+   *
+   * The redirect URI must match one registered on that OAuth client exactly.
+   */
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional().default(''),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional().default(''),
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().url().default('https://interprova.com/api/calendar/google/callback'),
 
   ADMIN_PASSWORD: z.string().min(8).default('ChangeMeImmediately!'),
 

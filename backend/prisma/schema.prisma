@@ -412,6 +412,12 @@ model MeetingSession {
   /// 'user_ended' | 'exhausted' | 'abandoned' | 'evaluated' | 'admin'
   endReason            String?       @map("end_reason") @db.VarChar(32)
   client               String?       @db.VarChar(32)
+  /// Interview context (company, role, job description, CV summary, market)
+  /// as JSON, for the duration of a live voice call. Written at
+  /// /api/voice/session; read by /api/voice/think, which is called by
+  /// Deepgram rather than by the client and so cannot be handed the
+  /// context per turn the way the typed interview is. See migration 009.
+  voiceContext         String?       @map("voice_context") @db.Text
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
 
@@ -621,6 +627,9 @@ model DeviceToken {
   language   String    @default("ar") @db.VarChar(8)
   installId  String?   @map("install_id") @db.VarChar(191)
   appVersion String?   @map("app_version") @db.VarChar(32)
+  /// Left out of broadcasts (never out of the reader's own notifications).
+  /// Set from the app's "product news" switch and its master switch.
+  newsOptOut Boolean   @default(false) @map("news_opt_out")
   /// Set when FCM reports the token dead. Soft-retired, so a broadcast's
   /// denominator stays honest.
   disabledAt DateTime? @map("disabled_at")

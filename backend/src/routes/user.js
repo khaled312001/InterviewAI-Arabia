@@ -10,10 +10,11 @@ import { requireUser } from '../middleware/auth.js';
 import { upsertToken, detachToken } from '../services/push/audience.js';
 import { asyncHandler, HttpError } from '../utils/asyncHandler.js';
 import {
-  balanceSnapshot, loadBalanceUser, ledgerFor, ensureTrialGranted, CFG,
+  balanceSnapshot, loadBalanceUser, ledgerFor, ensureTrialGranted, CFG, hasPremium,
 } from '../services/billing/minutes.js';
 import { ensureCurrentCycle } from '../services/billing/cycles.js';
 import { hasUsablePassword } from '../services/auth/googleIdentity.js';
+import { activitySummary, clampOffset } from '../services/activity.js';
 
 const router = Router();
 
@@ -30,7 +31,13 @@ function toPublicUser(u) {
     email: u.email,
     name: u.name,
     language: u.language,
-    plan: u.plan,
+    // The EFFECTIVE plan, not the column. `plan` alone is never trusted (see
+    // hasPremium): a grant with no expiry, or an expiry the sweep has not
+    // reached yet, leaves the column at 'premium' while every charging path
+    // treats the account as free. /user/balance already reported the truth,
+    // so the home screen said "free" and Settings said "Premium" for the same
+    // account at the same moment.
+    plan: hasPremium(u) ? 'premium' : 'free',
     // Emitted here as well as from /auth/google, and that is the whole point:
     // the app caches whatever /user/me returns, so a payload without the avatar
     // ERASES the picture the Google sign-in had just supplied. The account
@@ -254,7 +261,13 @@ router.get('/ledger', requireUser, asyncHandler(async (req, res) => {
 router.get('/stats', requireUser, asyncHandler(async (req, res) => {
   // Raw mysql2 — Prisma panics on Hostinger OpenSSL 1.1.x.
   const uid = req.userId.toString();
-  const [totalRow, answerRow, recent, breakdown] = await Promise.all([
+  // `tz` is the reader's offset from UTC in minutes; see services/activity.js
+  // for why the streak is counted in THEIR days rather than the server's.
+  const tz = clampOffset(req.query.tz);
+  // A year and a bit is enough history for "best streak" to mean something
+  // without reading a heavy user's whole life on every visit to Home.
+  const since = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000);
+  const [totalRow, answerRow, recent, breakdown, activityRows] = await Promise.all([
     queryOne('SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?', [uid]),
     queryOne(
       `SELECT COUNT(*) AS n, AVG(a.ai_score) AS avg FROM answers a
@@ -280,6 +293,13 @@ router.get('/stats', requireUser, asyncHandler(async (req, res) => {
        GROUP BY s.category_id`,
       [uid]
     ),
+    // Only sessions where something was actually practised: opening a
+    // category and backing out is not a day of practice.
+    query(
+      `SELECT started_at AS startedAt FROM sessions
+       WHERE user_id = ? AND started_at >= ? AND (answer_count > 0 OR billed_seconds > 0)`,
+      [uid, since]
+    ),
   ]);
 
   for (const s of recent) {
@@ -297,6 +317,7 @@ router.get('/stats', requireUser, asyncHandler(async (req, res) => {
       _count: { _all: Number(b.sessionCount) },
       _avg: { totalScore: Number(b.avgScore ?? 0) },
     })),
+    activity: activitySummary(activityRows.map((r) => new Date(r.startedAt)), tz),
   });
 }));
 
@@ -436,6 +457,9 @@ const pushRegisterSchema = z.object({
   platform: z.string().max(32).optional(),
   language: z.string().max(16).optional(),
   appVersion: z.string().max(32).optional(),
+  /** true = leave this device out of broadcasts. Absent on older builds, which
+   *  leaves whatever is stored alone. */
+  newsOptOut: z.boolean().optional(),
 });
 
 const pushUnregisterSchema = z.object({
@@ -455,6 +479,7 @@ router.post('/push/register', pushRegisterLimiter, optionalUser, asyncHandler(as
     // token can be tied back to an install without inventing a second id.
     installId: req.get('x-install-id') || null,
     appVersion: body.appVersion ?? null,
+    newsOptOut: body.newsOptOut ?? null,
   });
 
   res.json({ ok: true });

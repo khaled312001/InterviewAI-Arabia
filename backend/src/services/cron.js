@@ -5,6 +5,8 @@ import {
   grantSubscriptionCycles, expireSubscriptionMinutes, reconcileBalances,
   remindDormantTrials,
 } from './maintenance.js';
+import { runDueSources, pruneJobs } from './jobs/ingest.js';
+import { runJobAlerts } from './career/alerts.js';
 
 /**
  * In-process scheduler.
@@ -118,6 +120,41 @@ export function startCronJobs() {
       if (result.trialRemindersClaimed > 0) logger.info('Trial reminders sent', result);
     } catch (err) {
       logger.error('Trial reminder job failed', { message: err.message });
+    }
+  }, { timezone: 'Africa/Cairo' });
+
+  /* ------------------------------ job index ------------------------------ */
+
+  // Every ten minutes, whatever sources are due. Each source has its own
+  // interval (aggregators 2–3h, company boards 12h), so a run usually touches
+  // one or two and finishes in seconds; the budget caps a run that catches up
+  // after a restart. Sequential by design: this host is shared.
+  cron.schedule('*/10 * * * *', async () => {
+    try {
+      await runDueSources({ maxSources: 10, budgetMs: 150_000 });
+    } catch (err) {
+      logger.error('Job ingest failed', { message: err.message });
+    }
+  }, { timezone: 'Africa/Cairo' });
+
+  cron.schedule('15 4 * * *', async () => {
+    try {
+      const result = await pruneJobs();
+      logger.info('Job prune complete', result);
+    } catch (err) {
+      logger.error('Job prune failed', { message: err.message });
+    }
+  }, { timezone: 'Africa/Cairo' });
+
+  // Saved-search alerts. Hourly rather than once a day: each search is due 20h
+  // after its last alert, so people get theirs at roughly the hour they saved
+  // it instead of everyone in the world at Cairo's 8 a.m.
+  cron.schedule('40 * * * *', async () => {
+    try {
+      const result = await runJobAlerts();
+      if (result.alertsSent || result.failed) logger.info('Job alerts sent', result);
+    } catch (err) {
+      logger.error('Job alerts failed', { message: err.message });
     }
   }, { timezone: 'Africa/Cairo' });
 

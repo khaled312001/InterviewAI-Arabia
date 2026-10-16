@@ -22,7 +22,7 @@ import { dialectDirective, marketBlock, marketFairnessRule } from './markets.js'
 export function fence(value, max = 4000) {
   const s = String(value ?? '').slice(0, max);
   // Neutralise closing tags so a candidate can't terminate the wrapper early.
-  return s.replace(/<\/?(candidate_answer|job_description|cv|question|transcript)>/gi, '');
+  return s.replace(/<\/?(candidate_answer|job_description|job_title|company|cv|question|transcript|role|bullets)>/gi, '');
 }
 
 /* ------------------------------------------------------------------ *

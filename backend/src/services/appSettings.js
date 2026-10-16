@@ -112,6 +112,8 @@ export const WIRED_KEYS = {
 
   /** The free trial, and the kill switch. 0 disables the trial entirely. */
   free_trial_seconds: int(600, 0, 86_400),
+  /** The first use of each AI career tool costs nothing (routes/career.js, migration 012). */
+  career_first_use_free: bool(true),
   /** How often the client heartbeats a live meeting. Echoed to the client. */
   meeting_tick_seconds: int(15, 5, 120),
   /**

@@ -162,6 +162,7 @@ export async function tokensForAudience(audience, { userId = null } = {}) {
       sql = `${SELECT_LIVE}
               JOIN \`users\` u ON u.\`id\` = t.\`user_id\`
              WHERE t.\`disabled_at\` IS NULL
+               AND t.\`news_opt_out\` = 0
                AND u.\`is_disabled\` = 0
                AND u.\`plan\` = 'premium'
                AND u.\`premium_until\` IS NOT NULL
@@ -179,6 +180,7 @@ export async function tokensForAudience(audience, { userId = null } = {}) {
       sql = `${SELECT_LIVE}
               JOIN \`users\` u ON u.\`id\` = t.\`user_id\`
              WHERE t.\`disabled_at\` IS NULL
+               AND t.\`news_opt_out\` = 0
                AND u.\`is_disabled\` = 0
                AND u.\`trial_granted_at\` IS NOT NULL
                AND NOT (u.\`plan\` = 'premium'
@@ -195,6 +197,7 @@ export async function tokensForAudience(audience, { userId = null } = {}) {
       // long before FCM got round to admitting the token is dead.
       sql = `${SELECT_LIVE}
              WHERE t.\`disabled_at\` IS NULL
+               AND t.\`news_opt_out\` = 0
                AND t.\`last_seen_at\` >= (NOW(3) - INTERVAL ? DAY)
              LIMIT ?`;
       params = [RECENT_DAYS, MAX_RECIPIENTS];
@@ -202,7 +205,7 @@ export async function tokensForAudience(audience, { userId = null } = {}) {
 
     case 'all':
     default:
-      sql = `${SELECT_LIVE} WHERE t.\`disabled_at\` IS NULL LIMIT ?`;
+      sql = `${SELECT_LIVE} WHERE t.\`disabled_at\` IS NULL AND t.\`news_opt_out\` = 0 LIMIT ?`;
       params = [MAX_RECIPIENTS];
       break;
   }
@@ -264,7 +267,7 @@ export async function tokensForAudience(audience, { userId = null } = {}) {
  *   answers `{ ok: true }` either way — a client cannot fix its own FCM token
  *   and a 500 there would just make the app retry a doomed call in a loop.
  */
-export async function upsertToken({ token, userId = null, platform = null, language = null, installId = null, appVersion = null } = {}) {
+export async function upsertToken({ token, userId = null, platform = null, language = null, installId = null, appVersion = null, newsOptOut = null } = {}) {
   const value = token === undefined || token === null ? '' : String(token).trim();
   if (!value || value.length > TOKEN_MAX) {
     logger.warn('[push] refusing to store an unusable device token', { length: value.length });
@@ -276,6 +279,9 @@ export async function upsertToken({ token, userId = null, platform = null, langu
   const lang = language === undefined || language === null || language === '' ? null : languageOf(language);
   const install = trim(installId, INSTALL_ID_MAX);
   const version = trim(appVersion, APP_VERSION_MAX);
+  // null = "this build did not say", which must leave the stored value alone:
+  // an older build re-registering on launch must not undo a newer one's opt-out.
+  const optOut = typeof newsOptOut === 'boolean' ? (newsOptOut ? 1 : 0) : null;
 
   // Who holds the row right now, so a change of hands leaves a record. One
   // lookup on the PRIMARY KEY, and only on the authenticated path: an
@@ -303,17 +309,18 @@ export async function upsertToken({ token, userId = null, platform = null, langu
   // would read 'android' rather than "unspecified".
   await query(
     'INSERT INTO `device_tokens`\n'
-    + '  (`token`, `user_id`, `platform`, `language`, `install_id`, `app_version`, `last_seen_at`, `created_at`)\n'
-    + "VALUES (?, ?, COALESCE(?, 'android'), COALESCE(?, 'ar'), ?, ?, NOW(3), NOW(3))\n"
+    + '  (`token`, `user_id`, `platform`, `language`, `install_id`, `app_version`, `news_opt_out`, `last_seen_at`, `created_at`)\n'
+    + "VALUES (?, ?, COALESCE(?, 'android'), COALESCE(?, 'ar'), ?, ?, COALESCE(?, 0), NOW(3), NOW(3))\n"
     + 'ON DUPLICATE KEY UPDATE\n'
     + '  `user_id`     = COALESCE(VALUES(`user_id`), `user_id`),\n'
     + '  `platform`    = COALESCE(?, `platform`),\n'
     + '  `language`    = COALESCE(?, `language`),\n'
     + '  `install_id`  = COALESCE(?, `install_id`),\n'
     + '  `app_version` = COALESCE(?, `app_version`),\n'
+    + '  `news_opt_out` = COALESCE(?, `news_opt_out`),\n'
     + '  `disabled_at` = NULL,\n'
     + '  `last_seen_at` = NOW(3)',
-    [value, uid, plat, lang, install, version, plat, lang, install, version],
+    [value, uid, plat, lang, install, version, optOut, plat, lang, install, version, optOut],
   );
 
   return true;
@@ -402,7 +409,7 @@ export async function retireToken(token) {
  * panel that showed only `total` would let an operator believe a broadcast
  * reached an audience that has not existed for months.
  *
- * @returns {Promise<{total:number, live:number, byPlatform:Record<string,number>, signedIn:number, anonymous:number}>}
+ * @returns {Promise<{total:number, live:number, byPlatform:Record<string,number>, signedIn:number, anonymous:number, newsOptOut:number}>}
  */
 export async function deviceCounts() {
   const [totals, platforms] = await Promise.all([
@@ -410,7 +417,8 @@ export async function deviceCounts() {
       'SELECT COUNT(*) AS total,\n'
       + '       SUM(`disabled_at` IS NULL) AS live,\n'
       + '       SUM(`disabled_at` IS NULL AND `user_id` IS NOT NULL) AS signedIn,\n'
-      + '       SUM(`disabled_at` IS NULL AND `user_id` IS NULL) AS anonymous\n'
+      + '       SUM(`disabled_at` IS NULL AND `user_id` IS NULL) AS anonymous,\n'
+      + '       SUM(`disabled_at` IS NULL AND `news_opt_out` = 1) AS newsOptOut\n'
       + '  FROM `device_tokens`',
     ),
     query(
@@ -431,5 +439,7 @@ export async function deviceCounts() {
     byPlatform: Object.fromEntries(platforms.map((p) => [p.platform || 'unknown', count(p.n)])),
     signedIn: count(row.signedIn),
     anonymous: count(row.anonymous),
+    // Live devices a broadcast will skip because the reader switched news off.
+    newsOptOut: count(row.newsOptOut),
   };
 }

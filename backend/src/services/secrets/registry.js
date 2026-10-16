@@ -81,6 +81,43 @@ export const CREDENTIALS = [
   { key: 'GEMINI_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
   { key: 'GROQ_API_KEY', group: 'ai', type: 'secret', secret: true, testable: true },
 
+  /* ------------------------------ Voice ------------------------------ */
+  /*
+   * Runtime-changeable for the same reason the model keys are: the person who
+   * notices the interviewer is pausing too long is the operator watching a
+   * call, not whoever can edit the .env and restart Passenger.
+   */
+  { key: 'DEEPGRAM_API_KEY', group: 'ai', type: 'secret', secret: true },
+  { key: 'VOICE_LLM_MODEL', group: 'ai', type: 'text', secret: false },
+  { key: 'VOICE_SPEAK_MODEL', group: 'ai', type: 'text', secret: false },
+
+  /* ---------------------------- Job feeds ---------------------------- */
+  /*
+   * Metered job APIs for the career platform. The free public feeds need no
+   * key (services/jobs/sources.js). JSearch is the lawful route to LinkedIn,
+   * Indeed and Glassdoor postings — through Google for Jobs — so its key is
+   * the single biggest lever on coverage outside Europe and North America.
+   * Group 'ai' so they appear on an existing integrations page.
+   */
+  { key: 'JSEARCH_API_KEY', group: 'ai', type: 'secret', secret: true },
+  { key: 'JSEARCH_API_HOST', group: 'ai', type: 'text', secret: false },
+  { key: 'ADZUNA_APP_ID', group: 'ai', type: 'text', secret: false },
+  { key: 'ADZUNA_APP_KEY', group: 'ai', type: 'secret', secret: true },
+  { key: 'JOOBLE_API_KEY', group: 'ai', type: 'secret', secret: true },
+  { key: 'JOBS_INGEST_ENABLED', group: 'ai', type: 'boolean', secret: false },
+
+  /* ------------------------- Google Calendar -------------------------- */
+  /*
+   * The OAuth client the calendar integration exchanges codes with
+   * (services/calendar/google.js). The secret is only ever sent to Google's
+   * fixed token endpoint (https://oauth2.googleapis.com/token, hardcoded), so
+   * there is no sibling URL setting that could redirect it — no host pin
+   * needed. The client id is public; empty falls back to the web sign-in
+   * client id from app_settings.
+   */
+  { key: 'GOOGLE_OAUTH_CLIENT_ID', group: 'ai', type: 'text', secret: false },
+  { key: 'GOOGLE_OAUTH_CLIENT_SECRET', group: 'ai', type: 'secret', secret: true },
+
   /* ------------------------------- Mail ------------------------------- */
   /**
    * Outbound email. Only one message actually depends on it today — the

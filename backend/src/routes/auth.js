@@ -15,6 +15,7 @@ import { verifyGoogleIdToken, NO_PASSWORD, hasUsablePassword } from '../services
 import { sendMail, isConfigured as mailConfigured } from '../services/mail/mailer.js';
 import { passwordResetEmail } from '../services/mail/templates.js';
 import { logger } from '../utils/logger.js';
+import { hasPremium } from '../services/billing/minutes.js';
 
 const router = Router();
 
@@ -54,7 +55,8 @@ function toPublicUser(u) {
     email: u.email,
     name: u.name,
     language: u.language,
-    plan: u.plan,
+    // Effective, not the raw column — see toPublicUser in routes/user.js.
+    plan: hasPremium(u) ? 'premium' : 'free',
     dailyQuestionsUsed: u.dailyQuestionsUsed,
     avatarUrl: u.avatarUrl ?? null,
     // Whether a password can be used to sign in or to confirm deletion. False

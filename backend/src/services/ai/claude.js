@@ -144,3 +144,58 @@ export async function callClaude({
 
   return { parsed, text: textBlocks, usage };
 }
+
+/**
+ * Streaming variant, for the live voice agent.
+ *
+ * The voice path differs from every other Claude call in the app in two ways
+ * that are worth stating, because both are easy to get wrong:
+ *
+ * - NO structured output. The text produced here is handed straight to a
+ *   text-to-speech engine, so a JSON envelope would be read aloud, braces and
+ *   all. The spoken reply is the whole response; status and coaching notes are
+ *   collected out of band.
+ * - It streams. Deepgram starts synthesising speech from the first sentence it
+ *   receives, so time-to-first-token — not total latency — is what the
+ *   candidate actually experiences as the pause before the interviewer talks.
+ *   Buffering the full reply first would throw that away.
+ *
+ * Returns the SDK's stream object. The caller owns the iteration so it can
+ * forward deltas as they arrive, and should await `.finalMessage()` afterwards
+ * to read usage for the cost log.
+ *
+ * @param {object}  opts  As callClaude, minus `schema`.
+ * @param {AbortSignal} [opts.signal]  Aborts when the caller hangs up.
+ */
+export function streamClaude({
+  system,
+  systemExtra,
+  messages,
+  maxTokens = 1024,
+  effort = 'low',
+  model = cfg('CLAUDE_MODEL'),
+  signal,
+}) {
+  const anthropic = getClient();
+
+  const systemBlocks = [
+    { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+  ];
+  if (systemExtra) systemBlocks.push({ type: 'text', text: systemExtra });
+
+  return anthropic.messages.stream(
+    {
+      model,
+      max_tokens: maxTokens,
+      system: systemBlocks,
+      messages,
+      // Thinking cannot be switched off on Opus 5.5 — it is a 400 at every
+      // effort level — so `effort` is the only latency lever there is here.
+      // 'low' is deliberate: a conversational reply of two sentences needs
+      // almost no deliberation, and every token of it is silence on the call.
+      thinking: { type: 'adaptive' },
+      output_config: { effort },
+    },
+    signal ? { signal } : undefined,
+  );
+}

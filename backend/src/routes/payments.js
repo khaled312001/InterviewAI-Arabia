@@ -542,7 +542,12 @@ router.get('/return', asyncHandler(async (req, res) => {
   // The webhook is the source of truth and may not have landed yet, so the
   // client polls /subscriptions/status rather than trusting this redirect.
   const status = payment?.status ?? 'unknown';
-  const target = `${env.APP_URL.replace(/\/$/, '')}/subscription?payment=${status}&ref=${encodeURIComponent(reference)}`;
+  // /checkout, not /subscription. There has never been a page at /subscription
+  // on this origin — the web app lives under /app and has no route by that name
+  // — so every customer the gateway sent back landed on a 404 right after
+  // paying. The public checkout page reads `payment` and `ref`, polls the
+  // status endpoint below, and shows the result.
+  const target = `${env.APP_URL.replace(/\/$/, '')}/checkout?payment=${encodeURIComponent(status)}&ref=${encodeURIComponent(reference)}`;
   res.redirect(302, target);
 }));
 

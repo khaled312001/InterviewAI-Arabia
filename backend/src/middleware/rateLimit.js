@@ -24,16 +24,48 @@ import rateLimit from 'express-rate-limit';
  * (express-rate-limit exports a helper for this, but only from v7.5 — doing it
  * here keeps the middleware working on the version already deployed.)
  */
-function normaliseIp(ip) {
+export function normaliseIp(ip) {
   if (!ip) return 'unknown';
-  let addr = ip.startsWith('::ffff:') ? ip.slice(7) : ip;   // IPv4-mapped
+  let addr = String(ip).trim();
+  // "[2001:db8::1]:443" — bracketed, with a port, from some proxies.
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(addr);
+  if (bracketed) addr = bracketed[1];
+  addr = addr.split('%')[0];                                  // zone id (fe80::1%eth0)
+  if (/^::ffff:\d+\.\d+\.\d+\.\d+$/i.test(addr)) addr = addr.slice(7);  // IPv4-mapped
   // Some proxies append the source port. Left alone it becomes part of the key
   // and every connection from one client lands in its own bucket.
   const withPort = /^(\d+\.\d+\.\d+\.\d+):\d+$/.exec(addr);
   if (withPort) addr = withPort[1];
   if (!addr.includes(':')) return addr;                      // IPv4
-  const parts = addr.split(':');
-  return `${parts.slice(0, 4).join(':')}::/64`;
+
+  // The prefix has to be read from the EXPANDED address. Slicing the text at
+  // its colons misread every compressed form: "2001:db8::1" and "2001:db8::2"
+  // share a /64 but produced two different keys, and "::1"-style addresses
+  // produced garbage.
+  const groups = expandIpv6(addr);
+  if (!groups) return addr;                                   // not an address we understand; key on it as-is
+  return `${groups.slice(0, 4).join(':')}::/64`;
+}
+
+/** Eight lower-case hex groups without leading zeros, or null if `addr` is not IPv6. */
+function expandIpv6(addr) {
+  let a = addr.toLowerCase();
+  // An embedded IPv4 tail ("64:ff9b::1.2.3.4") is the last two groups.
+  const v4 = /^(.*:)(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(a);
+  if (v4) {
+    const o = v4.slice(2).map(Number);
+    if (o.some((n) => n > 255)) return null;
+    a = `${v4[1]}${((o[0] << 8) | o[1]).toString(16)}:${((o[2] << 8) | o[3]).toString(16)}`;
+  }
+  const halves = a.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(':') : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+  const fill = halves.length === 2 ? 8 - head.length - tail.length : 0;
+  if (fill < 0 || (halves.length === 2 && fill === 0)) return null;
+  const all = [...head, ...Array(fill).fill('0'), ...tail];
+  if (all.length !== 8 || !all.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return null;
+  return all.map((g) => parseInt(g, 16).toString(16));
 }
 
 /**
@@ -251,4 +283,48 @@ export const paymentLimiter = rateLimit({
   max: 8,
   keyGenerator: userOrIpKey,
   message: { error: 'محاولات دفع كثيرة. حاول بعد قليل / Too many payment attempts' },
+});
+
+/**
+ * The public ATS checker. No account and no model call, but it parses an
+ * uploaded PDF, which is the costly part — so a per-address hourly budget far
+ * above anyone checking their own CV and far below a scraper.
+ */
+export const atsCheckLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  keyGenerator: userOrIpKey,
+  message: { error: 'فحوصات كثيرة هذه الساعة / Too many checks this hour, please try again later' },
+});
+
+/** Public job search: generous, but a crawler paging the whole index is capped. */
+export const jobSearchLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 1000,
+  max: 60,
+  keyGenerator: userOrIpKey,
+  message: { error: 'طلبات كثيرة جدًا / Too many requests' },
+});
+
+/**
+ * Calendar reads (status, agenda, tasks) and the OAuth endpoints. Each read is
+ * one Google API call on the person's own quota; this caps a runaway refresh
+ * loop well before Google's per-user limit does.
+ */
+export const calendarLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 1000,
+  max: 60,
+  keyGenerator: userOrIpKey,
+  message: { error: 'طلبات كثيرة جدًا / Too many requests' },
+});
+
+/** Calendar writes: events, tasks and .ics files. Generous for a person, tight for a script. */
+export const calendarWriteLimiter = rateLimit({
+  ...base,
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  keyGenerator: userOrIpKey,
+  message: { error: 'طلبات كثيرة هذه الساعة / Too many calendar changes this hour, please try again later' },
 });

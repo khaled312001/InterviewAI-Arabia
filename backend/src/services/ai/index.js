@@ -28,6 +28,11 @@ import {
   INTERVIEW_EVALUATION_SCHEMA, INTERVIEW_EVALUATION_SYSTEM_AR, INTERVIEW_EVALUATION_SYSTEM_EN,
   CV_SCHEMA, CV_SYSTEM_AR, CV_SYSTEM_EN, fence,
 } from './prompts.js';
+import {
+  CV_DATA_SCHEMA, CV_IMPORT_SYSTEM, TAILOR_SCHEMA, TAILOR_SYSTEM,
+  LETTER_SCHEMA, LETTER_SYSTEM, BULLETS_SCHEMA, BULLETS_SYSTEM,
+} from './careerPrompts.js';
+import { sanitizeCv, lockFacts, cvToText } from '../career/cv.js';
 
 export class AiUnavailableError extends Error {
   constructor(message = 'AI service unavailable', cause) {
@@ -407,3 +412,156 @@ export async function summarizeCv({ cvText, language = 'ar', userId = null }) {
     model: usage.model,
   };
 }
+
+/* ------------------------------------------------------------------ *
+ * Career platform
+ * ------------------------------------------------------------------ */
+
+const LANGUAGE_NAMES = { ar: 'Arabic', en: 'English', de: 'German', fr: 'French', es: 'Spanish' };
+const langName = (l) => LANGUAGE_NAMES[l] || 'English';
+const strList = (v, max) => (Array.isArray(v) ? v : []).filter((s) => typeof s === 'string' && s.trim()).map((s) => s.trim().slice(0, 400)).slice(0, max);
+
+function jobBlock(job) {
+  return [
+    `<job_title>${fence(job.title || '', 200)}</job_title>`,
+    job.company ? `<company>${fence(job.company, 200)}</company>` : '',
+    `<job_description>${fence(job.description || '', 9000)}</job_description>`,
+  ].filter(Boolean).join('\n');
+}
+
+/** CV text (from a PDF, a .docx or a paste) → the structured CV shape. */
+export async function extractCvProfile({ cvText, userId = null }) {
+  const { parsed, provider, costMicroUsd: cost, tokensUsed } = await run({
+    feature: 'cv_import',
+    userId,
+    system: CV_IMPORT_SYSTEM,
+    messages: [{ role: 'user', content: `<cv>${fence(cvText, 20000)}</cv>` }],
+    schema: CV_DATA_SCHEMA,
+    maxTokens: 8192,
+    effort: 'low',
+  });
+  return { cv: sanitizeCv(parsed), tokensUsed, costMicroUsd: cost, provider };
+}
+
+/**
+ * Rewrite a CV for one job. The model's CV is passed through `lockFacts`, so
+ * whatever it returns, the facts are the original's.
+ */
+export async function tailorCv({ cv, job, cvLanguage = 'en', uiLanguage = 'en', userId = null }) {
+  const original = sanitizeCv(cv);
+  const { parsed, provider, costMicroUsd: cost, tokensUsed } = await run({
+    feature: 'cv_tailor',
+    userId,
+    system: TAILOR_SYSTEM,
+    messages: [{
+      role: 'user',
+      content: [
+        `CV language: ${langName(cvLanguage)}. Interface language: ${langName(uiLanguage)}.`,
+        jobBlock(job),
+        `<cv>${fence(JSON.stringify(original), 20000)}</cv>`,
+      ].join('\n'),
+    }],
+    schema: TAILOR_SCHEMA,
+    maxTokens: 8192,
+    effort: 'medium',
+  });
+  return {
+    cv: lockFacts(original, parsed?.cv),
+    changes: strList(parsed?.changes, 10),
+    gaps: strList(parsed?.gaps, 10),
+    questions: strList(parsed?.questions, 4),
+    tokensUsed,
+    costMicroUsd: cost,
+    provider,
+  };
+}
+
+export async function writeCoverLetter({ cv, job, language = 'en', tone = 'professional', userId = null }) {
+  const { parsed, provider, costMicroUsd: cost, tokensUsed } = await run({
+    feature: 'cover_letter',
+    userId,
+    system: LETTER_SYSTEM,
+    messages: [{
+      role: 'user',
+      content: [
+        `Language: ${langName(language)}. Tone: ${String(tone).slice(0, 30)}.`,
+        jobBlock(job),
+        `<cv>${fence(cvToText(cv), 14000)}</cv>`,
+      ].join('\n'),
+    }],
+    schema: LETTER_SCHEMA,
+    // Room for a reasoning model's thinking as well as the letter: at 2048 an
+    // Arabic letter ran out of tokens on Groq before the JSON closed.
+    maxTokens: 6144,
+    effort: 'low',
+  });
+  const letter = typeof parsed?.letter === 'string' ? parsed.letter.trim().slice(0, 6000) : '';
+  if (!letter) throw new AiUnavailableError('Cover letter came back empty');
+  return {
+    subject: typeof parsed?.subject === 'string' ? parsed.subject.trim().slice(0, 200) : '',
+    letter,
+    tokensUsed,
+    costMicroUsd: cost,
+    provider,
+  };
+}
+
+/** Sharpen the bullets of one role. */
+export async function improveBullets({ bullets, title = '', uiLanguage = 'en', userId = null }) {
+  const input = strList(bullets, 10);
+  const { parsed, provider, costMicroUsd: cost, tokensUsed } = await run({
+    feature: 'cv_bullets',
+    userId,
+    system: BULLETS_SYSTEM,
+    messages: [{
+      role: 'user',
+      content: `Interface language: ${langName(uiLanguage)}.\n<role>${fence(title, 200)}</role>\n<bullets>${fence(input.map((b) => `- ${b}`).join('\n'), 5000)}</bullets>`,
+    }],
+    schema: BULLETS_SCHEMA,
+    maxTokens: 4096,
+    effort: 'low',
+  });
+  // Same rule as tailoring: no number the person did not write.
+  const known = new Set(input.join(' ').match(/\d+(?:[.,]\d+)?/g) || []);
+  const out = strList(parsed?.bullets, 10).filter((b) => (b.match(/\d+(?:[.,]\d+)?/g) || []).every((n) => known.has(n)));
+  return {
+    bullets: out.length ? out : input,
+    tips: strList(parsed?.tips, 5),
+    tokensUsed,
+    costMicroUsd: cost,
+    provider,
+  };
+}
+
+/**
+ * Free text through the same failover as every other call — the live
+ * interview assistant's fallback when it cannot stream.
+ *
+ * The assistant streams from Claude itself (see services/assist/answer.js),
+ * and lands here when Claude is not the warm provider or the stream fell over
+ * before saying anything. `avoid` names the provider the caller has just
+ * watched fail, so it goes to the back of the queue instead of spending the
+ * failover budget being asked the same question twice.
+ */
+export async function generateText({
+  feature, userId = null, system, systemExtra, messages, maxTokens = 2048, effort = 'low', avoid = null,
+}) {
+  if (avoid) markUnhealthy(avoid);
+  const { text, provider, costMicroUsd: cost, tokensUsed } = await run({
+    feature, userId, system, systemExtra, messages, maxTokens, effort,
+  });
+  const out = String(text || '').trim();
+  if (!out) throw new AiUnavailableError(`AI ${feature} came back empty`);
+  return { text: out, provider, tokensUsed, costMicroUsd: cost };
+}
+
+/**
+ * Usage logging for callers that run their own model call.
+ *
+ * The live voice interview streams from Claude directly — it cannot go
+ * through `run()`, which buffers a complete response and knows nothing about
+ * server-sent events — but its cost is the same money as every other call and
+ * belongs in the same table, or the admin panel's spend figure silently stops
+ * counting the flagship feature.
+ */
+export { record as recordAiUsage };

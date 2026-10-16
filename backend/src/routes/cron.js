@@ -22,6 +22,8 @@ import {
   grantSubscriptionCycles, expireSubscriptionMinutes, reconcileBalances,
   remindDormantTrials,
 } from '../services/maintenance.js';
+import { runDueSources, pruneJobs } from '../services/jobs/ingest.js';
+import { runJobAlerts } from '../services/career/alerts.js';
 
 const router = Router();
 
@@ -126,6 +128,25 @@ router.all('/reconcile-balances', asyncHandler(async (_req, res) => {
 router.all('/trial-reminders', asyncHandler(async (_req, res) => {
   const result = await remindDormantTrials();
   res.json({ ok: true, ...result });
+}));
+
+/**
+ * Job index refresh: runs whichever sources are due (each has its own
+ * interval), within a time budget. Safe to call often; the ingest holds an
+ * in-process lock and a source that is not due is skipped.
+ */
+router.all('/jobs-ingest', asyncHandler(async (req, res) => {
+  const done = await runDueSources({ force: req.query.force === '1', maxSources: 8, budgetMs: 150_000 });
+  res.json({ ok: true, sources: done });
+}));
+
+router.all('/jobs-prune', asyncHandler(async (_req, res) => {
+  res.json({ ok: true, ...(await pruneJobs()) });
+}));
+
+/** Saved-search alerts. Each search is claimed before sending, so overlap is harmless. */
+router.all('/job-alerts', asyncHandler(async (_req, res) => {
+  res.json({ ok: true, ...(await runJobAlerts()) });
 }));
 
 export default router;

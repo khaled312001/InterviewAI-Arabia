@@ -316,3 +316,73 @@ export function contactAckEmail({ name, topic, message }) {
 
   return { subject, html, text };
 }
+
+/* ------------------------------------------------------------------ *
+ * Job alerts
+ * ------------------------------------------------------------------ */
+
+/**
+ * New jobs for one saved search. In the account's language only: unlike a
+ * reset email this one is opt-in and frequent, and doubling every card would
+ * make a ten-job digest unreadable.
+ *
+ * Every card links to OUR job page, which shows the source and sends Apply to
+ * the original posting; the alert never deep-links into a third-party site
+ * under our brand.
+ *
+ * @param {object} o
+ * @param {'ar'|'en'} o.language
+ * @param {string} o.searchName
+ * @param {object[]} o.jobs  cards from services/jobs/store.js:toJobCard (+ optional match)
+ * @param {number} o.total   how many new jobs matched in all
+ * @param {string} o.searchUrl
+ * @param {string} o.unsubscribeUrl
+ */
+export function jobAlertEmail({ language, searchName, jobs, total, searchUrl, unsubscribeUrl }) {
+  const ar = language === 'ar';
+  const dir = ar ? 'rtl' : 'ltr';
+  const align = ar ? 'right' : 'left';
+  const T = ar
+    ? {
+      subject: `${total} وظيفة جديدة: ${searchName}`,
+      title: `وظائف جديدة لبحثك «${esc(searchName)}»`,
+      lead: `وجدنا <strong>${total}</strong> وظيفة جديدة منذ آخر تنبيه.`,
+      remote: 'عن بُعد', hybrid: 'هجين', match: 'التطابق',
+      all: 'عرض كل النتائج', stop: 'إيقاف هذا التنبيه', why: 'وصلك هذا لأنك حفظت هذا البحث في Interprova.',
+    }
+    : {
+      subject: `${total} new job${total === 1 ? '' : 's'}: ${searchName}`,
+      title: `New jobs for “${esc(searchName)}”`,
+      lead: `We found <strong>${total}</strong> new job${total === 1 ? '' : 's'} since your last alert.`,
+      remote: 'Remote', hybrid: 'Hybrid', match: 'Match',
+      all: 'See all results', stop: 'Turn off this alert', why: 'You received this because you saved this search on Interprova.',
+    };
+
+  const cards = jobs.map((j) => {
+    const where = [j.workplace === 'remote' ? T.remote : j.workplace === 'hybrid' ? T.hybrid : null, j.location].filter(Boolean).join(' · ');
+    const pay = j.salary ? ` · ${[j.salary.min, j.salary.max].filter(Boolean).map((n) => Number(n).toLocaleString('en-US')).join('–')} ${esc(j.salary.currency || '')}` : '';
+    const match = j.match ? `<span style="display:inline-block;background:#EEF4FF;color:${BRAND};border-radius:99px;padding:2px 9px;font-size:12px;font-weight:700">${T.match} ${j.match.score}%</span>` : '';
+    return `<tr><td style="padding:14px 0;border-bottom:1px solid ${BORDER};text-align:${align}" dir="${dir}">
+      <a href="${SITE_URL}/jobs/${j.id}" style="font-size:16px;font-weight:700;color:${INK};text-decoration:none">${esc(j.title)}</a>
+      <div style="font-size:14px;color:${MUTED};margin-top:3px">${esc(j.company)}${where ? ` · ${esc(where)}` : ''}${pay}</div>
+      <div style="font-size:12px;color:${FAINT};margin-top:5px">${esc(j.sourceName || '')} ${match}</div>
+    </td></tr>`;
+  }).join('');
+
+  const html = shell(`<div dir="${dir}" style="text-align:${align}">
+    <h1 style="font-size:20px;margin:6px 0 8px">${T.title}</h1>
+    <p style="font-size:15px;line-height:1.8;color:${MUTED};margin:0 0 6px">${T.lead}</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">${cards}</table>
+    ${button(searchUrl, T.all)}
+    <p style="font-size:12.5px;color:${FAINT};line-height:1.8;margin:0">${T.why}
+      <a href="${unsubscribeUrl}" style="color:${MUTED}">${T.stop}</a></p>
+  </div>`);
+
+  const text = [
+    T.subject, '',
+    ...jobs.map((j) => `• ${j.title} — ${j.company}${j.location ? ` (${j.location})` : ''}\n  ${SITE_URL}/jobs/${j.id}`),
+    '', searchUrl, '', `${T.stop}: ${unsubscribeUrl}`,
+  ].join('\n');
+
+  return { subject: T.subject, html, text };
+}

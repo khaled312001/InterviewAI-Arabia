@@ -32,9 +32,14 @@ import subscriptionRoutes from './routes/subscriptions.js';
 import adminRoutes from './routes/admin.js';
 import meetingRoutes from './routes/meeting.js';
 import ttsRoutes from './routes/tts.js';
+import voiceRoutes from './routes/voice.js';
 import paymentRoutes from './routes/payments.js';
 import cronRoutes from './routes/cron.js';
 import contactRoutes from './routes/contact.js';
+import jobsRoutes from './routes/jobs.js';
+import careerRoutes from './routes/career.js';
+import assistRoutes from './routes/assist.js';
+import calendarRoutes from './routes/calendar.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.resolve(__dirname, '..', 'public');
@@ -201,10 +206,15 @@ export function createApp() {
   app.use('/api/subscriptions', subscriptionRoutes);
   app.use('/api/meeting', meetingRoutes);
   app.use('/api/tts', ttsRoutes);
+  app.use('/api/voice', voiceRoutes);
   app.use('/api/payments', paymentRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/cron', cronRoutes);
   app.use('/api/contact', contactRoutes);
+  app.use('/api/jobs', jobsRoutes);
+  app.use('/api/career', careerRoutes);
+  app.use('/api/assist', assistRoutes);
+  app.use('/api/calendar', calendarRoutes);
 
   // Anything else under /api is a 404 as JSON — never fall through to the SPA
   // shell, which would return 200 + HTML to a broken API call and make client
@@ -258,14 +268,25 @@ export function createApp() {
 
   // Marketing routes the landing page links to. Served from the landing
   // bundle when present so /privacy and /terms are real URLs (Google Play and
-  // EasyKash both require reachable policy pages).
-  for (const page of ['privacy', 'terms', 'delete-account']) {
+  // EasyKash both require reachable policy pages). `refund` and `checkout` are
+  // the other two EasyKash looks for before approving a merchant: a
+  // returns/refunds policy and a page where a price can actually be paid.
+  for (const page of ['privacy', 'terms', 'delete-account', 'refund', 'checkout', 'pricing', 'contact', 'about']) {
     app.get(`/${page}`, (_req, res, next) => {
       const file = path.join(landingDir, `${page}.html`);
       if (has(file)) return res.sendFile(file);
       next();
     });
   }
+
+  // The job board and the ATS checker. /jobs/<id> is the same page; its
+  // script reads the id from the path, so a shared job link opens that job.
+  const jobsPage = path.join(landingDir, 'jobs.html');
+  app.get(['/jobs', /^\/jobs\/\d{1,19}\/?$/], (_req, res, next) => (has(jobsPage) ? res.sendFile(jobsPage) : next()));
+  app.get('/ats-checker', (_req, res, next) => {
+    const file = path.join(landingDir, 'ats-checker.html');
+    return has(file) ? res.sendFile(file) : next();
+  });
 
   app.use(notFound);
   app.use(errorHandler);

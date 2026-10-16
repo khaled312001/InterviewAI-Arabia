@@ -9,6 +9,27 @@ export function notFound(_req, res) {
 
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, _next) {
+  /*
+   * A response that has already started cannot be turned into a JSON error.
+   *
+   * Every route here answers in one shot except /api/voice/think, which streams
+   * server-sent events to Deepgram for the whole of a live interview. If
+   * anything throws after the first byte of that stream, writing a status and
+   * a body on top of it raises ERR_HTTP_HEADERS_SENT — and the real error,
+   * the one worth reading, is lost behind it. Log that one and drop the
+   * connection, which is the only honest thing left to do with it.
+   */
+  if (res.headersSent) {
+    logger.error('Error after response started', {
+      message: err?.message, path: req.path,
+    });
+    // A response that already finished needs nothing: destroying the socket
+    // here would cut bytes that have not drained yet, turning a complete
+    // answer into a truncated one over a logging detail.
+    if (res.writableEnded) return undefined;
+    return res.destroy();
+  }
+
   if (err instanceof ZodError) {
     return res.status(400).json({ error: 'Validation failed', details: err.flatten() });
   }
