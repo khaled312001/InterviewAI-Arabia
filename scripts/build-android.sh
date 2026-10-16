@@ -47,7 +47,11 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 
 KEYSTORE="${KEYSTORE:-C:/Users/KHALE/localbuild/ks/interviewai-upload.jks}"
 KEY_ALIAS="${KEY_ALIAS:-interviewai-upload}"
-KEY_PASS="${KEY_PASS:-InterviewAI#2026Key}"
+# The keystore password never lives in this (public) repository: it comes from
+# $KEY_PASS, or from a one-line file next to the keystore, outside the repo.
+KEY_PASS_FILE="${KEY_PASS_FILE:-C:/Users/KHALE/localbuild/ks/interviewai-upload.pass}"
+if [ -z "${KEY_PASS:-}" ] && [ -f "$KEY_PASS_FILE" ]; then KEY_PASS="$(tr -d '\r\n' < "$KEY_PASS_FILE")"; fi
+[ -n "${KEY_PASS:-}" ] || { echo "set KEY_PASS or create $KEY_PASS_FILE with the keystore password"; exit 1; }
 
 WANT_APK=1; WANT_AAB=0; BUMP=0; REUSE_CODE=0; ARTIFACT_FLAGS=0
 for a in "$@"; do
