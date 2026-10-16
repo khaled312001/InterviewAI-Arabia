@@ -2,7 +2,7 @@
  * The ingester: which feed runs now, and what a run does.
  *
  * Called every ten minutes by the in-process scheduler (services/cron.js) and
- * by POST /api/cron/jobs for an external pinger. Each call runs the most
+ * by /api/cron/jobs-ingest for an external pinger (hPanel cron, every 15 min). Each call runs the most
  * overdue feeds, one at a time, inside a time budget — the host counts threads
  * and CPU against the whole account, so a burst of parallel fetches and JSON
  * parses would starve the live interview running in the same process.
@@ -10,7 +10,7 @@
 
 import { cfg } from '../secrets/store.js';
 import { logger } from '../../utils/logger.js';
-import { query } from '../../db/mysql.js';
+import { query, pool } from '../../db/mysql.js';
 import {
   sourceRegistry, normalizeAll, jsearch, jsearchConfigured, adzuna, adzunaConfigured, ADZUNA_COUNTRIES,
   himalayasSearch, jobicySearch, remoteokSearch, jooble, joobleConfigured,
@@ -20,6 +20,36 @@ import { countryName } from './countries.js';
 
 const MAX_AGE_MS = 60 * 86400_000;
 let running = false;
+
+/**
+ * Run `fn` only if no other process holds the named lock; otherwise skip.
+ *
+ * The host starts more than one copy of the app, and each copy has its own
+ * scheduler, so `running` alone let two copies fetch the same feed in the same
+ * minute. A MySQL named lock is shared by every copy (and by the external
+ * pinger). It lives on one connection, so that connection is held for the run
+ * and the lock goes away with it if the process dies.
+ */
+async function withDbLock(name, fn) {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+  } catch (err) {
+    logger.warn('job lock: no connection', { message: err.message });
+    return null;
+  }
+  try {
+    const [[row]] = await conn.query('SELECT GET_LOCK(?, 0) AS got', [name]);
+    if (Number(row?.got) !== 1) return null;
+    try {
+      return await fn();
+    } finally {
+      await conn.query('SELECT RELEASE_LOCK(?)', [name]).catch(() => {});
+    }
+  } finally {
+    conn.release();
+  }
+}
 
 /** Fetch one feed and fold it into the index. Never throws. */
 export async function runSource(src) {
@@ -110,26 +140,7 @@ export async function runDueSources({ maxSources = 6, budgetMs = 120_000, force 
   const deadline = Date.now() + budgetMs;
   const done = [];
   try {
-    const runs = await lastRuns();
-    const now = Date.now();
-    const due = sourceRegistry()
-      .map((s) => {
-        const last = runs.get(s.id)?.lastStarted;
-        const lastOk = runs.get(s.id)?.lastOk;
-        // A feed that keeps failing backs off to four times its interval, so a
-        // dead board costs one request every couple of days, not every slot.
-        const failing = last && (!lastOk || new Date(lastOk) < new Date(last));
-        const gap = failing ? s.every * 4 : s.every;
-        const overdue = last ? now - new Date(last).getTime() - gap : Number.MAX_SAFE_INTEGER;
-        return { s, overdue };
-      })
-      .filter((d) => force || d.overdue >= 0)
-      .sort((a, b) => b.overdue - a.overdue);
-
-    for (const { s } of due) {
-      if (done.length >= maxSources || Date.now() > deadline) break;
-      done.push(await runSource(s));
-    }
+    await withDbLock('interprova_jobs_ingest', () => runDue({ maxSources, deadline, force, done }));
   } finally {
     running = false;
   }
@@ -140,8 +151,33 @@ export async function runDueSources({ maxSources = 6, budgetMs = 120_000, force 
   return done;
 }
 
+/** Run the overdue feeds, most overdue first, into `done`. Caller holds the lock. */
+async function runDue({ maxSources, deadline, force, done }) {
+  const runs = await lastRuns();
+  const now = Date.now();
+  const due = sourceRegistry()
+    .map((s) => {
+      const last = runs.get(s.id)?.lastStarted;
+      const lastOk = runs.get(s.id)?.lastOk;
+      // A feed that keeps failing backs off to four times its interval, so a
+      // dead board costs one request every couple of days, not every slot.
+      const failing = last && (!lastOk || new Date(lastOk) < new Date(last));
+      const gap = failing ? s.every * 4 : s.every;
+      const overdue = last ? now - new Date(last).getTime() - gap : Number.MAX_SAFE_INTEGER;
+      return { s, overdue };
+    })
+    .filter((d) => force || d.overdue >= 0)
+    .sort((a, b) => b.overdue - a.overdue);
+
+  for (const { s } of due) {
+    if (done.length >= maxSources || Date.now() > deadline) break;
+    done.push(await runSource(s));
+  }
+}
+
+/** Nightly clean-up; one copy of the app does it, the others skip. */
 export async function pruneJobs() {
-  return prune();
+  return (await withDbLock('interprova_jobs_prune', () => prune())) ?? { skipped: true };
 }
 
 /* ------------------------------------------------------- live search */
