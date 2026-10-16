@@ -17,7 +17,11 @@
 set -euo pipefail
 
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/interview_prod_ed25519}"
-SSH_HOST="${SSH_HOST:-u405809647@145.79.20.56}"
+# The box moved: 145.79.20.56 stopped answering (publickey AND password both
+# refused) while the same key works on 82.25.113.109 — same user, same port,
+# hostname fr-int-web1511. Hostinger renumbers shared hosts without notice, so
+# this is a value to check first when a deploy fails at the very first step.
+SSH_HOST="${SSH_HOST:-u405809647@82.25.113.109}"
 SSH_PORT="${SSH_PORT:-65002}"
 APP_DIR="domains/interprova.com/interprova-backend"
 NODE="/opt/alt/alt-nodejs20/root/bin/node"
@@ -149,24 +153,69 @@ if [ "$DO_BACKEND" = 1 ]; then
   # "cannot read properties of undefined". --ignore-scripts then invokes the
   # generator explicitly, so a generator failure is a visible failure rather
   # than an npm postinstall exit 127 buried in install output.
-  "${SSH[@]}" "cd ~/$APP_DIR \
+  # `set -o pipefail` is the whole point of this line and was missing.
+  #
+  # Every step here ends in `| tail -N`, and a pipeline's exit status is its
+  # LAST command's — so `tail` succeeding reported the step as succeeding. On
+  # 2026-10-11 that hid `prisma generate` failing outright, and the deploy
+  # printed a clean bill of health while the server ran a client that had never
+  # heard of the column the release depended on.
+  #
+  # Prisma is invoked through node rather than through its own bin, because the
+  # symlink at node_modules/.bin/prisma points at a plain .js file with no
+  # execute bit: running it directly is "Permission denied", which reads like a
+  # transient infrastructure complaint and is not one.
+  "${SSH[@]}" "set -o pipefail \
+    && cd ~/$APP_DIR \
     && export PATH=/opt/alt/alt-nodejs20/root/bin:\$PATH \
     && export TOKIO_WORKER_THREADS=1 \
     && $NPM install --omit=dev --no-audit --no-fund --ignore-scripts 2>&1 | tail -5 \
-    && ./node_modules/.bin/prisma generate 2>&1 | tail -3"
+    && $NODE ./node_modules/prisma/build/index.js generate 2>&1 | tail -3"
 
   say "Verifying the generated client knows the current schema"
-  # The one check that would have caught the silent failure above: every model
-  # in schema.prisma must exist in the client the server will actually load.
-  "${SSH[@]}" "cd ~/$APP_DIR && /opt/alt/alt-nodejs20/root/bin/node -e '
-    const fs = require(\"fs\");
-    const models = [...fs.readFileSync(\"prisma/schema.prisma\", \"utf8\")
-      .matchAll(/^model\s+(\w+)/gm)].map((m) => m[1]);
-    const dts = fs.readFileSync(\"node_modules/.prisma/client/index.d.ts\", \"utf8\");
-    const missing = models.filter((m) => !dts.includes(\"export type \" + m + \" =\"));
-    if (missing.length) { console.error(\"  STALE CLIENT, missing: \" + missing.join(\", \")); process.exit(1); }
-    console.log(\"  client covers all \" + models.length + \" models\");
-  '"
+  #
+  # FIELDS, not just models. Checking models alone is what let the 2026-10-11
+  # deploy pass: the release added a COLUMN to an existing table, every model
+  # was still present in the stale client, and the check said so cheerfully
+  # while `prisma.meetingSession.update({ data: { voiceContext } })` was
+  # guaranteed to throw on the first live call.
+  #
+  # The field test is a plain substring search, which cannot produce a false
+  # alarm but can miss a stale field whose name happens to appear elsewhere in
+  # the generated types. That is the right trade for a deploy gate: it catches
+  # every newly added name, which is the case that actually occurs.
+  #
+  "${SSH[@]}" bash -s <<'REMOTE'
+set -euo pipefail
+cd ~/domains/interprova.com/interprova-backend
+/opt/alt/alt-nodejs20/root/bin/node -e '
+const fs = require("fs");
+const schema = fs.readFileSync("prisma/schema.prisma", "utf8");
+const dts = fs.readFileSync("node_modules/.prisma/client/index.d.ts", "utf8");
+
+const problems = [];
+let models = 0;
+let fields = 0;
+
+for (const block of schema.matchAll(/^model\s+(\w+)\s*\{([^}]*)\}/gm)) {
+  const [, model, body] = block;
+  models += 1;
+  if (!dts.includes("export type " + model + " =")) { problems.push("model " + model); continue; }
+  for (const line of body.split("\n")) {
+    const field = line.match(/^\s*(\w+)\s+\S/);
+    if (!field) continue;
+    fields += 1;
+    if (!dts.includes(field[1])) problems.push(model + "." + field[1]);
+  }
+}
+
+if (problems.length) {
+  console.error("  STALE CLIENT, missing: " + problems.join(", "));
+  process.exit(1);
+}
+console.log("  client covers " + models + " models and all " + fields + " fields");
+'
+REMOTE
 fi
 
 say "Restarting application"

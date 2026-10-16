@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي</title>
-<meta name="description" content="Interprova — تدرّب على مقابلات العمل بالعربية مع محاوِر ذكاء اصطناعي حقيقي. أسئلة مخصّصة لسيرتك الذاتية وللوظيفة، تقييم فوري بدرجة من ١٠ وأسباب واضحة، وخطة تحسين عملية. ابدأ مجاناً بدون بطاقة ائتمان.">
-<meta name="keywords" content="مقابلات عمل, تدريب مقابلات, ذكاء اصطناعي, وظائف مصر, أسئلة انترفيو, تحضير مقابلة, سيرة ذاتية, interview practice arabic">
+<title>Interprova — AI career platform: jobs, CV &amp; interview assistant</title>
+<meta name="description" content="Find jobs worldwide, check and tailor your CV for applicant-tracking systems, rehearse with an AI interviewer, and get live help in the real interview. In English and Arabic. Free to start.">
+<meta name="keywords" content="AI interview practice, live interview assistant, jobs worldwide, remote jobs, ATS CV checker, resume builder, cover letter generator, mock interview, interview questions, career platform">
 <meta name="author" content="Interprova">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 <link rel="canonical" href="https://interprova.com/">
-<!-- Arabic is the served document; the English translation lives in the same
-     HTML behind [data-l] and is reachable with ?lang=en. -->
-<link rel="alternate" hreflang="ar" href="https://interprova.com/">
-<link rel="alternate" hreflang="en" href="https://interprova.com/?lang=en">
+<!-- English is the served document; the Arabic translation lives in the same
+     HTML behind [data-l] and is reachable with ?lang=ar. -->
+<link rel="alternate" hreflang="en" href="https://interprova.com/">
+<link rel="alternate" hreflang="ar" href="https://interprova.com/?lang=ar">
 <link rel="alternate" hreflang="x-default" href="https://interprova.com/">
 <link rel="manifest" href="/site.webmanifest">
 <!-- The media-keyed pair serves the "follow the system" state. When the reader
@@ -28,11 +28,11 @@
 
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website">
-<meta property="og:locale" content="ar_EG">
-<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ar_AR">
 <meta property="og:site_name" content="Interprova">
-<meta property="og:title" content="Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي">
-<meta property="og:description" content="محاوِر ذكاء اصطناعي يسألك بالعربية، يسمع إجابتك، ويعطيك تقييماً فورياً بدرجة من ١٠ وأسباباً واضحة وخطة تحسين عملية. جرّبه مجاناً بدون بطاقة ائتمان.">
+<meta property="og:title" content="Interprova — land your next job, anywhere in the world">
+<meta property="og:description" content="Jobs worldwide, a free ATS CV checker, CV tailoring and cover letters, AI mock interviews and a live interview assistant — in English and Arabic.">
 <meta property="og:url" content="https://interprova.com/">
 <!-- Versioned on purpose: the pinned `og-image.png` was cached by WhatsApp and
      Facebook while the card was still being rendered by a pipeline that could
@@ -43,12 +43,12 @@
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Interprova — تدرّب على مقابلة العمل بالعربية قبل أن تدخلها فعلاً">
+<meta property="og:image:alt" content="Interprova — the AI career platform: jobs, CV and interviews">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي">
-<meta name="twitter:description" content="تدرّب على مقابلة العمل بالعربية والإنجليزية، واحصل على تقييم فوري بدرجة من ١٠ وخطة تحسين واضحة.">
+<meta name="twitter:title" content="Interprova — land your next job, anywhere in the world">
+<meta name="twitter:description" content="Jobs worldwide, ATS CV checker, CV tailoring, AI mock interviews and a live interview assistant.">
 <meta name="twitter:image" content="https://interprova.com/og-image-v2.png">
-<meta name="twitter:image:alt" content="Interprova — تدرّب على مقابلة العمل بالعربية قبل أن تدخلها فعلاً">
+<meta name="twitter:image:alt" content="Interprova — the AI career platform: jobs, CV and interviews">
 
 <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64">
 <link rel="icon" href="/logo-mark.png" type="image/png" sizes="256x256">
@@ -67,9 +67,9 @@
   var l = null;
   try { l = new URLSearchParams(location.search).get('lang'); } catch (e) {}
   if (l !== 'ar' && l !== 'en') { try { l = localStorage.getItem('interprova-lang'); } catch (e) { l = null; } }
-  if (l !== 'ar' && l !== 'en') {
-    l = (navigator.language || 'ar').slice(0, 2).toLowerCase() === 'ar' ? 'ar' : 'en';
-  }
+  // English is the default; Arabic is one click (or ?lang=ar) away and is
+  // remembered once chosen.
+  if (l !== 'ar' && l !== 'en') l = 'en';
   d.setAttribute('lang', l);
   d.setAttribute('dir', l === 'en' ? 'ltr' : 'rtl');
 })();
@@ -77,12 +77,11 @@
 
 <!-- LCP is the hero screenshot; preloading it removes a round-trip from the
      critical path. Fonts use swap so first paint never waits on them. -->
-<link rel="preload" as="image" href="/shots/app-home.png" fetchpriority="high">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Cairo:wght@400;600;700;800&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Cairo:wght@400;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Cairo:wght@400;600;700;800&amp;display=swap"></noscript>
 
 <!-- Structured data is the one place on this page a crawler reads before our
      fetch has answered, so these offers MIRROR
@@ -108,15 +107,13 @@
         "@type": "ContactPoint",
         "contactType": "customer support",
         "email": "info@interprova.com",
-        "availableLanguage": ["ar", "en"],
-        "areaServed": ["EG", "SA", "AE", "KW", "QA", "BH", "OM", "JO"]
+        "availableLanguage": ["en", "ar"]
       }],
       "sameAs": [
         "https://www.facebook.com/profile.php?id=61593602555146",
         "https://www.linkedin.com/company/interprova",
         "https://www.instagram.com/interprova.10541",
-        "https://play.google.com/store/apps/details?id=com.interprova.app",
-        "https://barmagly.tech"
+        "https://play.google.com/store/apps/details?id=com.interprova.app"
       ]
     },
     {
@@ -124,61 +121,49 @@
       "@id": "https://interprova.com/#site",
       "url": "https://interprova.com/",
       "name": "Interprova",
-      "inLanguage": ["ar", "en"],
-      "publisher": { "@id": "https://interprova.com/#org" }
+      "inLanguage": ["en", "ar"],
+      "publisher": { "@id": "https://interprova.com/#org" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": { "@type": "EntryPoint", "urlTemplate": "https://interprova.com/jobs?q={search_term_string}" },
+        "query-input": "required name=search_term_string"
+      }
     },
     {
       "@type": "SoftwareApplication",
       "name": "Interprova",
-      "applicationCategory": "EducationalApplication",
+      "applicationCategory": "BusinessApplication",
       "operatingSystem": "Android, Web",
-      "inLanguage": ["ar", "en"],
+      "inLanguage": ["en", "ar"],
       "installUrl": "https://play.google.com/store/apps/details?id=com.interprova.app",
       "downloadUrl": "https://play.google.com/store/apps/details?id=com.interprova.app",
-      "sameAs": [
-        "https://play.google.com/store/apps/details?id=com.interprova.app",
-        "https://www.facebook.com/profile.php?id=61593602555146",
-        "https://www.linkedin.com/company/interprova",
-        "https://www.instagram.com/interprova.10541"
-      ],
-      "description": "مدرّب مقابلات وظيفية بالذكاء الاصطناعي باللغة العربية.",
+      "description": "AI career platform: jobs worldwide, a free ATS CV checker, CV tailoring and cover letters, AI mock interviews with scored feedback, and a live interview assistant — in English and Arabic.",
       "publisher": { "@id": "https://interprova.com/#org" },
       "featureList": [
-        "تقييم فوري بدرجة من ١٠ على أربعة محاور",
-        "أسئلة مبنية على سيرتك الذاتية ووصف الوظيفة",
-        "مقابلة مباشرة بالصوت والفيديو مع محاوِر ذكي",
-        "تتبّع التقدّم عبر الوقت"
+        "Live Interview Assistant that listens, detects questions and suggests answers from your CV",
+        "AI mock interviews by voice and video, scored out of 10 on four criteria",
+        "Job search across company career pages and job boards worldwide, with match scores",
+        "Free ATS CV checker",
+        "CV builder with one-tap tailoring to a job, PDF and Word export",
+        "Cover letters written from your real achievements",
+        "Application tracker and saved-search email alerts"
       ],
       "offers": [
-        { "@type": "Offer", "name": "تجربة مجانية", "price": "0", "priceCurrency": "EGP", "description": "رصيد مجاني من وقت المقابلات عند إنشاء الحساب، مرة واحدة لكل حساب" },
-        { "@type": "Offer", "name": "باقة ٢٠ دقيقة", "price": "40", "priceCurrency": "EGP", "description": "٢٠ دقيقة رصيد مقابلات لا تنتهي صلاحيته" },
-        { "@type": "Offer", "name": "باقة ٦٠ دقيقة", "price": "100", "priceCurrency": "EGP", "description": "٦٠ دقيقة رصيد مقابلات لا تنتهي صلاحيته" },
-        { "@type": "Offer", "name": "باقة ٣ ساعات", "price": "250", "priceCurrency": "EGP", "description": "١٨٠ دقيقة رصيد مقابلات لا تنتهي صلاحيته" },
-        { "@type": "Offer", "name": "اشتراك شهري", "price": "150", "priceCurrency": "EGP", "description": "٣٠٠ دقيقة كل ٣٠ يوماً مع المجالات المميّزة وتحليل السيرة الذاتية" },
-        { "@type": "Offer", "name": "اشتراك ربع سنوي", "price": "399", "priceCurrency": "EGP", "description": "٣٠٠ دقيقة كل ٣٠ يوماً لمدة ثلاثة أشهر" }
-      ]
-    },
-    {
-      "@type": "HowTo",
-      "name": "كيف تتدرّب على مقابلة عمل بالذكاء الاصطناعي",
-      "inLanguage": "ar",
-      "step": [
-        { "@type": "HowToStep", "position": 1, "name": "ارفع سيرتك وأعلان الوظيفة", "text": "يقرأ الذكاء الاصطناعي سيرتك الذاتية ووصف الوظيفة ويبني منهما أسئلة مخصّصة لخبرتك." },
-        { "@type": "HowToStep", "position": 2, "name": "ادخل المقابلة", "text": "محاوِر موارد بشرية ذكي يسألك سؤالاً واحداً في كل مرة، بالصوت أو بالكتابة." },
-        { "@type": "HowToStep", "position": 3, "name": "احصل على تقييمك", "text": "درجة من ١٠ على أربعة محاور مع نقاط القوة والضعف وإجابة نموذجية." }
+        { "@type": "Offer", "name": "Free trial", "price": "0", "priceCurrency": "EGP", "description": "Free interview time on a new account, once per account" },
+        { "@type": "Offer", "name": "20 Minutes", "price": "40", "priceCurrency": "EGP", "description": "20 minutes of interview credit that never expires" },
+        { "@type": "Offer", "name": "60 Minutes", "price": "100", "priceCurrency": "EGP", "description": "60 minutes of interview credit that never expires" },
+        { "@type": "Offer", "name": "180 Minutes", "price": "250", "priceCurrency": "EGP", "description": "180 minutes of interview credit that never expires" }
       ]
     },
     {
       "@type": "FAQPage",
       "mainEntity": [
-        {"@type":"Question","name":"هل التطبيق بالعربية فعلاً؟","acceptedAnswer":{"@type":"Answer","text":"نعم. الأسئلة والتقييم والنصائح كلها بالعربية الفصحى المبسطة، والمحاوِر يفهم اللهجات العامية ولا يخصم عليك بسببها."}},
-        {"@type":"Question","name":"هل أحتاج بطاقة ائتمان للتجربة؟","acceptedAnswer":{"@type":"Answer","text":"لا. أول ١٠ دقائق من وقت المقابلات مجانية على حسابك الجديد، بدون إدخال أي بيانات دفع."}},
-        {"@type":"Question","name":"هل تنتهي صلاحية الدقائق التي أشتريها؟","acceptedAnswer":{"@type":"Answer","text":"دقائق الباقات لا تنتهي صلاحيتها ولا تُخصم يومياً — رصيد تستخدمه وقت ما تحب، ويتجمع كلما اشتريت باقة جديدة. أما دقائق الاشتراك الشهري فهي مخصّصة لدورة الثلاثين يوماً ولا تُرحَّل إلى الدورة التالية."}},
-        {"@type":"Question","name":"كيف تُحسب دقائق المقابلة؟","acceptedAnswer":{"@type":"Answer","text":"بالثانية، وعلى وقت المقابلة الفعلي فقط. لو انقطع الاتصال أو خرجت من التطبيق يتوقف العدّاد ولا تُحسب تلك الفترة، وتقييم المقابلة في النهاية لا يُخصم منه شيء."}},
-        {"@type":"Question","name":"كيف يتم التقييم؟","acceptedAnswer":{"@type":"Answer","text":"كل إجابة تُقيَّم على أربعة محاور: الصلة بالسؤال، التحديد والأدلة، البنية، والعمق المهني — مع درجة من ١٠ وسبب واضح لكل نقطة."}},
-        {"@type":"Question","name":"هل بياناتي وسيرتي الذاتية آمنة؟","acceptedAnswer":{"@type":"Answer","text":"سيرتك تُستخدم فقط لتوليد أسئلة مقابلتك ولا تُشارك مع أي طرف ثالث، ويمكنك حذف حسابك وكل بياناته في أي وقت."}},
-        {"@type":"Question","name":"ما طرق الدفع المتاحة؟","acceptedAnswer":{"@type":"Answer","text":"بطاقات الائتمان والخصم، فوري، والمحافظ الإلكترونية عبر بوابة EasyKash المصرية."}},
-        {"@type":"Question","name":"هل يوجد تطبيق أندرويد؟","acceptedAnswer":{"@type":"Answer","text":"نعم، بالإضافة إلى نسخة الويب التي تعمل على أي متصفح بدون تثبيت."}}
+        {"@type":"Question","name":"What is Interprova?","acceptedAnswer":{"@type":"Answer","text":"An AI career platform covering the whole route to a job: worldwide job search with match scores, a free ATS CV checker, CV tailoring and cover letters, an application tracker with alerts, AI mock interviews with scored feedback, and a Live Interview Assistant."}},
+        {"@type":"Question","name":"Which languages does it support?","acceptedAnswer":{"@type":"Answer","text":"English and Arabic throughout — the site, the app, interview questions, speech recognition, scoring and CVs."}},
+        {"@type":"Question","name":"Is it free to start?","acceptedAnswer":{"@type":"Answer","text":"Yes. Job search and the ATS CV checker are free with no account, and a new account gets free interview time with no payment details."}},
+        {"@type":"Question","name":"Where do the jobs come from?","acceptedAnswer":{"@type":"Answer","text":"From companies' own career pages and public job boards, refreshed throughout the day. You always apply on the original site."}},
+        {"@type":"Question","name":"Will the AI make things up on my CV?","acceptedAnswer":{"@type":"Answer","text":"No. Tailoring may reorder and reword, but employers, titles, dates, degrees and numbers stay exactly as in your original CV."}},
+        {"@type":"Question","name":"Are my data and my CV safe?","acceptedAnswer":{"@type":"Answer","text":"Your CV is never sold or shared with a third party, and you can delete your account and all its data at any time."}}
       ]
     }
   ]
@@ -257,18 +242,44 @@
   <g id="i-auto" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
     <rect x="2.8" y="4" width="18.4" height="12.4" rx="2.2"/><path d="M8.5 20.5h7M12 16.4v4.1"/>
   </g>
-  <!-- Egypt flag, drawn rather than emoji so it renders identically everywhere. -->
-  <g id="i-eg">
-    <rect x="1" y="4" width="22" height="5.33" fill="#CE1126"/>
-    <rect x="1" y="9.33" width="22" height="5.33" fill="#FFFFFF"/>
-    <rect x="1" y="14.66" width="22" height="5.33" fill="#000000"/>
-    <path d="M12 10.6c1.1 0 2 .7 2 1.6s-.9 1.6-2 1.6-2-.7-2-1.6.9-1.6 2-1.6Z" fill="#C09300"/>
-    <rect x="1" y="4" width="22" height="16" fill="none" stroke="rgba(0,0,0,.25)" stroke-width=".5"/>
+  <!-- Career-platform glyphs. Same 24 grid, 1.75 stroke. -->
+  <g id="i-search" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>
+  </g>
+  <g id="i-briefcase" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M3 12.5h18"/>
+  </g>
+  <g id="i-sparkles" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 3.5 12.8 8.2 17.5 10l-4.7 1.8L11 16.5l-1.8-4.7L4.5 10l4.7-1.8Z"/><path d="m18.5 14.5.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z"/>
+  </g>
+  <g id="i-globe" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+  </g>
+  <g id="i-arrow" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+  </g>
+  <g id="i-bell" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 20a2 2 0 0 0 4 0"/>
+  </g>
+  <g id="i-filecheck" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="m9 14 2 2 4-4"/>
+  </g>
+  <g id="i-lock" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+  </g>
+  <g id="i-headset" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13.5" width="4" height="6" rx="1.5"/><rect x="17" y="13.5" width="4" height="6" rx="1.5"/><path d="M19 19.5c0 1.4-1.6 2-4 2h-2"/>
+  </g>
+  <g id="i-pen" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/>
   </g>
 
   <!-- Utility icons used by the contact page. Same 24 grid, 1.75 stroke. -->
   <g id="i-mail" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3 7 8.15 5.4a1.6 1.6 0 0 0 1.7 0L21 7"/>
+  </g>
+  <g id="i-phone" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 16.4v2.9a1.9 1.9 0 0 1-2.1 1.9 18.8 18.8 0 0 1-8.2-2.9 18.5 18.5 0 0 1-5.7-5.7A18.8 18.8 0 0 1 2.1 4.4 1.9 1.9 0 0 1 4 2.3h2.9a1.9 1.9 0 0 1 1.9 1.6c.1.9.4 1.8.7 2.7a1.9 1.9 0 0 1-.4 2L7.8 9.8a15.2 15.2 0 0 0 5.7 5.7l1.2-1.2a1.9 1.9 0 0 1 2-.4c.9.3 1.8.6 2.7.7a1.9 1.9 0 0 1 1.6 1.9Z"/>
   </g>
   <g id="i-shield" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 2.8 4.8 5.6v5.5c0 4.4 3 8.4 7.2 10 4.2-1.6 7.2-5.6 7.2-10V5.6Z"/><path d="m9 12 2.2 2.2L15.4 10"/>
@@ -297,6 +308,15 @@
   <g id="i-download" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 19.5h15"/>
   </g>
+  <g id="i-chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></g>
+  <g id="i-calendar" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h2M14 14h2M8 17h2"/></g>
+  <g id="i-monitor" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2.5"/><path d="M8.5 20.5h7M12 16.5v4"/></g>
+  <g id="i-mobile" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></g>
+  <g id="i-windows" fill="currentColor"><path d="M3 5.4 10.2 4.4v6.9H3zM11.1 4.3 21 3v8.3h-9.9zM3 12.2h7.2v7L3 18.2zM11.1 12.2H21V21l-9.9-1.4z"/></g>
+  <g id="i-keyboard" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9"/></g>
+  <g id="i-tasks" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6.5 1.6 1.6L8.5 5"/><path d="m4 12.5 1.6 1.6 2.9-3.1"/><path d="M4.5 18.5h3"/><path d="M11.5 6.5h8.5M11.5 12.5h8.5M11.5 18.5h8.5"/></g>
+  <g id="i-link" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.4.2l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4-.2l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></g>
+  <g id="i-meet" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></g>
 </defs>
 </svg>
 
@@ -310,17 +330,41 @@
       </span>
     </a>
     <nav class="nav" aria-label="التنقل الرئيسي" data-aria-en="Main navigation">
+      <a href="/jobs"><span data-l="ar">الوظائف</span><span data-l="en">Jobs</span></a>
+      <div class="navdd" data-navdd>
+        <button type="button" aria-expanded="false" aria-haspopup="true"><span data-l="ar">المنتجات</span><span data-l="en">Products</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+        <div class="navdd-panel">
+          <a href="/#assistant"><span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-headset"/></svg></span>
+            <span><b><span data-l="en">Live Interview Assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></b><small><span data-l="en">Live answers in the real interview, from your CV.</span><span data-l="ar">إجابات لحظية في المقابلة الحقيقية من سيرتك.</span></small></span></a>
+          <a href="/features.html#interviews"><span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg></span>
+            <span><b><span data-l="en">AI mock interviews</span><span data-l="ar">المقابلات التدريبية</span></b><small><span data-l="en">Rehearse by voice and video, scored out of 10.</span><span data-l="ar">تدرّب بالصوت والفيديو مع تقييم من ١٠.</span></small></span></a>
+          <a href="/cv-builder.html"><span class="tico g-amber"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pen"/></svg></span>
+            <span><b><span data-l="en">CV builder</span><span data-l="ar">منشئ السيرة الذاتية</span></b><small><span data-l="en">Build, tailor and export an ATS-ready CV.</span><span data-l="ar">ابنِ سيرة تتخطى ATS وخصّصها وصدّرها.</span></small></span></a>
+          <a href="/ats-checker"><span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-filecheck"/></svg></span>
+            <span><b><span data-l="en">ATS CV checker</span><span data-l="ar">فاحص ATS</span> <span class="tag-free"><span data-l="en">FREE</span><span data-l="ar">مجاني</span></span></b><small><span data-l="en">See what hiring software sees.</span><span data-l="ar">شاهد ما تراه أنظمة التوظيف.</span></small></span></a>
+          <a href="/jobs"><span class="tico g-cyan"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-briefcase"/></svg></span>
+            <span><b><span data-l="en">Jobs worldwide</span><span data-l="ar">وظائف حول العالم</span></b><small><span data-l="en">Live roles with your match on each one.</span><span data-l="ar">وظائف حيّة مع نسبة تطابقك.</span></small></span></a>
+          <a href="/integrations.html"><span class="tico g-rose"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg></span>
+            <span><b><span data-l="en">Calendar &amp; Google Meet</span><span data-l="ar">التقويم و Google Meet</span> <span class="tag-new"><span data-l="en">NEW</span><span data-l="ar">جديد</span></span></b><small><span data-l="en">Schedule interviews, join, prep tasks.</span><span data-l="ar">جدولة المقابلات والانضمام ومهام التحضير.</span></small></span></a>
+          <a href="/desktop.html"><span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-monitor"/></svg></span>
+            <span><b><span data-l="en">Desktop app</span><span data-l="ar">تطبيق سطح المكتب</span></b><small><span data-l="en">Meeting AI for Windows and macOS.</span><span data-l="ar">Meeting AI لويندوز وماك.</span></small></span></a>
+          <a href="/#get-app"><span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mobile"/></svg></span>
+            <span><b><span data-l="en">Mobile &amp; web app</span><span data-l="ar">تطبيق الهاتف والويب</span></b><small><span data-l="en">Android, iPhone (browser) and web.</span><span data-l="ar">أندرويد و iPhone (المتصفح) والويب.</span></small></span></a>
+          <div class="navdd-foot">
+            <span><span data-l="en">One profile powers every tool.</span><span data-l="ar">ملف واحد يشغّل كل الأدوات.</span></span>
+            <a href="/features.html"><span data-l="en">See all features →</span><span data-l="ar">كل المميزات ←</span></a>
+          </div>
+        </div>
+      </div>
       <a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a>
-      <a href="/features.html"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a>
       <a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
       <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
       <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
-      <a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a>
     </nav>
     <div class="hdr-tools">
       <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
-        <button type="button" data-set-lang="ar" aria-pressed="true" lang="ar">عربي</button>
-        <button type="button" data-set-lang="en" aria-pressed="false" lang="en">English</button>
+        <button type="button" data-set-lang="en" aria-pressed="true" lang="en">English</button>
+        <button type="button" data-set-lang="ar" aria-pressed="false" lang="ar">عربي</button>
       </div>
       <!-- One cycling button, not a three-button pill.
            The pill cost ~110px of a header that also carries a brand, six nav
@@ -385,13 +429,26 @@
       </button>
     </div>
     <nav class="drawer-nav" aria-label="التنقل الرئيسي" data-aria-en="Main navigation">
+      <a href="/jobs"><span data-l="ar">الوظائف</span><span data-l="en">Jobs</span></a>
       <a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a>
       <a href="/features.html"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a>
       <a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
-      <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
-      <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
-      <a href="/about.html"><span data-l="ar">عن الشركة</span><span data-l="en">About</span></a>
-      <a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a>
+      <div class="drawer-group">
+        <span><span data-l="ar">المنتجات</span><span data-l="en">Products</span></span>
+        <a href="/#assistant"><span data-l="ar">المساعد المباشر للمقابلات</span><span data-l="en">Live Interview Assistant</span></a>
+        <a href="/features.html#interviews"><span data-l="ar">المقابلات التدريبية</span><span data-l="en">AI mock interviews</span></a>
+        <a href="/cv-builder.html"><span data-l="ar">منشئ السيرة الذاتية</span><span data-l="en">CV builder</span></a>
+        <a href="/ats-checker"><span data-l="ar">فحص السيرة الذاتية (ATS)</span><span data-l="en">ATS CV checker</span></a>
+        <a href="/integrations.html"><span data-l="ar">التقويم و Google Meet</span><span data-l="en">Calendar &amp; Google Meet</span></a>
+        <a href="/desktop.html"><span data-l="ar">تطبيق سطح المكتب</span><span data-l="en">Desktop app</span></a>
+      </div>
+      <div class="drawer-group">
+        <span><span data-l="ar">الشركة</span><span data-l="en">Company</span></span>
+        <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
+        <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
+        <a href="/about.html"><span data-l="ar">من نحن</span><span data-l="en">About us</span></a>
+        <a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a>
+      </div>
     </nav>
     <div class="drawer-cta">
       <!-- Repeated here because .hdr-tools hides the login link under 520px:
@@ -421,8 +478,8 @@
            both and they can never show different states. -->
       <div class="drawer-tools">
         <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
-          <button type="button" data-set-lang="ar" aria-pressed="true" lang="ar">عربي</button>
-          <button type="button" data-set-lang="en" aria-pressed="false" lang="en">English</button>
+          <button type="button" data-set-lang="en" aria-pressed="true" lang="en">English</button>
+          <button type="button" data-set-lang="ar" aria-pressed="false" lang="ar">عربي</button>
         </div>
         <button type="button" class="icon-btn" data-theme-cycle aria-label="المظهر" data-aria-en="Theme">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
@@ -450,105 +507,413 @@
 
 <main id="main">
 
-<!-- ══ Hero ══ -->
-<section class="hero">
-  <div class="hero-glow" aria-hidden="true"></div>
-  <div class="wrap hero-grid">
-    <div>
-      <span class="eyebrow"><svg class="icon" viewBox="1 4 22 16" aria-hidden="true"><use href="#i-eg"/></svg>
-        <span data-l="ar">تدرّب على مقابلات العمل بالعربية مع محاوِر ذكاء اصطناعي</span>
-        <span data-l="en">Practise real job interviews with an AI interviewer</span>
-      </span>
+<!-- ══ Hero ══
+     The night band. A job search sits in it because the fastest way to show
+     what a career platform does is to let someone use it. -->
+<section class="hero2">
+  <div class="wrap hero2-grid">
+    <div class="hero2-copy">
+      <a class="hero2-badge" href="#assistant">
+        <b><span data-l="en">NEW</span><span data-l="ar">جديد</span></b>
+        <span data-l="en">Live Interview Assistant — now in the app</span>
+        <span data-l="ar">المساعد المباشر للمقابلات — الآن في التطبيق</span>
+      </a>
       <h1>
-        <span data-l="ar">تدرّب على المقابلة<br><span class="grad">قبل أن تدخلها فعلاً</span></span>
-        <span data-l="en">Practise the interview<br><span class="grad">before you walk into it</span></span>
+        <span data-l="en">Land your next job, <span class="grad">anywhere in the world</span></span>
+        <span data-l="ar">وظيفتك القادمة، <span class="grad">من أي مكان في العالم</span></span>
       </h1>
       <p class="lede">
-        <span data-l="ar">محاوِر ذكاء اصطناعي يسألك بالعربية، يسمع إجابتك، ويقول لك بالضبط أين كنت قوياً
-        وأين خسرت الوظيفة — بدرجة من ١٠ وسبب واضح لكل نقطة.</span>
-        <span data-l="en">An AI interviewer asks the questions, listens to your answer, and tells you
-        exactly where you were strong and where you lost the job — scored out of 10, with a clear
-        reason behind every point.</span>
+        <span data-l="en">Interprova is your AI career platform: find jobs worldwide, build a CV that gets past hiring software, rehearse with an AI interviewer — and get live help in the interview itself.</span>
+        <span data-l="ar">Interprova منصتك المهنية بالذكاء الاصطناعي: ابحث عن وظائف حول العالم، جهّز سيرة ذاتية تتخطى أنظمة التوظيف، تدرّب مع محاوِر ذكي — واحصل على مساعدة لحظية داخل المقابلة نفسها.</span>
       </p>
-      <div class="hero-cta">
-        <a class="btn btn-primary btn-lg" href="/app?signup=1"><span data-l="ar">ابدأ التدريب مجاناً</span><span data-l="en">Start practising free</span></a>
-        <a class="btn btn-ghost btn-lg" href="#how"><span data-l="ar">شاهد كيف يعمل</span><span data-l="en">See how it works</span></a>
+
+      <form class="hsearch" action="/jobs" method="get" role="search">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="search" name="q" autocomplete="off" maxlength="120"
+               placeholder="Job title, skill or company" data-ph-en="Job title, skill or company" data-ph-ar="مسمى وظيفي، مهارة أو شركة"
+               aria-label="Search jobs" data-aria-en="Search jobs">
+        <button class="btn btn-primary" type="submit">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg>
+          <span class="lbl"><span data-l="en">Search jobs</span><span data-l="ar">ابحث</span></span>
+        </button>
+      </form>
+      <div class="hchips">
+        <small><span data-l="en">Popular:</span><span data-l="ar">الأكثر بحثاً:</span></small>
+        <a href="/jobs?workplace=remote"><span data-l="en">Remote</span><span data-l="ar">عن بُعد</span></a>
+        <a href="/jobs?q=software+engineer"><span data-l="en">Software engineer</span><span data-l="ar">مهندس برمجيات</span></a>
+        <a href="/jobs?q=data+analyst"><span data-l="en">Data analyst</span><span data-l="ar">محلل بيانات</span></a>
+        <a href="/jobs?q=product+manager"><span data-l="en">Product manager</span><span data-l="ar">مدير منتج</span></a>
+        <a href="/jobs?q=marketing"><span data-l="en">Marketing</span><span data-l="ar">تسويق</span></a>
+        <a href="/jobs?q=designer"><span data-l="en">Design</span><span data-l="ar">تصميم</span></a>
       </div>
-      <div class="hero-note">
-        <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
-          <span data-l="ar">بدون بطاقة ائتمان</span><span data-l="en">No credit card</span></span>
-        <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
-          <span data-l="ar">وقت تجريبي مجاني</span><span data-l="en">Free trial time</span></span>
-        <span><span class="tick"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
-          <span data-l="ar">يفهم اللهجة المصرية</span><span data-l="en">Understands Egyptian dialect</span></span>
+
+      <div class="hproof">
+        <span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg><span data-l="en">Free to start</span><span data-l="ar">ابدأ مجاناً</span></span>
+        <span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg><span data-l="en">No credit card</span><span data-l="ar">بدون بطاقة ائتمان</span></span>
+        <span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg><span data-l="en">English &amp; Arabic</span><span data-l="ar">بالإنجليزية والعربية</span></span>
       </div>
     </div>
 
-    <div class="shot-hero">
-      <img src="/shots/app-home.png" alt="لقطة من تطبيق Interprova تعرض رصيد الدقائق ومجالات التدريب"
-           data-alt-en="The Interprova app showing your minute balance and practice tracks"
-           width="720" height="1558" fetchpriority="high" decoding="async">
+    <div class="hvis">
+      <!-- Drawn in markup rather than a screenshot so it follows the page
+           language: the app's screenshots are Arabic, and an English visitor's
+           first look at the product should be in English. -->
+      <div class="hphone" aria-hidden="true">
+        <div class="hp-screen">
+          <div class="hp-bar"><b>Interprova</b><span class="hp-av">S</span></div>
+          <div class="hp-live">
+            <span><small><span data-l="en">Live Interview Assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></small>
+              <b><span data-l="en">Interview at 3:00 PM</span><span data-l="ar">مقابلة الساعة ٣:٠٠ م</span></b></span>
+            <span class="hp-go"><span data-l="en">Start</span><span data-l="ar">ابدأ</span></span>
+          </div>
+          <div class="hp-h"><span data-l="en">Top matches for you</span><span data-l="ar">أفضل الوظائف لك</span></div>
+          <div class="mini-row"><span class="mini-av g-cyan">D</span><span><b><span data-l="en">Data Analyst</span><span data-l="ar">محلل بيانات</span></b><br><small><span data-l="en">Remote</span><span data-l="ar">عن بُعد</span></small></span><span class="pct">92%</span></div>
+          <div class="mini-row"><span class="mini-av g-violet">P</span><span><b><span data-l="en">Product Designer</span><span data-l="ar">مصمم منتجات</span></b><br><small><span data-l="en">Berlin</span><span data-l="ar">برلين</span></small></span><span class="pct">88%</span></div>
+          <div class="mini-row"><span class="mini-av g-blue">F</span><span><b><span data-l="en">Frontend Engineer</span><span data-l="ar">مهندس واجهات</span></b><br><small><span data-l="en">Dubai</span><span data-l="ar">دبي</span></small></span><span class="pct">81%</span></div>
+          <div class="hp-h"><span data-l="en">Your CV</span><span data-l="ar">سيرتك الذاتية</span></div>
+          <div class="hp-cv">
+            <span><b><span data-l="en">ATS score</span><span data-l="ar">درجة ATS</span></b><small><span data-l="en">Tailored for Data Analyst</span><span data-l="ar">مخصّصة لمحلل بيانات</span></small></span>
+            <span class="hp-score">91</span>
+          </div>
+          <div class="mini-bar"><i style="width:91%"></i></div>
+          <div class="hp-tabs"><i class="on"></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <!-- Illustrative cards: what each part of the product hands back. -->
+      <div aria-hidden="true">
+        <div class="fcard f1">
+          <span class="fring"><i>8.6</i></span>
+          <span><b><span data-l="en">Answer score</span><span data-l="ar">درجة الإجابة</span></b>
+            <small><span data-l="en">Clear structure, strong example</span><span data-l="ar">بنية واضحة ومثال قوي</span></small></span>
+        </div>
+        <div class="fcard f2">
+          <span class="fico g-rose"><svg class="icon" viewBox="0 0 24 24"><use href="#i-calendar"/></svg></span>
+          <span><b><span data-l="en">Interview tomorrow, 10:00</span><span data-l="ar">مقابلة غداً، ١٠:٠٠</span></b>
+            <small><span data-l="en">Google Meet · on your calendar</span><span data-l="ar">Google Meet · في تقويمك</span></small></span>
+        </div>
+        <div class="fcard f3">
+          <span class="fico g-violet"><svg class="icon" viewBox="0 0 24 24"><use href="#i-sparkles"/></svg></span>
+          <span><b><span data-l="en">Answer suggested</span><span data-l="ar">إجابة مقترحة</span></b>
+            <small><span data-l="en">Grounded in your CV</span><span data-l="ar">مبنية على سيرتك الذاتية</span></small></span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ══ Get the app ══
-     Directly after the hero: someone who has just read what the product does
-     is at the one moment they are most likely to install it, and making them
-     scroll past five sections to find out it HAS an app loses most of them. -->
-<section class="section getapp" id="get-app">
-  <div class="wrap getapp-in">
-    <div class="getapp-copy">
-      <div class="kicker">
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg>
-        <span data-l="ar">حمّل التطبيق</span><span data-l="en">Get the app</span>
-      </div>
-      <h2>
-        <span data-l="ar">تدرّب من تليفونك، في أي وقت</span>
-        <span data-l="en">Practise from your phone, any time</span>
-      </h2>
+<!-- ══ Live numbers ══ Written from /api/jobs/stats; hidden if it fails. -->
+<section class="kpis" id="kpis" aria-label="Interprova in numbers" data-aria-en="Interprova in numbers">
+  <div class="wrap">
+    <div class="kpis-in">
+      <div class="kpi"><b data-kpi="jobs">—</b><span><span data-l="en">open jobs right now</span><span data-l="ar">وظيفة متاحة الآن</span></span></div>
+      <div class="kpi"><b data-kpi="countries">—</b><span><span data-l="en">countries</span><span data-l="ar">دولة</span></span></div>
+      <div class="kpi"><b data-kpi="companies">—</b><span><span data-l="en">companies hiring</span><span data-l="ar">شركة توظّف</span></span></div>
+      <div class="kpi"><b data-kpi="postedToday">—</b><span><span data-l="en">new in the last 24h</span><span data-l="ar">جديدة خلال ٢٤ ساعة</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Companies hiring ══ Written from /api/jobs/search; hidden if it fails. -->
+<section class="hiring" id="hiring" hidden>
+  <div class="wrap">
+    <p class="marquee-label"><span data-l="en">Companies hiring on Interprova right now</span><span data-l="ar">شركات توظّف على Interprova الآن</span></p>
+  </div>
+  <div class="marquee"><div class="marquee-track" id="mqTrack"></div></div>
+</section>
+
+<!-- ══ The platform ══ -->
+<section class="section" id="platform">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-grid"/></svg><span data-l="en">One platform</span><span data-l="ar">منصة واحدة</span></div>
+      <h2><span data-l="en">Everything between you and the offer</span><span data-l="ar">كل ما بينك وبين العرض الوظيفي</span></h2>
       <p>
-        <span data-l="ar">نفس المحاوِر ونفس التقييم — بالصوت والكاميرا، وجلساتك محفوظة ومتزامنة بين التطبيق والويب. حسابك واحد في الاثنين.</span>
-        <span data-l="en">The same interviewer and the same scoring — with voice and camera, and your sessions synced between the app and the web. One account for both.</span>
-      </p>
-
-      <div class="store-row">
-        <!-- The real listing. -->
-        <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.interprova.app"
-           rel="noopener" target="_blank"
-           aria-label="حمّل تطبيق Interprova من Google Play" data-aria-en="Get Interprova on Google Play">
-          <svg class="store-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
-          <span class="store-txt">
-            <small><span data-l="ar">حمّله من</span><span data-l="en">GET IT ON</span></small>
-            <strong>Google Play</strong>
-          </span>
-        </a>
-
-        <!-- Deliberately NOT an "App Store" badge.
-             There is no iOS build; this link opens the web app. Apple's badge
-             means "download from the App Store", and putting it on a link that
-             goes to a website misleads the reader and breaches Apple's own
-             identity guidelines. So the button says exactly where it goes. -->
-        <a class="store-badge" href="https://interprova.com/app/"
-           aria-label="افتح Interprova على iPhone من المتصفح" data-aria-en="Open Interprova on iPhone in the browser">
-          <svg class="store-ico store-ico-apple" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg>
-          <span class="store-txt">
-            <small><span data-l="ar">على iPhone — من المتصفح</span><span data-l="en">On iPhone — in your browser</span></small>
-            <strong><span data-l="ar">افتح التطبيق</span><span data-l="en">Open the app</span></strong>
-          </span>
-        </a>
-      </div>
-
-      <p class="getapp-note">
-        <span data-l="ar">لا يوجد تطبيق iPhone بعد — النسخة على المتصفح تعمل بكامل مزاياها، ويمكنك إضافتها إلى الشاشة الرئيسية.</span>
-        <span data-l="en">There is no iPhone app yet — the browser version is fully featured, and you can add it to your home screen.</span>
+        <span data-l="en">Your CV, your job search and your interview prep share one profile — so every tool makes the others smarter.</span>
+        <span data-l="ar">سيرتك وبحثك عن وظيفة وتحضيرك للمقابلة يشتركون في ملف واحد — فكل أداة تجعل الأخرى أذكى.</span>
       </p>
     </div>
 
-    <div class="getapp-shot reveal">
-      <img src="/shots/meeting-live.png" width="540" height="960" loading="lazy" decoding="async"
-           alt="مقابلة مباشرة جارية داخل تطبيق Interprova على الهاتف"
-           data-alt-en="A live interview in progress in the Interprova phone app">
+    <div class="bento">
+      <a class="tile w4 night reveal" href="#assistant">
+        <span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-headset"/></svg></span>
+        <h3><span data-l="en">Live Interview Assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span> <span class="tag-new"><span data-l="en">NEW</span><span data-l="ar">جديد</span></span></h3>
+        <p>
+          <span data-l="en">Open it on your phone or laptop during a real interview. It listens, spots the question, and suggests a concise answer drawn from your own CV — in seconds.</span>
+          <span data-l="ar">افتحه على هاتفك أو جهازك أثناء مقابلة حقيقية. يستمع، يلتقط السؤال، ويقترح إجابة مختصرة من سيرتك الذاتية أنت — في ثوانٍ.</span>
+        </p>
+        <div class="mini-chat" aria-hidden="true">
+          <div class="bub q"><small><span data-l="en">Interviewer</span><span data-l="ar">المحاوِر</span></small>
+            <span data-l="en">Tell me about a time you handled a difficult stakeholder.</span><span data-l="ar">احكِ لي عن موقف تعاملت فيه مع طرف صعب في العمل.</span></div>
+          <div class="bub a"><small><span data-l="en">Suggested</span><span data-l="ar">مقترح</span></small>
+            <span data-l="en">On the checkout migration I owned, our finance lead blocked the launch. I set up a weekly review…</span><span data-l="ar">في مشروع نقل نظام الدفع الذي قدته، اعترض مسؤول المالية على الإطلاق، فبدأت مراجعة أسبوعية…</span></div>
+        </div>
+        <span class="more"><span data-l="en">How it works</span><span data-l="ar">كيف يعمل</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w2 reveal" href="/features.html">
+        <span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg></span>
+        <h3><span data-l="en">AI mock interviews</span><span data-l="ar">مقابلات تدريبية بالذكاء الاصطناعي</span></h3>
+        <p>
+          <span data-l="en">Voice-and-camera interviews with an AI hiring manager who follows up on what you said — then scores every answer out of 10.</span>
+          <span data-l="ar">مقابلات بالصوت والكاميرا مع مسؤول توظيف ذكي يتابع ما قلته — ثم يقيّم كل إجابة من ١٠.</span>
+        </p>
+        <div class="mini-score" aria-hidden="true">
+          <span class="ring" style="--p:84"><b>8.4</b></span>
+          <ul>
+            <li><span data-l="en">Relevance</span><span data-l="ar">الصلة</span><i style="--w:90%"></i></li>
+            <li><span data-l="en">Structure</span><span data-l="ar">البنية</span><i style="--w:82%"></i></li>
+            <li><span data-l="en">Depth</span><span data-l="ar">العمق</span><i style="--w:70%"></i></li>
+          </ul>
+        </div>
+        <span class="more"><span data-l="en">Start practising</span><span data-l="ar">ابدأ التدريب</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w2 reveal" href="/jobs">
+        <span class="tico g-cyan"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-briefcase"/></svg></span>
+        <h3><span data-l="en">Jobs worldwide</span><span data-l="ar">وظائف حول العالم</span></h3>
+        <p>
+          <span data-l="en">Live roles from company career pages and job boards — with your match score on every listing once you sign in.</span>
+          <span data-l="ar">وظائف حيّة من صفحات توظيف الشركات ومواقع الوظائف — مع نسبة تطابقك على كل وظيفة بعد تسجيل الدخول.</span>
+        </p>
+        <div class="mini" aria-hidden="true">
+          <div class="mini-row"><span class="mini-av g-blue">P</span><span><b><span data-l="en">Product Designer</span><span data-l="ar">مصمم منتجات</span></b> <small>· <span data-l="en">Remote</span><span data-l="ar">عن بُعد</span></small></span><span class="pct">88%</span></div>
+        </div>
+        <span class="more"><span data-l="en">Browse jobs</span><span data-l="ar">تصفّح الوظائف</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w2 reveal" href="/ats-checker">
+        <span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-filecheck"/></svg></span>
+        <h3><span data-l="en">ATS CV checker</span><span data-l="ar">فحص السيرة الذاتية (ATS)</span> <span class="tag-free"><span data-l="en">FREE</span><span data-l="ar">مجاني</span></span></h3>
+        <p>
+          <span data-l="en">See your CV the way hiring software reads it: keyword match, missing sections and formatting traps.</span>
+          <span data-l="ar">شاهد سيرتك كما تقرؤها أنظمة التوظيف: تطابق الكلمات المفتاحية، والأقسام الناقصة، وأخطاء التنسيق.</span>
+        </p>
+        <div class="mini-bar" aria-hidden="true"><i style="width:84%"></i></div>
+        <span class="more"><span data-l="en">Check my CV</span><span data-l="ar">افحص سيرتي</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w2 reveal" href="/cv-builder.html">
+        <span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pen"/></svg></span>
+        <h3><span data-l="en">CV builder &amp; tailoring</span><span data-l="ar">بناء السيرة وتخصيصها</span></h3>
+        <p>
+          <span data-l="en">Import your CV once, then tailor it to any job in one tap — reworded for the role, never invented. Export to PDF or Word.</span>
+          <span data-l="ar">استورد سيرتك مرة واحدة، ثم خصّصها لأي وظيفة بضغطة — صياغة تناسب الدور دون اختلاق أي معلومة. صدّرها PDF أو Word.</span>
+        </p>
+        <div class="mini-ba" aria-hidden="true"><span class="before">ATS <b>64</b></span><svg class="icon" viewBox="0 0 24 24"><use href="#i-arrow"/></svg><span class="after">ATS <b>91</b></span></div>
+        <span class="more"><span data-l="en">Build my CV</span><span data-l="ar">ابنِ سيرتي</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w3 reveal" href="/app">
+        <span class="tico g-amber"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg></span>
+        <h3><span data-l="en">Cover letters that sound like you</span><span data-l="ar">خطابات تقديم بصوتك أنت</span></h3>
+        <p>
+          <span data-l="en">A specific, one-page letter for each application, written from your real achievements and the job's own words.</span>
+          <span data-l="ar">خطاب محدد من صفحة واحدة لكل وظيفة، مكتوب من إنجازاتك الحقيقية وبلغة إعلان الوظيفة نفسه.</span>
+        </p>
+        <div class="mini-doc" aria-hidden="true"><i style="--w:40%"></i><i></i><i class="hl" style="--w:86%"></i><i style="--w:92%"></i><i class="hl" style="--w:64%"></i><i style="--w:30%"></i></div>
+        <span class="more"><span data-l="en">Write a letter</span><span data-l="ar">اكتب خطاباً</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w3 reveal" href="/app">
+        <span class="tico g-rose"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bell"/></svg></span>
+        <h3><span data-l="en">Tracker &amp; job alerts</span><span data-l="ar">متابعة الطلبات وتنبيهات الوظائف</span></h3>
+        <p>
+          <span data-l="en">Follow every application from saved to offer, and get new matching jobs by email — daily or weekly.</span>
+          <span data-l="ar">تابع كل طلب من الحفظ حتى العرض، واستلم الوظائف الجديدة المطابقة على بريدك — يومياً أو أسبوعياً.</span>
+        </p>
+        <div class="mini-pipe" aria-hidden="true">
+          <span><b>6</b><span data-l="en">Saved</span><span data-l="ar">محفوظة</span></span>
+          <span><b>4</b><span data-l="en">Applied</span><span data-l="ar">مُرسلة</span></span>
+          <span><b>2</b><span data-l="en">Interview</span><span data-l="ar">مقابلة</span></span>
+          <span><b>1</b><span data-l="en">Offer</span><span data-l="ar">عرض</span></span>
+        </div>
+        <span class="more"><span data-l="en">Open the app</span><span data-l="ar">افتح التطبيق</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w3 night reveal" href="/integrations.html">
+        <span class="tico g-rose"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg></span>
+        <h3><span data-l="en">Calendar &amp; Google Meet</span><span data-l="ar">التقويم و Google Meet</span> <span class="tag-new"><span data-l="en">NEW</span><span data-l="ar">جديد</span></span></h3>
+        <p>
+          <span data-l="en">Connect Google Calendar: see every interview coming up, schedule new ones with a Meet link, add prep tasks — and open the Live Assistant straight from the invite.</span>
+          <span data-l="ar">اربط Google Calendar: شاهد كل مقابلاتك القادمة، وجدول مقابلات جديدة برابط Meet، وأضف مهام التحضير — وافتح المساعد المباشر من الدعوة نفسها.</span>
+        </p>
+        <div class="mini-cal" aria-hidden="true">
+          <div><time>10:00</time><span><span data-l="en">Interview · Product Designer</span><span data-l="ar">مقابلة · مصمم منتجات</span></span><em>Meet</em></div>
+          <div><time>16:30</time><span><span data-l="en">Practice: behavioural questions</span><span data-l="ar">تدريب: الأسئلة السلوكية</span></span></div>
+        </div>
+        <span class="more"><span data-l="en">See integrations</span><span data-l="ar">شاهد التكاملات</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+
+      <a class="tile w3 reveal" href="/desktop.html">
+        <span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-monitor"/></svg></span>
+        <h3><span data-l="en">Desktop app for Windows &amp; macOS</span><span data-l="ar">تطبيق سطح المكتب لويندوز وماك</span></h3>
+        <p>
+          <span data-l="en">Meeting AI listens to the call audio on your computer, transcribes both sides and answers from your resume, notes and files — in a slim focus bar that stays on top.</span>
+          <span data-l="ar">Meeting AI يستمع لصوت المكالمة على جهازك، ويكتب كلام الطرفين، ويجيب من سيرتك وملاحظاتك وملفاتك — في شريط تركيز صغير يبقى فوق كل النوافذ.</span>
+        </p>
+        <div class="ts-pills" aria-hidden="true" style="margin-top:var(--sp-3)">
+          <span>Ctrl/⌘ + Enter</span><span><span data-l="en">Screenshots</span><span data-l="ar">لقطات الشاشة</span></span><span><span data-l="en">Knowledge files</span><span data-l="ar">ملفات المعرفة</span></span><span>EN · AR · DE</span>
+        </div>
+        <span class="more"><span data-l="en">Explore the desktop app</span><span data-l="ar">اكتشف تطبيق سطح المكتب</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Live Interview Assistant ══ -->
+<section class="section section-alt" id="assistant">
+  <div class="wrap spot">
+    <div class="spot-copy reveal">
+      <div class="kicker-pill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="width:15px;height:15px"><use href="#i-headset"/></svg><span data-l="en">New · Live Interview Assistant</span><span data-l="ar">جديد · المساعد المباشر</span></div>
+      <h2><span data-l="en">A second brain for the interview itself</span><span data-l="ar">عقل ثانٍ معك داخل المقابلة نفسها</span></h2>
+      <p>
+        <span data-l="en">The same idea as our desktop assistant, now inside the Interprova app. Keep it open beside your call — or on its own — and it keeps up with the conversation for you.</span>
+        <span data-l="ar">نفس فكرة مساعد سطح المكتب، الآن داخل تطبيق Interprova. اتركه مفتوحاً بجانب مكالمتك — أو وحده — ويتابع المحادثة معك لحظة بلحظة.</span>
+      </p>
+      <ul class="checks">
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Listens live</b> — transcribes the interviewer in English or Arabic as they speak.</span><span data-l="ar"><b>يستمع مباشرة</b> — يكتب كلام المحاوِر بالإنجليزية أو العربية أثناء حديثه.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Catches the question</b> — knows when a question has been asked and answers on its own.</span><span data-l="ar"><b>يلتقط السؤال</b> — يعرف متى طُرح سؤال ويجيب تلقائياً.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Answers from your CV</b> — built from your real experience and the job you're interviewing for. Nothing invented.</span><span data-l="ar"><b>يجيب من سيرتك</b> — من خبرتك الحقيقية والوظيفة التي تُقابَل عليها. لا شيء مختلق.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>You stay in control</b> — make it shorter, regenerate, or pause at any moment.</span><span data-l="ar"><b>أنت المتحكّم</b> — اختصر الإجابة، أعد توليدها، أو أوقفه مؤقتاً في أي لحظة.</span></span></li>
+      </ul>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a class="btn btn-primary btn-lg" href="/app?signup=1"><span data-l="en">Try it free</span><span data-l="ar">جرّبه مجاناً</span></a>
+        <a class="btn btn-ghost btn-lg" href="#get-app"><span data-l="en">Get the app</span><span data-l="ar">حمّل التطبيق</span></a>
+      </div>
+    </div>
+
+    <div class="live-ui reveal" aria-hidden="true">
+      <div class="live-top">
+        <span class="live-dot"><span data-l="en">Listening</span><span data-l="ar">يستمع الآن</span></span>
+        <span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      </div>
+      <div class="live-q">
+        <span class="live-label"><span data-l="en">Interviewer</span><span data-l="ar">المحاوِر</span></span>
+        <span data-l="en">Thanks for joining. So — <mark>why do you want to leave your current role?</mark></span>
+        <span data-l="ar">شكراً لانضمامك. إذن — <mark>لماذا تريد ترك وظيفتك الحالية؟</mark></span>
+      </div>
+      <div class="live-a">
+        <span class="live-label"><span data-l="en">Suggested answer</span><span data-l="ar">الإجابة المقترحة</span></span>
+        <span data-l="en">I've spent three years building the reporting stack at my company, and I'm ready for a role where data shapes product decisions directly — which is exactly what this team does.</span>
+        <span data-l="ar">قضيت ثلاث سنوات أبني منظومة التقارير في شركتي، وأنا مستعد لدور تقود فيه البيانات قرارات المنتج مباشرة — وهذا بالضبط ما يفعله هذا الفريق.</span><span class="caret"></span>
+      </div>
+      <div class="live-actions">
+        <span><span data-l="en">Shorter</span><span data-l="ar">أقصر</span></span>
+        <span><span data-l="en">Regenerate</span><span data-l="ar">أعد التوليد</span></span>
+        <span><span data-l="en">Pause</span><span data-l="ar">إيقاف مؤقت</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Calendar & Google Meet ══ -->
+<section class="section" id="calendar">
+  <div class="wrap spot">
+    <div class="cal-ui reveal from-left" aria-hidden="true">
+      <div class="cal-head">
+        <span><b><span data-l="en">Your week</span><span data-l="ar">أسبوعك</span></b><br><small><span data-l="en">Synced with Google Calendar</span><span data-l="ar">متزامن مع Google Calendar</span></small></span>
+        <span class="cal-g"><i></i>Google</span>
+      </div>
+      <div class="cal-day"><span data-l="en">Tomorrow</span><span data-l="ar">غداً</span></div>
+      <div class="cal-ev iv">
+        <time>10:00</time>
+        <span><b><span data-l="en">Interview — Product Designer</span><span data-l="ar">مقابلة — مصمم منتجات</span><span class="tagiv"><span data-l="en">Interview</span><span data-l="ar">مقابلة</span></span></b><small>Google Meet · 45 min</small></span>
+        <span class="cal-acts"><span><span data-l="en">Join</span><span data-l="ar">انضم</span></span><span class="go"><span data-l="en">Join + assistant</span><span data-l="ar">انضم + المساعد</span></span></span>
+      </div>
+      <div class="cal-ev">
+        <time>16:30</time>
+        <span><b><span data-l="en">Mock interview — behavioural</span><span data-l="ar">مقابلة تدريبية — أسئلة سلوكية</span></b><small><span data-l="en">Practice block · 30 min</span><span data-l="ar">وقت تدريب · ٣٠ دقيقة</span></small></span>
+        <span class="cal-acts"><span><span data-l="en">Start</span><span data-l="ar">ابدأ</span></span></span>
+      </div>
+      <div class="cal-day"><span data-l="en">Thursday</span><span data-l="ar">الخميس</span></div>
+      <div class="cal-ev iv">
+        <time>13:00</time>
+        <span><b><span data-l="en">Final round — Data Analyst</span><span data-l="ar">المرحلة النهائية — محلل بيانات</span><span class="tagiv"><span data-l="en">Interview</span><span data-l="ar">مقابلة</span></span></b><small>Zoom · 60 min</small></span>
+        <span class="cal-acts"><span><span data-l="en">Join</span><span data-l="ar">انضم</span></span></span>
+      </div>
+      <div class="cal-task"><i></i><span data-l="en">Tailor CV for Data Analyst — due Wednesday</span><span data-l="ar">خصّص السيرة لوظيفة محلل بيانات — قبل الأربعاء</span></div>
+    </div>
+    <div class="spot-copy reveal from-right">
+      <div class="kicker-pill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg><span data-l="en">New · Calendar &amp; Google Meet</span><span data-l="ar">جديد · التقويم و Google Meet</span></div>
+      <h2><span data-l="en">Every interview on your calendar — and one tap from help</span><span data-l="ar">كل مقابلة في تقويمك — وعلى بُعد ضغطة من المساعدة</span></h2>
+      <p>
+        <span data-l="en">Connect your Google account once. Interprova reads your upcoming meetings, spots the interviews, and puts the right tool next to each one.</span>
+        <span data-l="ar">اربط حساب Google مرة واحدة. يقرأ Interprova اجتماعاتك القادمة، ويميّز المقابلات منها، ويضع الأداة المناسبة بجانب كل واحدة.</span>
+      </p>
+      <ul class="checks">
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Schedule with a Meet link</b> — book an interview or a practice block and a Google Meet link is created for you.</span><span data-l="ar"><b>جدولة برابط Meet</b> — احجز مقابلة أو وقت تدريب ويُنشأ رابط Google Meet تلقائياً.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Join with the assistant ready</b> — Meet, Zoom or Teams links open with the Live Assistant set up for that job.</span><span data-l="ar"><b>انضم والمساعد جاهز</b> — روابط Meet و Zoom و Teams تُفتح والمساعد المباشر مُعدّ لتلك الوظيفة.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Prep tasks in Google Tasks</b> — "tailor the CV", "research the company", with due dates.</span><span data-l="ar"><b>مهام التحضير في Google Tasks</b> — «خصّص السيرة»، «ابحث عن الشركة»، مع مواعيد نهائية.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Not on Google?</b> Add any interview to Outlook or Apple Calendar with one .ics file.</span><span data-l="ar"><b>لا تستخدم Google؟</b> أضف أي مقابلة إلى Outlook أو تقويم Apple بملف ‎.ics واحد.</span></span></li>
+      </ul>
+      <div class="hero2-cta" style="margin-top:0">
+        <a class="btn btn-primary btn-lg" href="/app?signup=1"><span data-l="en">Connect my calendar</span><span data-l="ar">اربط تقويمي</span></a>
+        <a class="btn btn-ghost btn-lg" href="/integrations.html"><span data-l="en">How it works</span><span data-l="ar">كيف يعمل</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ The journey ══ -->
+<section class="section" id="journey">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg><span data-l="en">From CV to offer</span><span data-l="ar">من السيرة إلى العرض</span></div>
+      <h2><span data-l="en">Four steps. One profile.</span><span data-l="ar">أربع خطوات. ملف واحد.</span></h2>
+    </div>
+    <div class="journey">
+      <article class="jstep reveal">
+        <span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-upload"/></svg></span>
+        <h3><span data-l="en">Build your profile</span><span data-l="ar">ابنِ ملفك</span></h3>
+        <p><span data-l="en">Import your CV (PDF or Word) once. It becomes a structured profile every tool reuses.</span><span data-l="ar">استورد سيرتك (PDF أو Word) مرة واحدة، فتتحول إلى ملف منظّم تستخدمه كل الأدوات.</span></p>
+      </article>
+      <article class="jstep reveal">
+        <span class="tico g-cyan"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-search"/></svg></span>
+        <h3><span data-l="en">Find the right jobs</span><span data-l="ar">اعثر على الوظائف المناسبة</span></h3>
+        <p><span data-l="en">Search worldwide and see your match on every listing. Save a search and new matches come to you.</span><span data-l="ar">ابحث حول العالم وشاهد نسبة تطابقك مع كل وظيفة. احفظ البحث وتصلك الوظائف الجديدة.</span></p>
+        <a href="/jobs"><span data-l="en">Search jobs →</span><span data-l="ar">ابحث عن وظيفة ←</span></a>
+      </article>
+      <article class="jstep reveal">
+        <span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pen"/></svg></span>
+        <h3><span data-l="en">Tailor and apply</span><span data-l="ar">خصّص وقدّم</span></h3>
+        <p><span data-l="en">One tap tailors your CV and writes a cover letter for that exact job. Track it until you hear back.</span><span data-l="ar">ضغطة واحدة تخصّص سيرتك وتكتب خطاب التقديم لهذه الوظيفة تحديداً، ثم تابع الطلب حتى يصلك الرد.</span></p>
+      </article>
+      <article class="jstep reveal">
+        <span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-award"/></svg></span>
+        <h3><span data-l="en">Practise, then perform</span><span data-l="ar">تدرّب، ثم تألّق</span></h3>
+        <p><span data-l="en">Rehearse with the AI interviewer, then bring the Live Assistant into the real thing.</span><span data-l="ar">تدرّب مع المحاوِر الذكي، ثم اصطحب المساعد المباشر إلى المقابلة الحقيقية.</span></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Fresh jobs ══ Filled from /api/jobs/search; the section hides itself
+     if the request fails, rather than showing empty skeletons forever. -->
+<section class="section section-alt" id="fresh-jobs">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-briefcase"/></svg><span data-l="en">Hiring now</span><span data-l="ar">توظيف الآن</span></div>
+      <h2><span data-l="en">Fresh roles from companies hiring today</span><span data-l="ar">وظائف جديدة من شركات توظّف اليوم</span></h2>
+      <p>
+        <span data-l="en">Updated all day from company career pages and job boards. You apply on the original site — we never stand between you and the employer.</span>
+        <span data-l="ar">تُحدَّث طوال اليوم من صفحات توظيف الشركات ومواقع الوظائف. تقدّم على الموقع الأصلي — لا نقف أبداً بينك وبين صاحب العمل.</span>
+      </p>
+    </div>
+    <div class="jgrid" id="jobsLive" aria-live="polite">
+      <div class="jcard sk"></div><div class="jcard sk"></div><div class="jcard sk"></div>
+      <div class="jcard sk"></div><div class="jcard sk"></div><div class="jcard sk"></div>
+    </div>
+    <div class="center-cta">
+      <a class="btn btn-primary" href="/jobs"><span data-l="en">Browse all jobs</span><span data-l="ar">تصفّح كل الوظائف</span></a>
+      <a class="btn btn-ghost" href="/jobs?workplace=remote"><span data-l="en">Remote jobs</span><span data-l="ar">وظائف عن بُعد</span></a>
     </div>
   </div>
 </section>
@@ -565,7 +930,7 @@
      and definitions below are the real ones from the evaluator's schema
      (backend/src/services/ai/prompts.js) — if that rubric changes, this
      section is wrong and must change with it. -->
-<section class="section rubric" id="scoring" aria-label="كيف تُقيَّم إجابتك" data-aria-en="How your answer is scored">
+<section class="section rubric" id="scoring" aria-label="How your answer is scored" data-aria-en="How your answer is scored" data-aria-ar="كيف تُقيَّم إجابتك">
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="kicker">
@@ -650,8 +1015,8 @@
 <section class="section" id="how">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></div>
-      <h2><span data-l="ar">ثلاث خطوات من التدريب إلى العرض الوظيفي</span><span data-l="en">Three steps from practice to the offer</span></h2>
+      <div class="kicker"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg><span data-l="en">AI mock interviews</span><span data-l="ar">المقابلات التدريبية</span></div>
+      <h2><span data-l="en">Interview practice in three steps</span><span data-l="ar">التدريب على المقابلة في ثلاث خطوات</span></h2>
       <p>
         <span data-l="ar">لا دورات طويلة ولا نظريات. تتدرّب على نفس الأسئلة التي ستُسأل عنها فعلاً.</span>
         <span data-l="en">No long courses, no theory. You practise the exact questions you are going to be asked.</span>
@@ -686,15 +1051,43 @@
   </div>
 </section>
 
+<!-- ══ ATS band ══ -->
+<section class="section" id="ats" style="padding-top:0">
+  <div class="wrap">
+    <div class="band reveal">
+      <div>
+        <div class="kicker-pill"><span data-l="en">Free · no sign-up</span><span data-l="ar">مجاني · بدون تسجيل</span></div>
+        <h2><span data-l="en">Is your CV getting past the robots?</span><span data-l="ar">هل تتخطى سيرتك الذاتية أنظمة الفرز الآلي؟</span></h2>
+        <p>
+          <span data-l="en">Most employers screen CVs with an applicant-tracking system before a person ever reads them. Upload yours — with the job description if you like — and see exactly what it sees, in seconds.</span>
+          <span data-l="ar">أغلب الشركات تمرّر السير الذاتية على نظام تتبّع المتقدمين قبل أن يقرأها إنسان. ارفع سيرتك — ومعها وصف الوظيفة إن أردت — واعرف بالضبط ما يراه النظام، في ثوانٍ.</span>
+        </p>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a class="btn btn-light btn-lg" href="/ats-checker"><span data-l="en">Check my CV free</span><span data-l="ar">افحص سيرتي مجاناً</span></a>
+          <a class="btn btn-glass btn-lg" href="/app"><span data-l="en">Tailor it to a job</span><span data-l="ar">خصّصها لوظيفة</span></a>
+        </div>
+      </div>
+      <div class="meter" aria-hidden="true">
+        <div class="meter-big"><span class="fring"><i>84</i></span>
+          <span><b><span data-l="en">ATS score</span><span data-l="ar">درجة ATS</span></b><span data-l="en">Good — 3 quick fixes</span><span data-l="ar">جيدة — ٣ تعديلات سريعة</span></span></div>
+        <div class="meter-row"><div><span><span data-l="en">Keyword match</span><span data-l="ar">تطابق الكلمات المفتاحية</span></span><span>78%</span></div><div class="mini-bar"><i style="width:78%"></i></div></div>
+        <div class="meter-row"><div><span><span data-l="en">Sections</span><span data-l="ar">الأقسام</span></span><span>100%</span></div><div class="mini-bar"><i style="width:100%"></i></div></div>
+        <div class="meter-row"><div><span><span data-l="en">Formatting</span><span data-l="ar">التنسيق</span></span><span>90%</span></div><div class="mini-bar"><i style="width:90%"></i></div></div>
+        <div class="meter-row"><div><span><span data-l="en">Measurable results</span><span data-l="ar">نتائج قابلة للقياس</span></span><span>65%</span></div><div class="mini-bar"><i style="width:65%"></i></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══ Features ══ -->
-<section class="section" id="features" style="background:var(--surface-alt)">
+<section class="section section-alt" id="features">
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="kicker"><span data-l="ar">المميزات</span><span data-l="en">Features</span></div>
-      <h2><span data-l="ar">مبني للسوق العربي — لا ترجمة لأداة أجنبية</span><span data-l="en">Built for the Arab market — not a translated foreign tool</span></h2>
+      <h2><span data-l="en">An interviewer that behaves like a real one</span><span data-l="ar">محاوِر يتصرّف كمحاوِر حقيقي</span></h2>
       <p>
-        <span data-l="ar">كل تفصيلة، من صياغة السؤال إلى نبرة التقييم، مصمّمة لطريقة إجراء المقابلات في مصر والخليج.</span>
-        <span data-l="en">Every detail, from how a question is worded to the tone of the feedback, is designed for the way interviews are actually run in Egypt and the Gulf.</span>
+        <span data-l="en">Every detail, from how a question is worded to the tone of the feedback, is designed around how interviews are actually run — in English or Arabic.</span>
+        <span data-l="ar">كل تفصيلة، من صياغة السؤال إلى نبرة التقييم، مصمّمة على طريقة إجراء المقابلات الحقيقية — بالإنجليزية أو العربية.</span>
       </p>
     </div>
     <div class="feats">
@@ -708,10 +1101,10 @@
       </article>
       <article class="feat reveal">
         <div class="ico i-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-speech"/></svg></div>
-        <h3><span data-l="ar">يفهم لهجتك</span><span data-l="en">It understands your dialect</span></h3>
+        <h3><span data-l="en">It understands how you really speak</span><span data-l="ar">يفهم طريقتك في الكلام</span></h3>
         <p>
-          <span data-l="ar">تتكلم مصري أو خليجي أو شامي — لا فرق. التقييم على المضمون فقط، ولا يُخصم منك بسبب العامية أبداً.</span>
-          <span data-l="en">Egyptian, Gulf, Levantine — it makes no difference. You are judged on substance alone, and speaking colloquially never costs you a point.</span>
+          <span data-l="en">Native accents, regional dialects, a mix of English and Arabic — you are judged on substance alone, never on accent.</span>
+          <span data-l="ar">لكنات مختلفة، لهجات محلية، خليط من الإنجليزية والعربية — التقييم على المضمون فقط، ولا يُخصم منك بسبب اللكنة أبداً.</span>
         </p>
       </article>
       <article class="feat reveal">
@@ -747,13 +1140,89 @@
 <section class="section" id="screens">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker"><span data-l="ar">من داخل التطبيق</span><span data-l="en">Inside the app</span></div>
-      <h2><span data-l="ar">ليست صوراً تسويقية — هذا هو التطبيق نفسه</span><span data-l="en">Not marketing renders — this is the app</span></h2>
+      <div class="kicker"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mobile"/></svg><span data-l="ar">جولة في التطبيق</span><span data-l="en">App tour</span></div>
+      <h2><span data-l="ar">أربع شاشات ستستخدمها كل يوم</span><span data-l="en">Four screens you'll use every day</span></h2>
       <p>
-        <span data-l="ar">كل لقطة هنا مأخوذة مباشرة من النسخة التي ستستخدمها، من لحظة فتح المقابلة حتى استلام تقييمك.</span>
-        <span data-l="en">Every shot here is taken straight from the build you will use, from opening the interview to collecting your score.</span>
+        <span data-l="ar">المساعد المباشر، ووظائفك المطابقة، وتخصيص السيرة، وتقييم مقابلتك — على أندرويد و iPhone والويب.</span>
+        <span data-l="en">The live assistant, your job matches, CV tailoring and your interview score — on Android, iPhone and the web.</span>
       </p>
     </div>
+
+    <div class="tour" data-tour>
+      <div class="tour-tabs" role="tablist" aria-label="App tour" data-aria-en="App tour" data-aria-ar="جولة في التطبيق">
+        <button class="tour-tab" role="tab" aria-selected="true" aria-controls="ts1" id="tt1">
+          <span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-headset"/></svg></span>
+          <span><b><span data-l="en">Live Interview Assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></b>
+            <span class="tt-body"><span data-l="en">It hears the question, highlights it, and streams a short first-person answer from your CV and the job.</span><span data-l="ar">يسمع السؤال ويميّزه، ويكتب إجابة قصيرة بصيغة المتكلّم من سيرتك والوظيفة.</span></span></span>
+          <span class="bar"><i></i></span>
+        </button>
+        <button class="tour-tab" role="tab" aria-selected="false" aria-controls="ts2" id="tt2">
+          <span class="tico g-cyan"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-briefcase"/></svg></span>
+          <span><b><span data-l="en">Your match on every job</span><span data-l="ar">نسبة تطابقك مع كل وظيفة</span></b>
+            <span class="tt-body"><span data-l="en">See which skills you already have and which the job asks for that your CV doesn't mention.</span><span data-l="ar">شاهد المهارات التي تملكها، وتلك التي تطلبها الوظيفة ولا تذكرها سيرتك.</span></span></span>
+          <span class="bar"><i></i></span>
+        </button>
+        <button class="tour-tab" role="tab" aria-selected="false" aria-controls="ts3" id="tt3">
+          <span class="tico g-amber"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pen"/></svg></span>
+          <span><b><span data-l="en">One-tap CV tailoring</span><span data-l="ar">تخصيص السيرة بضغطة</span></b>
+            <span class="tt-body"><span data-l="en">A version written for this role, its ATS score before and after, and a PDF or Word file ready to send.</span><span data-l="ar">نسخة مكتوبة لهذا الدور، ودرجة ATS قبل وبعد، وملف PDF أو Word جاهز للإرسال.</span></span></span>
+          <span class="bar"><i></i></span>
+        </button>
+        <button class="tour-tab" role="tab" aria-selected="false" aria-controls="ts4" id="tt4">
+          <span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-award"/></svg></span>
+          <span><b><span data-l="en">Your interview score</span><span data-l="ar">تقييم مقابلتك</span></b>
+            <span class="tt-body"><span data-l="en">Every practice answer scored on four criteria, with what to keep and what to fix.</span><span data-l="ar">كل إجابة تدريبية مقيّمة على أربعة معايير، مع ما تحافظ عليه وما تصلحه.</span></span></span>
+          <span class="bar"><i></i></span>
+        </button>
+      </div>
+
+      <div class="tour-stage" aria-hidden="true">
+        <div class="hphone">
+          <div class="hp-screen tour-screen on" id="ts1" role="tabpanel" aria-labelledby="tt1">
+            <div class="hp-bar"><b><span data-l="en">Live assistant</span><span data-l="ar">المساعد المباشر</span></b><span class="live-dot" style="font-size:12px"><span data-l="en">Listening</span><span data-l="ar">يستمع</span></span></div>
+            <div class="ts-card"><small><span data-l="en">Interviewer</span><span data-l="ar">المحاوِر</span></small><span data-l="en">So, tell me — why do you want to join our team?</span><span data-l="ar">إذن، أخبرني — لماذا تريد الانضمام إلى فريقنا؟</span></div>
+            <div class="ts-card ans"><small><span data-l="en">Suggested answer</span><span data-l="ar">الإجابة المقترحة</span></small><span data-l="en">I've spent three years turning raw data into decisions — at my last company my dashboards cut reporting time by 40%. Your team does that at a bigger scale, and that's the work I want to be doing.</span><span data-l="ar">قضيت ثلاث سنوات أحوّل البيانات إلى قرارات — لوحاتي في شركتي السابقة خفّضت وقت التقارير ٤٠٪. فريقكم يفعل ذلك على نطاق أكبر، وهذا ما أريد العمل عليه.</span><span class="caret"></span></div>
+            <div class="ts-pills"><span><span data-l="en">Answer now</span><span data-l="ar">أجب الآن</span></span><span><span data-l="en">Shorter</span><span data-l="ar">أقصر</span></span><span><span data-l="en">Regenerate</span><span data-l="ar">إعادة</span></span><span><span data-l="en">Pause</span><span data-l="ar">إيقاف</span></span></div>
+            <div class="ts-card"><small><span data-l="en">Earlier</span><span data-l="ar">سابقاً</span></small><span data-l="en">Walk me through your most recent project.</span><span data-l="ar">حدّثني عن آخر مشروع عملت عليه.</span></div>
+          </div>
+          <div class="hp-screen tour-screen" id="ts2" role="tabpanel" aria-labelledby="tt2">
+            <div class="hp-bar"><b><span data-l="en">Data Analyst</span><span data-l="ar">محلل بيانات</span></b><span class="hp-av">N</span></div>
+            <div class="ts-row"><span><b>Northwind Labs</b><br><small style="color:var(--text-3)"><span data-l="en">Remote · Full-time · Mid-level</span><span data-l="ar">عن بُعد · دوام كامل · متوسط الخبرة</span></small></span><span class="ring" style="--p:92"><b>92%</b></span></div>
+            <div class="ts-h"><span data-l="en">Skills you have</span><span data-l="ar">مهارات تملكها</span></div>
+            <div class="ts-pills"><span class="ok">SQL</span><span class="ok">Python</span><span class="ok">Power BI</span><span class="ok"><span data-l="en">Dashboards</span><span data-l="ar">لوحات البيانات</span></span></div>
+            <div class="ts-h"><span data-l="en">Asked for, not on your CV</span><span data-l="ar">مطلوبة وليست في سيرتك</span></div>
+            <div class="ts-pills"><span class="miss">dbt</span><span class="miss">A/B testing</span></div>
+            <div class="ts-card"><small><span data-l="en">Posted 2 hours ago</span><span data-l="ar">نُشرت منذ ساعتين</span></small><span data-l="en">Apply on the company's own careers page.</span><span data-l="ar">التقديم على صفحة التوظيف الخاصة بالشركة.</span></div>
+            <span class="ts-btn"><span data-l="en">Tailor my CV for this job</span><span data-l="ar">خصّص سيرتي لهذه الوظيفة</span></span>
+          </div>
+          <div class="hp-screen tour-screen" id="ts3" role="tabpanel" aria-labelledby="tt3">
+            <div class="hp-bar"><b><span data-l="en">Tailored CV</span><span data-l="ar">سيرة مخصّصة</span></b><span class="hp-av">S</span></div>
+            <div class="mini-ba" style="margin:0"><span class="before"><span data-l="en">Before</span><span data-l="ar">قبل</span><b>64</b></span><svg class="icon" viewBox="0 0 24 24"><use href="#i-arrow"/></svg><span class="after"><span data-l="en">After</span><span data-l="ar">بعد</span><b>91</b></span></div>
+            <div class="ts-h"><span data-l="en">What changed</span><span data-l="ar">ما الذي تغيّر</span></div>
+            <div class="ts-card"><span data-l="en">✓ Summary rewritten around analytics and stakeholder reporting</span><span data-l="ar">✓ إعادة كتابة الملخص حول التحليلات وتقارير الإدارة</span></div>
+            <div class="ts-card"><span data-l="en">✓ "SQL", "Power BI" moved to where parsers look first</span><span data-l="ar">✓ نقل «SQL» و«Power BI» إلى حيث تبحث الأنظمة أولاً</span></div>
+            <div class="ts-card"><span data-l="en">🔒 Your roles, dates and numbers kept exactly as they are</span><span data-l="ar">🔒 مسمياتك وتواريخك وأرقامك كما هي تماماً</span></div>
+            <div class="ts-pills"><span>PDF</span><span>Word</span><span><span data-l="en">Cover letter</span><span data-l="ar">خطاب تقديم</span></span></div>
+            <span class="ts-btn"><span data-l="en">Download PDF</span><span data-l="ar">تنزيل PDF</span></span>
+          </div>
+          <div class="hp-screen tour-screen" id="ts4" role="tabpanel" aria-labelledby="tt4">
+            <div class="hp-bar"><b><span data-l="en">Your evaluation</span><span data-l="ar">تقييمك</span></b><span class="hp-av">S</span></div>
+            <div class="ts-row"><span><span class="ts-big">8.4</span><small style="color:var(--text-3)"> / 10</small></span><span class="ring" style="--p:84"><b>84</b></span></div>
+            <div class="ts-crit">
+              <div><span data-l="en">Relevance</span><span data-l="ar">الصلة</span><span>9</span><i style="--w:90%"></i></div>
+              <div><span data-l="en">Specificity</span><span data-l="ar">التحديد</span><span>8</span><i style="--w:80%"></i></div>
+              <div><span data-l="en">Structure</span><span data-l="ar">البنية</span><span>9</span><i style="--w:90%"></i></div>
+              <div><span data-l="en">Professional depth</span><span data-l="ar">العمق المهني</span><span>7.5</span><i style="--w:75%"></i></div>
+            </div>
+            <div class="ts-card"><small><span data-l="en">Keep</span><span data-l="ar">حافظ على</span></small><span data-l="en">A clear example with a real number.</span><span data-l="ar">مثال واضح برقم حقيقي.</span></div>
+            <div class="ts-card"><small><span data-l="en">Fix</span><span data-l="ar">أصلح</span></small><span data-l="en">Say what you would do differently next time.</span><span data-l="ar">اذكر ما ستفعله بشكل مختلف في المرة القادمة.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="real-shots" data-l="ar">
+      <summary>شاهد لقطات حقيقية من التطبيق</summary>
 
     <div class="flow">
       <figure class="shot reveal">
@@ -876,6 +1345,151 @@
           <span data-l="en">A statement to the second for every credit and debit, with the balance after each one — so you never have to take our word for it.</span>
         </p>
       </figure>
+    </div>
+    </details>
+  </div>
+</section>
+
+<!-- ══ Desktop app ══ -->
+<section class="section section-alt" id="desktop">
+  <div class="wrap desk">
+    <div class="spot-copy reveal from-left">
+      <div class="kicker-pill"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-monitor"/></svg><span data-l="en">Desktop app · Windows &amp; macOS</span><span data-l="ar">تطبيق سطح المكتب · ويندوز وماك</span></div>
+      <h2><span data-l="en">Meeting AI — your assistant for every call on your computer</span><span data-l="ar">Meeting AI — مساعدك في كل مكالمة على جهازك</span></h2>
+      <p>
+        <span data-l="en">For interviews and meetings on Zoom, Google Meet, Teams or any app: it listens to the call audio itself, so there's nothing to set up between you and the meeting.</span>
+        <span data-l="ar">للمقابلات والاجتماعات على Zoom و Google Meet و Teams أو أي تطبيق: يستمع إلى صوت المكالمة نفسه، فلا شيء تحتاج إلى إعداده بينك وبين الاجتماع.</span>
+      </p>
+      <ul class="checks">
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Both sides transcribed</b> — every line labelled Interviewer or Me, in English, Arabic or German.</span><span data-l="ar"><b>كتابة كلام الطرفين</b> — كل سطر موسوم «المحاوِر» أو «أنا»، بالإنجليزية أو العربية أو الألمانية.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Auto or manual answers</b> from your resume, notes, job description and knowledge files.</span><span data-l="ar"><b>إجابات تلقائية أو يدوية</b> من سيرتك وملاحظاتك ووصف الوظيفة وملفات المعرفة.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Ask about the screen</b> — attach a screenshot of a slide, a chart or a document and ask about it.</span><span data-l="ar"><b>اسأل عن الشاشة</b> — أرفق لقطة لشريحة أو رسم بياني أو مستند واسأل عنها.</span></span></li>
+        <li><span class="ck"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span><span data-l="en"><b>Focus mode</b> — a slim glass bar with the answer underneath that stays on top of your call.</span><span data-l="ar"><b>وضع التركيز</b> — شريط زجاجي صغير والإجابة تحته يبقى فوق نافذة المكالمة.</span></span></li>
+      </ul>
+      <div class="os-row">
+        <span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-windows"/></svg>Windows 10 / 11</span>
+        <span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg>macOS</span>
+      </div>
+      <div class="hero2-cta" style="margin-top:0">
+        <a class="btn btn-primary btn-lg" href="/download/"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg><span data-l="en">Download Meeting AI</span><span data-l="ar">حمّل Meeting AI</span></a>
+        <a class="btn btn-ghost btn-lg" href="/desktop.html"><span data-l="en">See all features</span><span data-l="ar">كل المميزات</span></a>
+      </div>
+    </div>
+    <div class="reveal from-right" aria-hidden="true">
+      <div class="desk-win">
+        <div class="desk-bar"><i></i><i></i><i></i><span><span data-l="en">Video call — Interview</span><span data-l="ar">مكالمة فيديو — مقابلة</span></span></div>
+        <div class="desk-call">
+          <div class="desk-tile"><b>R</b><small><span data-l="en">Recruiter</span><span data-l="ar">مسؤول التوظيف</span></small></div>
+          <div class="desk-tile"><b>S</b><small><span data-l="en">You</span><span data-l="ar">أنت</span></small></div>
+        </div>
+        <div class="desk-focus">
+          <div class="desk-pillbar"><span class="on"><span data-l="en">Answer</span><span data-l="ar">أجب</span></span><span><span data-l="en">Screenshot</span><span data-l="ar">لقطة</span></span><span><span data-l="en">Chat</span><span data-l="ar">محادثة</span></span><span>EN</span><span>Auto</span></div>
+          <div class="desk-ans"><small><span data-l="en">Answer</span><span data-l="ar">الإجابة</span></small><span data-l="en">I'd start by clarifying the success metric, then ship the smallest version that tests it — at my last role that approach took our onboarding conversion from 31% to 44%.</span><span data-l="ar">أبدأ بتوضيح مقياس النجاح، ثم أطلق أصغر نسخة تختبره — في عملي السابق رفع هذا الأسلوب نسبة إكمال التسجيل من ٣١٪ إلى ٤٤٪.</span><span class="caret"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Get the app ══
+     Directly after the hero: someone who has just read what the product does
+     is at the one moment they are most likely to install it, and making them
+     scroll past five sections to find out it HAS an app loses most of them. -->
+<section class="section getapp" id="get-app">
+  <div class="wrap getapp-in">
+    <div class="getapp-copy">
+      <div class="kicker">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg>
+        <span data-l="ar">حمّل التطبيق</span><span data-l="en">Get the app</span>
+      </div>
+      <h2>
+        <span data-l="ar">تدرّب من تليفونك، في أي وقت</span>
+        <span data-l="en">Practise from your phone, any time</span>
+      </h2>
+      <p>
+        <span data-l="ar">نفس المحاوِر ونفس التقييم — بالصوت والكاميرا، وجلساتك محفوظة ومتزامنة بين التطبيق والويب. حسابك واحد في الاثنين.</span>
+        <span data-l="en">The same interviewer and the same scoring — with voice and camera, and your sessions synced between the app and the web. One account for both.</span>
+      </p>
+
+      <div class="store-row">
+        <!-- The real listing. -->
+        <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+           rel="noopener" target="_blank"
+           aria-label="حمّل تطبيق Interprova من Google Play" data-aria-en="Get Interprova on Google Play">
+          <svg class="store-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+          <span class="store-txt">
+            <small><span data-l="ar">حمّله من</span><span data-l="en">GET IT ON</span></small>
+            <strong>Google Play</strong>
+          </span>
+        </a>
+
+        <!-- Deliberately NOT an "App Store" badge.
+             There is no iOS build; this link opens the web app. Apple's badge
+             means "download from the App Store", and putting it on a link that
+             goes to a website misleads the reader and breaches Apple's own
+             identity guidelines. So the button says exactly where it goes. -->
+        <a class="store-badge" href="https://interprova.com/app/"
+           aria-label="افتح Interprova على iPhone من المتصفح" data-aria-en="Open Interprova on iPhone in the browser">
+          <svg class="store-ico store-ico-apple" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg>
+          <span class="store-txt">
+            <small><span data-l="ar">على iPhone — من المتصفح</span><span data-l="en">On iPhone — in your browser</span></small>
+            <strong><span data-l="ar">افتح التطبيق</span><span data-l="en">Open the app</span></strong>
+          </span>
+        </a>
+      </div>
+
+      <p class="getapp-note">
+        <span data-l="ar">لا يوجد تطبيق iPhone بعد — النسخة على المتصفح تعمل بكامل مزاياها، ويمكنك إضافتها إلى الشاشة الرئيسية.</span>
+        <span data-l="en">There is no iPhone app yet — the browser version is fully featured, and you can add it to your home screen.</span>
+      </p>
+    </div>
+
+    <div class="getapp-shot reveal zoom" aria-hidden="true">
+      <div class="hphone">
+        <div class="hp-screen">
+          <div class="hp-bar"><b><span data-l="en">Mock interview</span><span data-l="ar">مقابلة تدريبية</span></b><span class="live-dot" style="font-size:12px">12:48</span></div>
+          <div class="ts-video"><b>S</b><small><span data-l="en">Sara · AI interviewer</span><span data-l="ar">سارة · المحاوِرة الذكية</span></small><i class="ts-self"></i></div>
+          <div class="ts-card"><small><span data-l="en">Question 4 of 8</span><span data-l="ar">السؤال ٤ من ٨</span></small><span data-l="en">Tell me about a time you disagreed with your manager. What did you do?</span><span data-l="ar">احكِ لي عن موقف اختلفت فيه مع مديرك. ماذا فعلت؟</span></div>
+          <div class="ts-card ans"><small><span data-l="en">Live tip</span><span data-l="ar">نصيحة فورية</span></small><span data-l="en">Name the outcome — what changed because of you?</span><span data-l="ar">اذكر النتيجة — ما الذي تغيّر بسببك؟</span></div>
+          <div class="ts-ctrl"><span><svg class="icon" viewBox="0 0 24 24"><use href="#i-mic"/></svg></span><span><svg class="icon" viewBox="0 0 24 24"><use href="#i-video"/></svg></span><span class="end"><span data-l="en">End</span><span data-l="ar">إنهاء</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Built for a global job market ══ -->
+<section class="section" id="global">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="kicker"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe"/></svg><span data-l="en">Why Interprova</span><span data-l="ar">لماذا Interprova</span></div>
+      <h2><span data-l="en">Built for a global job market</span><span data-l="ar">مصمَّم لسوق عمل عالمي</span></h2>
+    </div>
+    <div class="vals">
+      <article class="val reveal">
+        <span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-speech"/></svg></span>
+        <h3><span data-l="en">Two languages, natively</span><span data-l="ar">لغتان بشكل أصيل</span></h3>
+        <p><span data-l="en">Every screen, question, score and CV works in English and Arabic — and the interviewer understands accents and dialects.</span><span data-l="ar">كل شاشة وسؤال وتقييم وسيرة ذاتية تعمل بالإنجليزية والعربية — والمحاوِر يفهم اللهجات واللكنات المختلفة.</span></p>
+      </article>
+      <article class="val reveal">
+        <span class="tico g-cyan"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe"/></svg></span>
+        <h3><span data-l="en">Jobs in <span data-kpi="countries">70+</span> countries</span><span data-l="ar">وظائف في <span data-kpi="countries">+٧٠</span> دولة</span></h3>
+        <p><span data-l="en">On-site, hybrid and remote roles, with filters for seniority, contract type, salary and how recently they were posted.</span><span data-l="ar">وظائف في المكتب وهجينة وعن بُعد، مع فلاتر للمستوى ونوع العقد والراتب وتاريخ النشر.</span></p>
+      </article>
+      <article class="val reveal">
+        <span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg></span>
+        <h3><span data-l="en">Honest AI</span><span data-l="ar">ذكاء اصطناعي صادق</span></h3>
+        <p><span data-l="en">It never invents facts. Tailored CVs keep your real roles, dates and numbers — and tell you what's missing instead of making it up.</span><span data-l="ar">لا يختلق أي معلومة. السيرة المخصّصة تحتفظ بأدوارك وتواريخك وأرقامك الحقيقية — وتخبرك بما ينقصها بدلاً من تأليفه.</span></p>
+      </article>
+      <article class="val reveal">
+        <span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-lock"/></svg></span>
+        <h3><span data-l="en">Private by design</span><span data-l="ar">الخصوصية أولاً</span></h3>
+        <p><span data-l="en">Your CV and recordings are never sold or shared. Delete your account and every byte of it, any time.</span><span data-l="ar">سيرتك وتسجيلاتك لا تُباع ولا تُشارك أبداً. احذف حسابك وكل بياناته في أي وقت.</span></p>
+      </article>
     </div>
   </div>
 </section>
@@ -1000,8 +1614,8 @@
          EasyKash is not switched on yet and promising a checkout that answers
          503 is worse than saying so. -->
     <p id="pay-methods" hidden style="text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-6)">
-      <span data-l="ar">الدفع بفودافون كاش أو إنستاباي أو البطاقة أو فوري عبر EasyKash · يمكنك إلغاء الاشتراك في أي وقت</span>
-      <span data-l="en">Pay by Vodafone Cash, InstaPay, card or Fawry through EasyKash · cancel the subscription any time</span>
+      <span data-l="ar">دفع آمن بالبطاقة أو المحفظة الإلكترونية · يمكنك إلغاء الاشتراك في أي وقت</span>
+      <span data-l="en">Secure payment by card or mobile wallet · cancel the subscription any time</span>
     </p>
     <p id="pay-pending" hidden style="text-align:center;color:var(--text-3);font-size:14px;margin-top:var(--sp-6)">
       <span data-l="ar">الدفع الإلكتروني قيد التفعيل حالياً. التجربة المجانية تعمل من الآن، ولشحن رصيدك <a href="mailto:support@khaledahmed.net">تواصل معنا</a>.</span>
@@ -1015,85 +1629,114 @@
 </section>
 
 <!-- ══ FAQ ══ -->
-<section class="section" id="faq" style="background:var(--surface-alt)">
+<section class="section section-alt" id="faq">
   <div class="wrap">
     <div class="sec-head reveal">
-      <div class="kicker"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></div>
-      <h2><span data-l="ar">كل ما قد تسأل عنه</span><span data-l="en">Everything you might ask</span></h2>
+      <div class="kicker"><span data-l="en">FAQ</span><span data-l="ar">أسئلة شائعة</span></div>
+      <h2><span data-l="en">Everything you might ask</span><span data-l="ar">كل ما قد تسأل عنه</span></h2>
     </div>
     <div class="faq">
       <details>
-        <summary><span data-l="ar">هل التطبيق بالعربية فعلاً أم ترجمة؟</span><span data-l="en">Is it really Arabic, or a translation?</span></summary>
+        <summary><span data-l="en">What is Interprova?</span><span data-l="ar">ما هو Interprova؟</span></summary>
         <p>
-          <span data-l="ar">عربي أصلاً. الأسئلة والتقييم والنصائح كلها مكتوبة بالعربية الفصحى المبسطة، والمحاوِر يفهم العامية المصرية والخليجية والشامية ولا يخصم من درجتك بسببها إطلاقاً — التقييم على المضمون فقط.</span>
-          <span data-l="en">Arabic first. The questions, the scoring and the advice are written in simplified Modern Standard Arabic, and the interviewer understands Egyptian, Gulf and Levantine colloquial without ever docking you for it — you are judged on substance alone.</span>
+          <span data-l="en">An AI career platform that covers the whole route to a job: a worldwide job search with match scores, a free ATS CV checker, a CV builder that tailors your CV and writes cover letters for each job, an application tracker with email alerts, AI mock interviews with a scored evaluation, and a Live Interview Assistant for the real interview.</span>
+          <span data-l="ar">منصة مهنية بالذكاء الاصطناعي تغطي الطريق كله إلى الوظيفة: بحث عن وظائف حول العالم مع نسبة التطابق، وفحص مجاني للسيرة الذاتية (ATS)، وأداة لبناء السيرة تخصّصها وتكتب خطاب التقديم لكل وظيفة، ومتابعة للطلبات مع تنبيهات بالبريد، ومقابلات تدريبية بتقييم مفصّل، ومساعد مباشر للمقابلة الحقيقية.</span>
+        </p>
+      </details>
+      <details>
+        <summary><span data-l="en">Which languages does it support?</span><span data-l="ar">ما اللغات المدعومة؟</span></summary>
+        <p>
+          <span data-l="en">English and Arabic, throughout — the site, the app, interview questions, the interviewer's voice, speech recognition, scoring and CVs. The interviewer understands regional accents and dialects and never marks you down for them.</span>
+          <span data-l="ar">الإنجليزية والعربية في كل شيء — الموقع والتطبيق وأسئلة المقابلة وصوت المحاوِر والتعرّف على الكلام والتقييم والسير الذاتية. والمحاوِر يفهم اللهجات واللكنات المختلفة ولا يخصم منك بسببها.</span>
         </p>
       </details>
       <details data-plan="trial">
-        <summary><span data-l="ar">هل أحتاج بطاقة ائتمان للتجربة؟</span><span data-l="en">Do I need a credit card to try it?</span></summary>
+        <summary><span data-l="en">Is it free to start?</span><span data-l="ar">هل البداية مجانية؟</span></summary>
         <p>
-          <span data-l="ar">لا. تنشئ حساباً وتبدأ فوراً، وأول <span data-mins="trial">—</span> من وقت المقابلات مجانية على حسابك، بدون إدخال أي بيانات دفع.</span>
-          <span data-l="en">No. Create an account and start immediately — the first <span data-mins="trial">—</span> of interview time are free on your account, with no payment details.</span>
+          <span data-l="en">Yes. Job search and the ATS CV checker are free with no account. A new account also gets <span data-mins="trial">—</span> of interview time free, with no payment details.</span>
+          <span data-l="ar">نعم. البحث عن الوظائف وفحص السيرة الذاتية مجانيان بدون حساب. والحساب الجديد يحصل أيضاً على <span data-mins="trial">—</span> من وقت المقابلات مجاناً، بدون أي بيانات دفع.</span>
         </p>
       </details>
       <details>
-        <summary><span data-l="ar">هل تنتهي صلاحية الدقائق؟</span><span data-l="en">Do my minutes expire?</span></summary>
+        <summary><span data-l="en">How does the Live Interview Assistant work?</span><span data-l="ar">كيف يعمل المساعد المباشر للمقابلات؟</span></summary>
         <p>
-          <span data-l="ar">دقائق الباقات لا تنتهي صلاحيتها ولا يُخصم منها شيء يومياً — رصيد تستخدمه وقت ما تحب، ويتجمّع كلما اشتريت باقة جديدة. أما دقائق الاشتراك الشهري فهي مخصّصة لدورة الاشتراك ولا تُرحَّل إلى الدورة التالية، ولذلك يُخصم من رصيد الاشتراك أولاً قبل رصيد باقاتك.</span>
-          <span data-l="en">Pack minutes never expire and nothing is deducted daily — they are a balance you spend whenever you like, and buying another pack adds to it. Subscription minutes belong to their billing cycle and do not roll over, which is why we always spend the subscription allowance before touching the minutes you paid cash for.</span>
+          <span data-l="en">Start a session in the app and choose the job you're interviewing for. It listens through your device's microphone, transcribes the conversation live, detects each question, and streams a short suggested answer built from your CV and the job. You can make an answer shorter, regenerate it or pause at any time. It works on its own in the app — the same idea as our desktop assistant.</span>
+          <span data-l="ar">ابدأ جلسة من التطبيق واختر الوظيفة التي تُقابَل عليها. يستمع عبر ميكروفون جهازك، ويكتب المحادثة مباشرة، ويلتقط كل سؤال، ثم يعرض إجابة مختصرة مقترحة مبنية على سيرتك والوظيفة. يمكنك اختصار الإجابة أو إعادة توليدها أو إيقافه مؤقتاً في أي وقت. يعمل وحده داخل التطبيق — نفس فكرة مساعد سطح المكتب.</span>
         </p>
       </details>
       <details>
-        <summary><span data-l="ar">كيف تُحسب الدقائق أثناء المقابلة؟</span><span data-l="en">How is interview time counted?</span></summary>
+        <summary><span data-l="en">Where do the jobs come from?</span><span data-l="ar">من أين تأتي الوظائف؟</span></summary>
         <p>
-          <span data-l="ar">بالثانية، وعلى وقت المقابلة الفعلي فقط. لو انقطع الاتصال أو خرجت من التطبيق يتوقف العدّاد ولا نحسب عليك تلك الفترة. تقييم المقابلة في النهاية لا يُخصم منه شيء.</span>
+          <span data-l="en">From companies' own career pages and from public job boards, collected and refreshed throughout the day. Closed listings are removed automatically, and you always apply on the original site.</span>
+          <span data-l="ar">من صفحات التوظيف الرسمية للشركات ومن مواقع الوظائف العامة، وتُجمع وتُحدَّث طوال اليوم. الوظائف المغلقة تُحذف تلقائياً، وأنت تقدّم دائماً على الموقع الأصلي.</span>
+        </p>
+      </details>
+      <details>
+        <summary><span data-l="en">Will the AI make things up on my CV?</span><span data-l="ar">هل سيختلق الذكاء الاصطناعي معلومات في سيرتي؟</span></summary>
+        <p>
+          <span data-l="en">No. Tailoring may reorder, reword and shorten what you wrote, but your employers, titles, dates, degrees and numbers are locked to the original. Anything a job asks for that your CV doesn't show is listed as a gap for you to fill — never added for you.</span>
+          <span data-l="ar">لا. التخصيص قد يعيد ترتيب ما كتبته ويعيد صياغته ويختصره، لكن جهات عملك ومسمياتك وتواريخك وشهاداتك وأرقامك مثبّتة كما هي في الأصل. وأي متطلب في الوظيفة لا تُظهره سيرتك يُعرض لك كنقص تكمله أنت — ولا يُضاف نيابة عنك.</span>
+        </p>
+      </details>
+      <details>
+        <summary><span data-l="en">How is interview time counted?</span><span data-l="ar">كيف يُحسب وقت المقابلة؟</span></summary>
+        <p>
           <span data-l="en">By the second, and only for real interview time. If your connection drops or you leave the app the meter stops and that stretch is not billed. The evaluation at the end is never charged.</span>
+          <span data-l="ar">بالثانية، وعلى وقت المقابلة الفعلي فقط. لو انقطع الاتصال أو خرجت من التطبيق يتوقف العدّاد ولا نحسب عليك تلك الفترة. وتقييم المقابلة في النهاية لا يُخصم منه شيء.</span>
         </p>
       </details>
       <details>
-        <summary><span data-l="ar">كيف يتم حساب الدرجة؟</span><span data-l="en">How is the score calculated?</span></summary>
+        <summary><span data-l="en">Do my minutes expire?</span><span data-l="ar">هل تنتهي صلاحية الدقائق؟</span></summary>
         <p>
-          <span data-l="ar">كل إجابة تُقيَّم على أربعة محاور: مدى إجابتك على السؤال المطروح فعلاً، وجود مثال محدد بأرقام ونتائج، تنظيم الإجابة، والعمق المهني. تحصل على درجة من ١٠ لكل محور ودرجة إجمالية، مع شرح مكتوب لكل نقطة.</span>
-          <span data-l="en">Every answer is judged on four criteria: whether you actually answered the question asked, whether you gave a specific example with numbers and outcomes, how the answer was organised, and professional depth. You get a score out of 10 on each plus an overall score, with a written explanation for every point.</span>
+          <span data-l="en">Pack minutes never expire and nothing is deducted daily — buying another pack adds to the same balance. Subscription minutes belong to their billing cycle and do not roll over, which is why we always spend them before the minutes you bought.</span>
+          <span data-l="ar">دقائق الباقات لا تنتهي صلاحيتها ولا يُخصم منها شيء يومياً — وكل باقة جديدة تُضاف لنفس الرصيد. أما دقائق الاشتراك فهي لدورة الاشتراك ولا تُرحَّل، ولذلك نخصم منها أولاً قبل الدقائق التي اشتريتها.</span>
         </p>
       </details>
       <details>
-        <summary><span data-l="ar">هل بياناتي وسيرتي الذاتية آمنة؟</span><span data-l="en">Are my data and my CV safe?</span></summary>
+        <summary><span data-l="en">How is my interview score calculated?</span><span data-l="ar">كيف تُحسب درجة المقابلة؟</span></summary>
         <p>
-          <span data-l="ar">سيرتك تُستخدم فقط لتوليد أسئلة مقابلتك ولا تُشارك مع أي طرف ثالث. يمكنك حذف حسابك وكل بياناته في أي وقت من داخل التطبيق.</span>
-          <span data-l="en">Your CV is used only to generate your interview questions and is never shared with a third party. You can delete your account and all of its data at any time from inside the app.</span>
+          <span data-l="en">Every answer is judged on four criteria — relevance, specifics and evidence, structure, and professional depth — each out of 10 with a written reason, plus strengths, weaknesses and a short model answer.</span>
+          <span data-l="ar">كل إجابة تُقيَّم على أربعة محاور — الصلة بالسؤال، التحديد والأدلة، البنية، والعمق المهني — لكل منها درجة من ١٠ مع سبب مكتوب، إضافة إلى نقاط القوة والضعف وإجابة نموذجية قصيرة.</span>
         </p>
       </details>
       <details>
-        <summary><span data-l="ar">ما طرق الدفع المتاحة؟</span><span data-l="en">What payment methods can I use?</span></summary>
+        <summary><span data-l="en">Are my data and my CV safe?</span><span data-l="ar">هل بياناتي وسيرتي الذاتية آمنة؟</span></summary>
         <p>
-          <span data-l="ar">فودافون كاش، وإنستاباي، وبطاقات فيزا وماستركارد، وفوري، وباقي المحافظ الإلكترونية — كلها عبر بوابة EasyKash المصرية.</span>
-          <span data-l="en">Vodafone Cash, InstaPay, Visa and Mastercard, Fawry, and the other e-wallets — all through the Egyptian payment gateway EasyKash.</span>
+          <span data-l="en">Your CV is used only to power your own features and is never sold or shared with a third party. You can delete your account and all of its data at any time from inside the app.</span>
+          <span data-l="ar">سيرتك تُستخدم فقط لتشغيل المزايا الخاصة بك ولا تُباع ولا تُشارك مع أي طرف ثالث. ويمكنك حذف حسابك وكل بياناته في أي وقت من داخل التطبيق.</span>
         </p>
       </details>
       <details>
-        <summary><span data-l="ar">هل يوجد تطبيق أندرويد؟</span><span data-l="en">Is there an Android app?</span></summary>
+        <summary><span data-l="en">What payment methods can I use?</span><span data-l="ar">ما طرق الدفع المتاحة؟</span></summary>
         <p>
-          <span data-l="ar">نعم، بالإضافة إلى نسخة الويب التي تعمل على أي متصفح بدون تثبيت. المقابلة المباشرة بالصوت متاحة على الاثنين.</span>
-          <span data-l="en">Yes, alongside the web version that runs in any browser with nothing to install. The live voice interview works on both.</span>
+          <span data-l="en">Visa and Mastercard cards plus mobile wallets, through our secure payment partner. Prices are charged in the currency shown on each plan; your bank converts the amount if your card is in another currency.</span>
+          <span data-l="ar">بطاقات فيزا وماستركارد والمحافظ الإلكترونية، عبر شريك دفع آمن. الأسعار بالعملة الظاهرة على كل باقة، ويحوّل بنكك المبلغ تلقائياً إذا كانت بطاقتك بعملة أخرى.</span>
+        </p>
+      </details>
+      <details>
+        <summary><span data-l="en">Is there a mobile app?</span><span data-l="ar">هل يوجد تطبيق للهاتف؟</span></summary>
+        <p>
+          <span data-l="en">Yes — on Google Play for Android, and on iPhone through the browser (add it to your home screen). One account works everywhere, and your sessions, CVs and saved jobs sync between them.</span>
+          <span data-l="ar">نعم — على Google Play لأندرويد، وعلى iPhone من المتصفح (أضفه إلى الشاشة الرئيسية). حساب واحد يعمل في كل مكان، وجلساتك وسيرك ووظائفك المحفوظة متزامنة بينها.</span>
         </p>
       </details>
     </div>
   </div>
 </section>
 
+
 <!-- ══ Final CTA ══ -->
 <section class="section">
   <div class="wrap">
     <div class="cta reveal">
-      <h2><span data-l="ar">وظيفتك القادمة تبدأ بتدريب واحد</span><span data-l="en">Your next job starts with one practice run</span></h2>
+      <h2><span data-l="en">Your next job starts here</span><span data-l="ar">وظيفتك القادمة تبدأ من هنا</span></h2>
       <p>
-        <span data-l="ar">انضم للمرشحين الذين يدخلون المقابلة وهم يعرفون بالضبط ماذا سيقولون.</span>
-        <span data-l="en">Join the candidates who walk into the interview knowing exactly what they are going to say.</span>
+        <span data-l="en">Find the role, shape the CV, rehearse the interview — and walk in knowing exactly what you are going to say.</span>
+        <span data-l="ar">اعثر على الوظيفة، جهّز السيرة، تدرّب على المقابلة — وادخلها وأنت تعرف بالضبط ماذا ستقول.</span>
       </p>
       <div style="display:flex;gap:var(--sp-3);justify-content:center;flex-wrap:wrap">
         <a class="btn btn-primary btn-lg" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً الآن</span><span data-l="en">Start free now</span></a>
-        <a class="btn btn-ghost btn-lg" href="#pricing"><span data-l="ar">اعرف الأسعار</span><span data-l="en">See pricing</span></a>
+        <a class="btn btn-glass btn-lg" href="/jobs"><span data-l="en">Browse jobs</span><span data-l="ar">تصفّح الوظائف</span></a>
       </div>
     </div>
   </div>
@@ -1110,8 +1753,8 @@
           <span>Interprova</span>
         </div>
         <p style="color:var(--text-3);font-size:14.5px;max-width:34ch">
-          <span data-l="ar">Interprova — تدريب على مقابلات العمل بالذكاء الاصطناعي، بالعربية والإنجليزية. محاوِر يسمعك، ويقيّم إجابتك، ويقول لك ما الذي يُحسّنها.</span>
-          <span data-l="en">Interprova — AI interview practice in Arabic and English. An interviewer that listens, scores your answer, and tells you what would make it better.</span>
+          <span data-l="en">Interprova — the AI career platform. Jobs worldwide, ATS-ready CVs, interview practice and a live interview assistant, in English and Arabic.</span>
+          <span data-l="ar">Interprova — المنصة المهنية بالذكاء الاصطناعي. وظائف حول العالم، سير ذاتية جاهزة لأنظمة التوظيف، تدريب على المقابلات، ومساعد مباشر للمقابلة — بالإنجليزية والعربية.</span>
         </p>
 
         <!-- Direct, unmediated contact. A support address a visitor can see
@@ -1123,18 +1766,15 @@
             <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>
           </li>
           <li>
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-building"/></svg>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe"/></svg>
             <span>
-              <span data-l="ar">شركة برمجلي — القاهرة، مصر</span>
-              <span data-l="en">Barmagly — Cairo, Egypt</span>
+              <span data-l="en">Available worldwide · English &amp; Arabic</span>
+              <span data-l="ar">متاح حول العالم · بالإنجليزية والعربية</span>
             </span>
           </li>
         </ul>
 
-        <!-- Interprova's own accounts. They were briefly the publisher's
-             (Barmagly's), which is defensible but not the same thing: an icon
-             in a product's footer that opens a different company's page reads
-             as a mistake. Instagram is not here yet — an icon linking nowhere
+        <!-- Interprova's own accounts. Instagram is not here yet — an icon linking nowhere
              is worse than one fewer icon. -->
         <div class="social" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
           <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
@@ -1174,18 +1814,24 @@
       <div>
         <h4><span data-l="ar">المنتج</span><span data-l="en">Product</span></h4>
         <ul>
-          <li><a href="/features.html"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a></li>
+          <li><a href="/jobs"><span data-l="ar">وظائف حول العالم</span><span data-l="en">Jobs worldwide</span></a></li>
+          <li><a href="/ats-checker"><span data-l="ar">فحص السيرة الذاتية (ATS)</span><span data-l="en">ATS CV checker</span></a></li>
+          <li><a href="/#assistant"><span data-l="en">Live interview assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></a></li>
+          <li><a href="/features.html"><span data-l="en">AI mock interviews</span><span data-l="ar">المقابلات التدريبية</span></a></li>
+          <li><a href="/cv-builder.html"><span data-l="en">CV builder</span><span data-l="ar">منشئ السيرة الذاتية</span></a></li>
+          <li><a href="/integrations.html"><span data-l="en">Calendar &amp; Google Meet</span><span data-l="ar">التقويم و Google Meet</span></a></li>
+          <li><a href="/desktop.html"><span data-l="en">Desktop app</span><span data-l="ar">تطبيق سطح المكتب</span></a></li>
           <li><a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a></li>
           <li><a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a></li>
+          <li><a href="/checkout"><span data-l="ar">الدفع والشراء</span><span data-l="en">Checkout</span></a></li>
           <li><a href="/app"><span data-l="ar">تطبيق الويب</span><span data-l="en">Web app</span></a></li>
         </ul>
       </div>
       <div>
         <h4><span data-l="ar">الشركة</span><span data-l="en">Company</span></h4>
         <ul>
-          <li><a href="/about.html"><span data-l="ar">عن Interprova</span><span data-l="en">About</span></a></li>
+          <li><a href="/about.html"><span data-l="ar">من نحن</span><span data-l="en">About us</span></a></li>
           <li><a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a></li>
-          <li><a href="https://barmagly.tech" rel="noopener"><span data-l="ar">شركة برمجلي</span><span data-l="en">Barmagly</span></a></li>
           <li><a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact us</span></a></li>
         </ul>
       </div>
@@ -1194,6 +1840,7 @@
         <ul>
           <li><a href="/privacy.html"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a></li>
           <li><a href="/terms.html"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms and conditions</span></a></li>
+          <li><a href="/refund"><span data-l="ar">سياسة الاستبدال والاسترجاع</span><span data-l="en">Exchange &amp; refund policy</span></a></li>
           <li><a href="/delete-account.html"><span data-l="ar">حذف الحساب</span><span data-l="en">Delete account</span></a></li>
           <li><a href="/contact.html"><span data-l="ar">الدعم الفني</span><span data-l="en">Support</span></a></li>
           <li><a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a></li>
@@ -1202,12 +1849,6 @@
     </div>
     <div class="ftr-bottom">
       <span>© <span id="yr">2026</span> <span data-l="ar">Interprova — جميع الحقوق محفوظة</span><span data-l="en">Interprova — all rights reserved</span></span>
-      <span class="ftr-by">
-        <span data-l="ar">تطوير</span><span data-l="en">Built by</span>
-        <a href="https://barmagly.tech/" target="_blank" rel="noopener noreferrer">
-          <span data-l="ar">شركة برمجلي</span><span data-l="en">Barmagly</span>
-        </a>
-      </span>
     </div>
   </div>
 </footer>
@@ -1330,7 +1971,7 @@ if ('IntersectionObserver' in window) {
 // prints a number goes through fmt(), so a language switch can never leave
 // ٩٩ sitting next to "EGP".
 var AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
-function currentLang(){ return root.getAttribute('lang') === 'en' ? 'en' : 'ar'; }
+function currentLang(){ return root.getAttribute('lang') === 'ar' ? 'ar' : 'en'; }
 function fmt(n){
   if (currentLang() === 'en') {
     try { return Number(n).toLocaleString('en-US'); } catch (e) { return String(n); }
@@ -1405,7 +2046,7 @@ var minsEls = [].slice.call(document.querySelectorAll('[data-mins]'));
 function nodeLang(el){
   var w = el.closest ? el.closest('[data-l]') : null;
   var l = w && w.getAttribute('data-l');
-  return l === 'en' ? 'en' : (l === 'ar' ? 'ar' : currentLang());
+  return l === 'ar' ? 'ar' : (l === 'en' ? 'en' : currentLang());
 }
 function fmtIn(lang, n){
   if (lang === 'en') { try { return Number(n).toLocaleString('en-US'); } catch (e) { return String(n); } }
@@ -1452,19 +2093,19 @@ function syncOffers(cfg){
     var offers = [];
     if (cfg.trial && cfg.trial.minutes > 0) {
       offers.push({
-        '@type': 'Offer', name: 'تجربة مجانية', price: '0', priceCurrency: 'EGP',
-        description: 'أول ' + minutesPhrase('ar', cfg.trial.minutes) + ' من وقت المقابلات مجاناً',
+        '@type': 'Offer', name: 'Free trial', price: '0', priceCurrency: 'EGP',
+        description: 'First ' + minutesPhrase('en', cfg.trial.minutes) + ' of interview time free',
       });
     }
     cfg.plans.forEach(function(p){
       offers.push({
         '@type': 'Offer',
-        name: p.labelAr,
+        name: p.labelEn || p.labelAr,
         price: String(p.amountEgp),
         priceCurrency: cfg.currency || 'EGP',
         description: p.kind === 'pack'
-          ? minutesPhrase('ar', p.minutes) + ' رصيد مقابلات لا تنتهي صلاحيته'
-          : minutesPhrase('ar', p.minutesPerMonth) + ' كل ٣٠ يوماً',
+          ? minutesPhrase('en', p.minutes) + ' of interview credit that never expires'
+          : minutesPhrase('en', p.minutesPerMonth) + ' every 30 days',
         availability: cfg.enabled
           ? 'https://schema.org/InStock'
           : 'https://schema.org/PreOrder',
@@ -1524,14 +2165,18 @@ fetch('/api/payments/config').then(function(r){ return r.ok ? r.json() : null; }
 
   // EasyKash is not switched on yet. Promising a checkout that answers 503 is
   // worse than saying so, so the note follows the server's own flag.
-  document.getElementById('pay-methods').hidden = !cfg.enabled;
-  document.getElementById('pay-pending').hidden = !!cfg.enabled;
+  // Only the homepage carries these two notes; every other page shares this
+  // script, so look them up rather than assume them.
+  var pm = document.getElementById('pay-methods'), pp = document.getElementById('pay-pending');
+  if (pm) pm.hidden = !cfg.enabled;
+  if (pp) pp.hidden = !!cfg.enabled;
   renderPricing();
   syncOffers(cfg);
 }).catch(function(){
   // Dashes stay. The section still explains the model; only the figures are
   // missing, and the app is one tap away.
-  document.getElementById('price-error').hidden = false;
+  var pe = document.getElementById('price-error');
+  if (pe) pe.hidden = false;
 });
 
 // ── Theme ─────────────────────────────────────────────────────────────
@@ -1599,20 +2244,243 @@ themeBtns.forEach(function(b){
   });
 });
 
+// ── Live numbers and fresh jobs ───────────────────────────────────────
+// Both come from the public jobs API. Every page carries this block (it is
+// part of the shared chrome), so it touches only what the page actually has:
+// [data-kpi] figures anywhere, and the #jobsLive grid on the homepage.
+// A failed request hides its section instead of leaving dashes or skeletons.
+(function(){
+  var kpiEls = [].slice.call(document.querySelectorAll('[data-kpi]'));
+  var jobsBox = document.getElementById('jobsLive');
+  var phEls = [].slice.call(document.querySelectorAll('[data-ph-en]'));
+  var STATS = null, JOBS = null;
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function countryName(code, lang){
+    try { return new Intl.DisplayNames([lang], { type: 'region' }).of(code) || code; } catch (e) { return code; }
+  }
+  function ago(iso, lang){
+    var s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (!(s >= 0)) return '';
+    try {
+      var rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+      if (s < 3600) return rtf.format(-Math.max(1, Math.round(s / 60)), 'minute');
+      if (s < 86400) return rtf.format(-Math.round(s / 3600), 'hour');
+      return rtf.format(-Math.round(s / 86400), 'day');
+    } catch (e) { return ''; }
+  }
+  var WP = { remote: ['Remote', 'عن بُعد'], hybrid: ['Hybrid', 'هجين'], onsite: ['On-site', 'في المكتب'] };
+
+  function renderKpis(){
+    if (!STATS) return;
+    kpiEls.forEach(function(el){
+      var v = STATS[el.getAttribute('data-kpi')];
+      if (typeof v === 'number' && v > 0) el.textContent = fmtIn(nodeLang(el), v);
+    });
+  }
+  function renderJobs(){
+    if (!JOBS || !jobsBox) return;
+    var lang = currentLang(), en = lang === 'en';
+    jobsBox.innerHTML = JOBS.map(function(j){
+      var where = [j.city, j.country ? countryName(j.country, lang) : ''].filter(Boolean).join(en ? ', ' : '، ')
+        || (j.workplace === 'remote' ? (en ? 'Anywhere' : 'أي مكان') : (j.location || ''));
+      var wp = WP[j.workplace];
+      return '<a class="jcard" href="/jobs/' + encodeURIComponent(j.id) + '">'
+        + '<div class="jhead"><span class="jlogo">' + esc((j.company || '?').trim().charAt(0).toUpperCase()) + '</span>'
+        + '<div style="min-width:0"><h3>' + esc(j.title) + '</h3><span class="jco">' + esc(j.company) + '</span></div></div>'
+        + '<div class="jmeta">'
+        + (where ? '<span>' + esc(where) + '</span>' : '')
+        + (wp ? '<span class="' + (j.workplace === 'remote' ? 'remote' : '') + '">' + wp[en ? 0 : 1] + '</span>' : '')
+        + (j.postedAt ? '<span>' + esc(ago(j.postedAt, lang)) + '</span>' : '')
+        + '</div></a>';
+    }).join('');
+  }
+  function renderPlaceholders(){
+    var en = currentLang() === 'en';
+    phEls.forEach(function(el){ el.setAttribute('placeholder', en ? el.dataset.phEn : (el.dataset.phAr || el.dataset.phEn)); });
+    // Text that cannot hold a <span>, such as <option>: looked up fresh each
+    // time because pages rebuild their selects.
+    [].forEach.call(document.querySelectorAll('[data-en][data-ar]'), function(el){
+      el.textContent = en ? el.dataset.en : el.dataset.ar;
+    });
+  }
+
+  if (kpiEls.length) {
+    fetch('/api/jobs/stats').then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(d){ STATS = d; renderKpis(); })
+      .catch(function(){ var k = document.getElementById('kpis'); if (k) k.hidden = true; });
+  }
+  if (jobsBox) {
+    // Forty newest, then one per company: a single board that just posted
+    // thirty roles would otherwise fill the whole grid.
+    fetch('/api/jobs/search?sort=date&pageSize=80').then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(d){
+        var seen = {}, out = [];
+        (d.jobs || []).forEach(function(j){
+          var k = (j.company || '').toLowerCase();
+          if (out.length < 6 && !seen[k]) { seen[k] = 1; out.push(j); }
+        });
+        if (!out.length) throw 0;
+        JOBS = out; renderJobs();
+        if (window.ipFillMarquee) window.ipFillMarquee(d.jobs);
+      })
+      .catch(function(){ var s = document.getElementById('fresh-jobs'); if (s) s.hidden = true; });
+  }
+
+  renderPlaceholders();
+  // Repaint whenever the language switch flips <html lang>.
+  if ('MutationObserver' in window) {
+    new MutationObserver(function(){ renderKpis(); renderJobs(); renderPlaceholders(); })
+      .observe(root, { attributes: true, attributeFilter: ['lang'] });
+  }
+})();
+
+// ── Motion, product menu, app tour, companies strip ───────────────────
+// Everything here is progressive: with JS off or reduced motion the page is
+// complete and static; this only adds movement and the menu's open state.
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hoverable = matchMedia('(hover: hover)');
+
+  // Product menu: click/tap toggles, hover opens on devices that hover,
+  // Escape and focus leaving close it.
+  [].forEach.call(document.querySelectorAll('[data-navdd]'), function(dd){
+    var btn = dd.querySelector('button'), t = null;
+    var set = function(open){ dd.classList.toggle('open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+    btn.addEventListener('click', function(e){ e.stopPropagation(); set(!dd.classList.contains('open')); });
+    dd.addEventListener('mouseenter', function(){ if (hoverable.matches){ clearTimeout(t); set(true); } });
+    dd.addEventListener('mouseleave', function(){ if (hoverable.matches){ t = setTimeout(function(){ set(false); }, 180); } });
+    dd.addEventListener('focusout', function(e){ if (!dd.contains(e.relatedTarget)) set(false); });
+    document.addEventListener('click', function(e){ if (!dd.contains(e.target)) set(false); });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && dd.classList.contains('open')){ set(false); btn.focus(); }
+    });
+  });
+
+  // Reading progress along the top edge.
+  var bar = document.createElement('div');
+  bar.className = 'scroll-progress'; bar.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(bar);
+  var queued = false;
+  var paint = function(){
+    queued = false;
+    var h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.transform = 'scaleX(' + (h > 0 ? Math.min(1, scrollY / h) : 0) + ')';
+  };
+  addEventListener('scroll', function(){ if (!queued){ queued = true; requestAnimationFrame(paint); } }, { passive: true });
+  paint();
+
+  if (!reduce){
+    // Siblings that arrive together cascade instead of popping as one block.
+    var counts = typeof Map === 'function' ? new Map() : null;
+    [].forEach.call(document.querySelectorAll('.reveal'), function(el){
+      if (!counts) return;
+      var p = el.parentElement, i = counts.get(p) || 0;
+      counts.set(p, i + 1);
+      if (i) el.style.setProperty('--rd', Math.min(i, 8) * 70 + 'ms');
+    });
+    // Once an element has arrived, hand its transitions back to its own
+    // hover styles (the reveal's delay would otherwise lag every hover).
+    if ('IntersectionObserver' in window){
+      var settle = new IntersectionObserver(function(es){
+        es.forEach(function(e){
+          if (!e.isIntersecting) return;
+          var el = e.target, d = parseInt(el.style.getPropertyValue('--rd'), 10) || 0;
+          setTimeout(function(){ el.classList.add('settled'); }, d + 900);
+          settle.unobserve(el);
+        });
+      }, { threshold: 0.12 });
+      [].forEach.call(document.querySelectorAll('.reveal'), function(el){ settle.observe(el); });
+    }
+    // A soft light that follows the pointer across feature tiles.
+    [].forEach.call(document.querySelectorAll('.tile'), function(tile){
+      tile.addEventListener('pointermove', function(e){
+        var r = tile.getBoundingClientRect();
+        tile.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        tile.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
+  }
+
+  // App tour: tabs on the left, one phone on the right. It advances on its
+  // own once it is on screen; any click or arrow key hands control over.
+  [].forEach.call(document.querySelectorAll('[data-tour]'), function(tour){
+    var tabs = [].slice.call(tour.querySelectorAll('.tour-tab'));
+    var screens = [].slice.call(tour.querySelectorAll('.tour-screen'));
+    var i = 0, auto = false;
+    var show = function(n){
+      i = (n + tabs.length) % tabs.length;
+      tabs.forEach(function(b, k){
+        b.setAttribute('aria-selected', k === i ? 'true' : 'false');
+        b.tabIndex = k === i ? 0 : -1;
+        b.classList.remove('run');
+      });
+      screens.forEach(function(s, k){ s.classList.toggle('on', k === i); });
+      if (auto){ void tabs[i].offsetWidth; tabs[i].classList.add('run'); }
+    };
+    tabs.forEach(function(b, k){
+      b.addEventListener('click', function(){ auto = false; show(k); });
+      b.addEventListener('keydown', function(e){
+        var d = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : (e.key === 'ArrowUp' || e.key === 'ArrowLeft') ? -1 : 0;
+        if (d && document.documentElement.dir === 'rtl' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) d = -d;
+        if (!d) return;
+        e.preventDefault(); auto = false; show(i + d); tabs[i].focus();
+      });
+      var fill = b.querySelector('.bar i');
+      if (fill) fill.addEventListener('animationend', function(){ if (auto && tabs[i] === b) show(i + 1); });
+    });
+    tour.addEventListener('mouseenter', function(){ tour.classList.add('hold'); });
+    tour.addEventListener('mouseleave', function(){ tour.classList.remove('hold'); });
+    show(0);
+    if (!reduce && 'IntersectionObserver' in window){
+      var o = new IntersectionObserver(function(es){
+        if (es[0].isIntersecting){ auto = true; show(i); o.disconnect(); }
+      }, { threshold: 0.35 });
+      o.observe(tour);
+    }
+  });
+
+  // Companies strip, fed by the same request as the fresh-jobs grid.
+  window.ipFillMarquee = function(jobs){
+    var track = document.getElementById('mqTrack'), sec = document.getElementById('hiring');
+    if (!track || !sec) return;
+    var seen = {}, list = [];
+    (jobs || []).forEach(function(j){
+      var name = (j.company || '').trim(), k = name.toLowerCase();
+      if (name && !seen[k] && list.length < 24){ seen[k] = 1; list.push({ name: name, where: j.city || j.country || '' }); }
+    });
+    if (list.length < 6) return;
+    var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var row = list.map(function(c){
+      return '<a href="/jobs?q=' + encodeURIComponent(c.name) + '"><i>' + esc(c.name.charAt(0).toUpperCase()) + '</i>' + esc(c.name)
+        + (c.where ? ' <small>' + esc(c.where) + '</small>' : '') + '</a>';
+    }).join('');
+    // Two copies make the loop seamless; the second is hidden from AT and
+    // taken out of the tab order.
+    track.innerHTML = row + '<span aria-hidden="true" style="display:contents">' + row.replace(/<a /g, '<a tabindex="-1" ') + '</span>';
+    track.style.setProperty('--mq-dur', Math.max(40, list.length * 4) + 's');
+    sec.hidden = false;
+  };
+})();
+
 // ── Language ──────────────────────────────────────────────────────────
 // Same mechanism as privacy.html / terms.html, same 'interprova-lang' key, so a
 // choice made on any of the four pages carries to the rest. Arabic is the
 // document default and renders with JS off; this only swaps which of the two
-// already-present translations is visible, plus lang/dir and the handful of
+// already-present translations (English is the document default) is visible, plus lang/dir and the handful of
 // strings that live in attributes or are written by script.
 var langBtns = [].slice.call(document.querySelectorAll('[data-set-lang]'));
 var altEls = [].slice.call(document.querySelectorAll('[data-alt-en]'));
 var ariaEls = [].slice.call(document.querySelectorAll('[data-aria-en]'));
-altEls.forEach(function(el){ el.__ar = el.getAttribute('alt') || ''; });
-ariaEls.forEach(function(el){ el.__ar = el.getAttribute('aria-label') || ''; });
+altEls.forEach(function(el){ el.__ar = el.dataset.altAr || el.getAttribute('alt') || ''; });
+ariaEls.forEach(function(el){ el.__ar = el.dataset.ariaAr || el.getAttribute('aria-label') || ''; });
 
 function applyLang(lang, persist){
-  lang = (lang === 'en') ? 'en' : 'ar';
+  lang = (lang === 'ar') ? 'ar' : 'en';
   root.setAttribute('lang', lang);
   root.setAttribute('dir', lang === 'en' ? 'ltr' : 'rtl');
   langBtns.forEach(function(b){

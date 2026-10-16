@@ -1,0 +1,1796 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+// Same as the homepage's head script: theme and language before first paint,
+// so ?lang=ar and a remembered Arabic choice open this page in Arabic too.
+(function(){
+  var d = document.documentElement;
+  try {
+    var t = localStorage.getItem('interprova-theme');
+    if (t === 'light' || t === 'dark') d.setAttribute('data-theme', t);
+  } catch (e) {}
+  var l = null;
+  try { l = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+  if (l !== 'ar' && l !== 'en') { try { l = localStorage.getItem('interprova-lang'); } catch (e) { l = null; } }
+  if (l !== 'ar' && l !== 'en') l = 'en';
+  d.setAttribute('lang', l);
+  d.setAttribute('dir', l === 'en' ? 'ltr' : 'rtl');
+})();
+</script>
+<title>Jobs worldwide — Interprova</title>
+<meta name="description" content="Search thousands of jobs from company career pages and job boards worldwide — remote and on-site — and apply on the original site.">
+<meta name="author" content="Interprova">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://interprova.com/jobs">
+<link rel="alternate" hreflang="en" href="https://interprova.com/jobs">
+<link rel="alternate" hreflang="ar" href="https://interprova.com/jobs?lang=ar">
+<link rel="alternate" hreflang="x-default" href="https://interprova.com/jobs">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="icon" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta id="tc-light" name="theme-color" content="#2D73FD" media="(prefers-color-scheme: light)">
+<meta id="tc-dark" name="theme-color" content="#080D1A" media="(prefers-color-scheme: dark)">
+<meta id="tc-forced" name="theme-color" content="#2D73FD" media="not all">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="ar_AR">
+<meta property="og:site_name" content="Interprova">
+<meta property="og:title" content="Jobs worldwide — Interprova">
+<meta property="og:description" content="Search thousands of jobs from company career pages and job boards worldwide — remote and on-site — and apply on the original site.">
+<meta property="og:url" content="https://interprova.com/jobs">
+<meta property="og:image" content="https://interprova.com/og-image-v2.png">
+<meta property="og:image:secure_url" content="https://interprova.com/og-image-v2.png">
+<meta property="og:image:type" content="image/png">
+<!-- Dimensions let WhatsApp and Facebook lay the card out from the markup
+     alone; without them the preview reflows once the image finally lands, and
+     some clients skip the image entirely rather than wait for it. -->
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Interprova — the AI career platform: jobs, CV and interviews">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Jobs worldwide — Interprova">
+<meta name="twitter:description" content="Search thousands of jobs from company career pages and job boards worldwide — remote and on-site — and apply on the original site.">
+<meta name="twitter:image" content="https://interprova.com/og-image-v2.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Cairo:wght@400;600;700;800&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Cairo:wght@400;600;700;800&amp;display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Cairo:wght@400;600;700;800&amp;display=swap">
+<link rel="stylesheet" href="/site.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Interprova",
+          "item": "https://interprova.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Jobs worldwide",
+          "item": "https://interprova.com/jobs"
+        }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="no-js">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+  <!-- Stroke icons on a 24px grid, 1.75 weight — Lucide-style geometry. -->
+  <g id="i-target" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>
+  </g>
+  <g id="i-speech" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 14a2.5 2.5 0 0 1-2.5 2.5H8l-4 3.5V6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5Z"/>
+    <path d="M8.5 10h1M12 10h1M15.5 10h1"/>
+  </g>
+  <g id="i-doc" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/>
+    <path d="M9 13h6M9 17h4"/>
+  </g>
+  <g id="i-video" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="6" width="12" height="12" rx="2.5"/><path d="m15 11 5-3v8l-5-3Z"/>
+  </g>
+  <g id="i-chart" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19h16"/><path d="M7 19v-5M12 19V8M17 19v-8"/><path d="m5 9 5-4 4 3 5-5"/>
+  </g>
+  <g id="i-upload" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 15v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3"/><path d="m8 8 4-4 4 4"/><path d="M12 4v12"/>
+  </g>
+  <g id="i-mic" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3.5"/>
+  </g>
+  <g id="i-award" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="9" r="5.5"/><path d="m8.5 13.5-1.5 8 5-3 5 3-1.5-8"/>
+  </g>
+  <g id="i-check" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m4 12.5 5 5L20 6.5"/>
+  </g>
+  <g id="i-x" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <path d="M6 6 18 18M18 6 6 18"/>
+  </g>
+  <g id="i-menu" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M4 7h16M4 12h16M4 17h16"/>
+  </g>
+  <g id="i-heart" fill="currentColor"><path d="M12 21s-8-4.9-8-10.2A4.8 4.8 0 0 1 12 7.4 4.8 4.8 0 0 1 20 10.8C20 16.1 12 21 12 21Z"/></g>
+  <g id="i-layers" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>
+  </g>
+  <g id="i-library" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 4v16M9 4v16"/><rect x="12.5" y="4" width="6.5" height="16" rx="1.5"/><path d="M15 8h1.5"/>
+  </g>
+  <g id="i-grid" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/>
+    <rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>
+  </g>
+  <g id="i-bolt" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"/>
+  </g>
+  <!-- Theme switcher glyphs. -->
+  <g id="i-sun" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/>
+  </g>
+  <g id="i-moon" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.5 14.5A8.6 8.6 0 0 1 9.5 3.5a8.6 8.6 0 1 0 11 11Z"/>
+  </g>
+  <g id="i-auto" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.8" y="4" width="18.4" height="12.4" rx="2.2"/><path d="M8.5 20.5h7M12 16.4v4.1"/>
+  </g>
+  <!-- Career-platform glyphs. Same 24 grid, 1.75 stroke. -->
+  <g id="i-search" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>
+  </g>
+  <g id="i-briefcase" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M3 12.5h18"/>
+  </g>
+  <g id="i-sparkles" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 3.5 12.8 8.2 17.5 10l-4.7 1.8L11 16.5l-1.8-4.7L4.5 10l4.7-1.8Z"/><path d="m18.5 14.5.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8Z"/>
+  </g>
+  <g id="i-globe" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+  </g>
+  <g id="i-arrow" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>
+  </g>
+  <g id="i-bell" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 20a2 2 0 0 0 4 0"/>
+  </g>
+  <g id="i-filecheck" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="m9 14 2 2 4-4"/>
+  </g>
+  <g id="i-lock" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>
+  </g>
+  <g id="i-headset" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13.5" width="4" height="6" rx="1.5"/><rect x="17" y="13.5" width="4" height="6" rx="1.5"/><path d="M19 19.5c0 1.4-1.6 2-4 2h-2"/>
+  </g>
+  <g id="i-pen" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/>
+  </g>
+
+  <!-- Utility icons used by the contact page. Same 24 grid, 1.75 stroke. -->
+  <g id="i-mail" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><path d="m3 7 8.15 5.4a1.6 1.6 0 0 0 1.7 0L21 7"/>
+  </g>
+  <g id="i-phone" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 16.4v2.9a1.9 1.9 0 0 1-2.1 1.9 18.8 18.8 0 0 1-8.2-2.9 18.5 18.5 0 0 1-5.7-5.7A18.8 18.8 0 0 1 2.1 4.4 1.9 1.9 0 0 1 4 2.3h2.9a1.9 1.9 0 0 1 1.9 1.6c.1.9.4 1.8.7 2.7a1.9 1.9 0 0 1-.4 2L7.8 9.8a15.2 15.2 0 0 0 5.7 5.7l1.2-1.2a1.9 1.9 0 0 1 2-.4c.9.3 1.8.6 2.7.7a1.9 1.9 0 0 1 1.6 1.9Z"/>
+  </g>
+  <g id="i-shield" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2.8 4.8 5.6v5.5c0 4.4 3 8.4 7.2 10 4.2-1.6 7.2-5.6 7.2-10V5.6Z"/><path d="m9 12 2.2 2.2L15.4 10"/>
+  </g>
+  <g id="i-building" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 21V5.5A1.5 1.5 0 0 1 5.5 4h7A1.5 1.5 0 0 1 14 5.5V21"/><path d="M14 10h4.5A1.5 1.5 0 0 1 20 11.5V21"/>
+    <path d="M3 21h18M7.5 8h3M7.5 12h3M7.5 16h3M17 14h.01M17 17.5h.01"/>
+  </g>
+
+  <!-- Brand marks. Solid fills on the same 24 grid, from Simple Icons (CC0).
+       `i-s-` prefixed because `i-x` is already the close glyph, and a brand
+       mark colliding with a UI icon is a bug nobody finds until it ships. -->
+  <g id="i-s-facebook" fill="currentColor"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z"/></g>
+  <g id="i-s-instagram" fill="currentColor"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 1 0 0-12.324zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405a1.441 1.441 0 0 1-2.88 0 1.44 1.44 0 0 1 2.88 0z"/></g>
+  <g id="i-s-linkedin" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></g>
+
+  <!-- Google Play mark. Four segments, in Play's own colours, so the badge
+       reads as the real thing at 20px rather than as a grey triangle. -->
+  <g id="i-googleplay">
+    <path fill="#00D2FF" d="M3.6 1.6c-.3.3-.5.8-.5 1.4v18c0 .6.2 1.1.5 1.4l.1.1L13.8 12.1v-.2L3.7 1.6h-.1z"/>
+    <path fill="#FFD900" d="M17.2 15.5l-3.4-3.4v-.2l3.4-3.4.1.1 4 2.3c1.2.7 1.2 1.8 0 2.4l-4 2.3-.1-.1z"/>
+    <path fill="#FF3A44" d="M17.3 15.4 13.8 12 3.6 22.4c.4.4 1 .5 1.8.1l11.9-7.1"/>
+    <path fill="#00E676" d="M17.3 8.6 5.4 1.5c-.8-.4-1.4-.4-1.8.1L13.8 12l3.5-3.4z"/>
+  </g>
+  <g id="i-apple" fill="currentColor"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></g>
+  <g id="i-download" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4.5 19.5h15"/>
+  </g>
+  <g id="i-chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></g>
+  <g id="i-calendar" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8 14h2M14 14h2M8 17h2"/></g>
+  <g id="i-monitor" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2.5"/><path d="M8.5 20.5h7M12 16.5v4"/></g>
+  <g id="i-mobile" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 18.5h3"/></g>
+  <g id="i-windows" fill="currentColor"><path d="M3 5.4 10.2 4.4v6.9H3zM11.1 4.3 21 3v8.3h-9.9zM3 12.2h7.2v7L3 18.2zM11.1 12.2H21V21l-9.9-1.4z"/></g>
+  <g id="i-keyboard" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9"/></g>
+  <g id="i-tasks" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 6.5 1.6 1.6L8.5 5"/><path d="m4 12.5 1.6 1.6 2.9-3.1"/><path d="M4.5 18.5h3"/><path d="M11.5 6.5h8.5M11.5 12.5h8.5M11.5 18.5h8.5"/></g>
+  <g id="i-link" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.4.2l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4-.2l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></g>
+  <g id="i-meet" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></g>
+</defs>
+</svg>
+<header class="hdr" id="hdr">
+  <div class="wrap hdr-in">
+    <a href="/" class="brand" aria-label="Interprova — الصفحة الرئيسية" data-aria-en="Interprova — home">
+      <img class="brand-logo" src="/logo-mark.png" alt="" width="40" height="39" decoding="async">
+      <span>
+        <span>Interprova</span>
+      </span>
+    </a>
+    <nav class="nav" aria-label="التنقل الرئيسي" data-aria-en="Main navigation">
+      <a href="/jobs"><span data-l="ar">الوظائف</span><span data-l="en">Jobs</span></a>
+      <div class="navdd" data-navdd>
+        <button type="button" aria-expanded="false" aria-haspopup="true"><span data-l="ar">المنتجات</span><span data-l="en">Products</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chevron"/></svg></button>
+        <div class="navdd-panel">
+          <a href="/#assistant"><span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-headset"/></svg></span>
+            <span><b><span data-l="en">Live Interview Assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></b><small><span data-l="en">Live answers in the real interview, from your CV.</span><span data-l="ar">إجابات لحظية في المقابلة الحقيقية من سيرتك.</span></small></span></a>
+          <a href="/features.html#interviews"><span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg></span>
+            <span><b><span data-l="en">AI mock interviews</span><span data-l="ar">المقابلات التدريبية</span></b><small><span data-l="en">Rehearse by voice and video, scored out of 10.</span><span data-l="ar">تدرّب بالصوت والفيديو مع تقييم من ١٠.</span></small></span></a>
+          <a href="/cv-builder.html"><span class="tico g-amber"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pen"/></svg></span>
+            <span><b><span data-l="en">CV builder</span><span data-l="ar">منشئ السيرة الذاتية</span></b><small><span data-l="en">Build, tailor and export an ATS-ready CV.</span><span data-l="ar">ابنِ سيرة تتخطى ATS وخصّصها وصدّرها.</span></small></span></a>
+          <a href="/ats-checker"><span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-filecheck"/></svg></span>
+            <span><b><span data-l="en">ATS CV checker</span><span data-l="ar">فاحص ATS</span> <span class="tag-free"><span data-l="en">FREE</span><span data-l="ar">مجاني</span></span></b><small><span data-l="en">See what hiring software sees.</span><span data-l="ar">شاهد ما تراه أنظمة التوظيف.</span></small></span></a>
+          <a href="/jobs"><span class="tico g-cyan"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-briefcase"/></svg></span>
+            <span><b><span data-l="en">Jobs worldwide</span><span data-l="ar">وظائف حول العالم</span></b><small><span data-l="en">Live roles with your match on each one.</span><span data-l="ar">وظائف حيّة مع نسبة تطابقك.</span></small></span></a>
+          <a href="/integrations.html"><span class="tico g-rose"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg></span>
+            <span><b><span data-l="en">Calendar &amp; Google Meet</span><span data-l="ar">التقويم و Google Meet</span> <span class="tag-new"><span data-l="en">NEW</span><span data-l="ar">جديد</span></span></b><small><span data-l="en">Schedule interviews, join, prep tasks.</span><span data-l="ar">جدولة المقابلات والانضمام ومهام التحضير.</span></small></span></a>
+          <a href="/desktop.html"><span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-monitor"/></svg></span>
+            <span><b><span data-l="en">Desktop app</span><span data-l="ar">تطبيق سطح المكتب</span></b><small><span data-l="en">Meeting AI for Windows and macOS.</span><span data-l="ar">Meeting AI لويندوز وماك.</span></small></span></a>
+          <a href="/#get-app"><span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mobile"/></svg></span>
+            <span><b><span data-l="en">Mobile &amp; web app</span><span data-l="ar">تطبيق الهاتف والويب</span></b><small><span data-l="en">Android, iPhone (browser) and web.</span><span data-l="ar">أندرويد و iPhone (المتصفح) والويب.</span></small></span></a>
+          <div class="navdd-foot">
+            <span><span data-l="en">One profile powers every tool.</span><span data-l="ar">ملف واحد يشغّل كل الأدوات.</span></span>
+            <a href="/features.html"><span data-l="en">See all features →</span><span data-l="ar">كل المميزات ←</span></a>
+          </div>
+        </div>
+      </div>
+      <a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a>
+      <a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
+      <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
+      <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
+    </nav>
+    <div class="hdr-tools">
+      <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
+        <button type="button" data-set-lang="en" aria-pressed="true" lang="en">English</button>
+        <button type="button" data-set-lang="ar" aria-pressed="false" lang="ar">عربي</button>
+      </div>
+      <!-- One cycling button, not a three-button pill.
+           The pill cost ~110px of a header that also carries a brand, six nav
+           links, a language switch, a social cluster and two CTAs — and at
+           every width the row wrapped to two storeys, stranding the navigation
+           above the controls. Three separate hit targets is also a lot of
+           chrome for a preference most readers set once and never revisit.
+           The label and icon always name the state it is IN, and the title
+           says what a press will do. -->
+      <button type="button" class="icon-btn" data-theme-cycle
+              aria-label="المظهر" data-aria-en="Theme">
+        <!-- viewBox is required: the sheet's .icon rule sets no intrinsic size,
+             so artwork on the 24 grid is clipped in any box under 24px. -->
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
+      </button>
+      <div class="social social-hdr" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
+        <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-facebook"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/company/interprova" rel="noopener me" target="_blank" aria-label="LinkedIn">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-linkedin"/></svg>
+        </a>
+        <a href="https://www.instagram.com/interprova.10541" rel="noopener me" target="_blank" aria-label="Instagram">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-instagram"/></svg>
+        </a>
+      </div>
+      <!-- Icon only. The header has no room for a two-line badge, and the full
+           one is right below in the "get the app" band, in the footer and in
+           the drawer — so this is a shortcut for people who already know they
+           want it, not the primary route. Hidden with the social cluster
+           below 1280px; probe-header.mjs enforces the single row. -->
+      <a class="icon-btn store-mini" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+         rel="noopener" target="_blank"
+         aria-label="حمّل التطبيق من Google Play" data-aria-en="Get the app on Google Play">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+      </a>
+      <a class="btn btn-ghost btn-sm" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
+      <a class="btn btn-primary btn-sm" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
+      <!-- The phone's only route to the other thirteen pages. `.nav` above is
+           display:none under 1080px and nothing replaced it, so every visitor
+           on a phone saw a site with no navigation at all. -->
+      <button type="button" class="nav-btn" id="navBtn" aria-expanded="false" aria-controls="navDrawer"
+              aria-label="القائمة" data-aria-en="Menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+<div class="nav-scrim" id="navScrim" hidden></div>
+<aside class="drawer" id="navDrawer" hidden aria-label="التنقل" data-aria-en="Navigation">
+    <div class="drawer-head">
+      <span class="drawer-title"><span data-l="ar">التنقل</span><span data-l="en">Navigation</span></span>
+      <button type="button" class="nav-btn" id="navClose" aria-label="إغلاق القائمة" data-aria-en="Close menu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </div>
+    <nav class="drawer-nav" aria-label="التنقل الرئيسي" data-aria-en="Main navigation">
+      <a href="/jobs"><span data-l="ar">الوظائف</span><span data-l="en">Jobs</span></a>
+      <a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a>
+      <a href="/features.html"><span data-l="ar">المميزات</span><span data-l="en">Features</span></a>
+      <a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a>
+      <div class="drawer-group">
+        <span><span data-l="ar">المنتجات</span><span data-l="en">Products</span></span>
+        <a href="/#assistant"><span data-l="ar">المساعد المباشر للمقابلات</span><span data-l="en">Live Interview Assistant</span></a>
+        <a href="/features.html#interviews"><span data-l="ar">المقابلات التدريبية</span><span data-l="en">AI mock interviews</span></a>
+        <a href="/cv-builder.html"><span data-l="ar">منشئ السيرة الذاتية</span><span data-l="en">CV builder</span></a>
+        <a href="/ats-checker"><span data-l="ar">فحص السيرة الذاتية (ATS)</span><span data-l="en">ATS CV checker</span></a>
+        <a href="/integrations.html"><span data-l="ar">التقويم و Google Meet</span><span data-l="en">Calendar &amp; Google Meet</span></a>
+        <a href="/desktop.html"><span data-l="ar">تطبيق سطح المكتب</span><span data-l="en">Desktop app</span></a>
+      </div>
+      <div class="drawer-group">
+        <span><span data-l="ar">الشركة</span><span data-l="en">Company</span></span>
+        <a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a>
+        <a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a>
+        <a href="/about.html"><span data-l="ar">من نحن</span><span data-l="en">About us</span></a>
+        <a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact</span></a>
+      </div>
+    </nav>
+    <div class="drawer-cta">
+      <!-- Repeated here because .hdr-tools hides the login link under 520px:
+           without this, a phone had a "start free" button and no way to sign
+           back IN to an account it already had. -->
+      <a class="btn btn-ghost" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
+      <a class="btn btn-primary" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
+
+      <!-- The drawer is a phone's menu, and a phone is where an install
+           actually happens — so the Play badge belongs here more than anywhere
+           else on the site. -->
+      <div class="store-row store-row-sm" style="justify-content:center">
+        <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+           rel="noopener" target="_blank"
+           aria-label="حمّل تطبيق Interprova من Google Play" data-aria-en="Get Interprova on Google Play">
+          <svg class="store-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+          <span class="store-txt">
+            <small><span data-l="ar">حمّله من</span><span data-l="en">GET IT ON</span></small>
+            <strong>Google Play</strong>
+          </span>
+        </a>
+      </div>
+
+      <!-- Below 900px the header cannot hold the switchers without wrapping to
+           two rows, so they live here instead. Same `data-set-lang` /
+           `data-theme-cycle` hooks as the header pair, so one script drives
+           both and they can never show different states. -->
+      <div class="drawer-tools">
+        <div class="toggle pill-sm" role="group" aria-label="اللغة / Language">
+          <button type="button" data-set-lang="en" aria-pressed="true" lang="en">English</button>
+          <button type="button" data-set-lang="ar" aria-pressed="false" lang="ar">عربي</button>
+        </div>
+        <button type="button" class="icon-btn" data-theme-cycle aria-label="المظهر" data-aria-en="Theme">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-auto"/></svg>
+        </button>
+      </div>
+
+      <!-- The header's own social row is hidden below 900px to keep the sticky
+           bar to one line; on a phone this is where it lives instead. -->
+      <div class="social social-sm" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
+        <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-facebook"/></svg>
+        </a>
+        <a href="https://www.linkedin.com/company/interprova" rel="noopener me" target="_blank" aria-label="LinkedIn">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-linkedin"/></svg>
+        </a>
+        <a href="https://www.instagram.com/interprova.10541" rel="noopener me" target="_blank" aria-label="Instagram">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-instagram"/></svg>
+        </a>
+        <a href="mailto:info@interprova.com" aria-label="Email">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+        </a>
+      </div>
+    </div>
+</aside>
+<main id="main">
+<style>
+  .jb-hero{padding-block:var(--sp-12) var(--sp-6)}
+  .jb-stats{display:flex;gap:var(--sp-6);justify-content:center;flex-wrap:wrap;margin-top:var(--sp-5);color:var(--text-2);font-size:14.5px}
+  .jb-stats b{color:var(--text);font-size:18px;font-weight:800;margin-inline-end:4px}
+  .jb-search{max-width:58rem;margin:var(--sp-6) auto 0;display:grid;grid-template-columns:1fr 14rem auto;gap:var(--sp-2);
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-2);box-shadow:var(--shadow-md)}
+  .jb-search input,.jb-search select{border:0;background:transparent;font:inherit;font-size:15.5px;color:var(--text);padding:12px 14px;min-width:0;outline:none}
+  .jb-search select{border-inline-start:1px solid var(--border);border-radius:0}
+  .jb-search .btn{white-space:nowrap}
+  @media (max-width:720px){.jb-search{grid-template-columns:1fr}.jb-search select{border-inline-start:0;border-top:1px solid var(--border)}}
+  .jb-filters{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center;margin:var(--sp-5) auto 0;max-width:58rem;justify-content:center}
+  .jb-chip{border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:var(--r-pill);padding:7px 14px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+  .jb-chip[aria-pressed="true"]{background:var(--primary-solid);border-color:var(--primary-solid);color:#fff}
+  .jb-filters select{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-pill);padding:7px 12px;font:inherit;font-size:13.5px}
+  .jb-filters label.jb-check{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--text-2);font-weight:700}
+  .jb-meta{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);max-width:58rem;margin:var(--sp-8) auto var(--sp-3);color:var(--text-2);font-size:14px;flex-wrap:wrap}
+  .jb-list{max-width:58rem;margin:0 auto;display:grid;gap:var(--sp-3)}
+  .jb-card{display:grid;grid-template-columns:48px 1fr auto;gap:var(--sp-4);align-items:start;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--r-md);padding:var(--sp-4) var(--sp-5);cursor:pointer;text-align:start;font:inherit;color:inherit;width:100%;transition:border-color .15s,box-shadow .15s}
+  .jb-card:hover,.jb-card:focus-visible{border-color:color-mix(in srgb,var(--primary) 50%,var(--border));box-shadow:var(--shadow-md);outline:none}
+  .jb-logo{width:48px;height:48px;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-weight:900;font-size:19px;overflow:hidden}
+  .jb-logo img{width:100%;height:100%;object-fit:contain;background:#fff}
+  .jb-title{font-size:16.5px;font-weight:800;line-height:1.4;color:var(--text);overflow-wrap:anywhere}
+  .jb-co{color:var(--text-2);font-size:14.5px;margin-top:2px}
+  .jb-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--sp-2)}
+  .jb-tag{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:var(--r-pill);background:var(--surface-alt);color:var(--text-2)}
+  .jb-tag.remote{background:rgba(21,128,61,.12);color:var(--green-ink)}
+  .jb-tag.pay{background:var(--accent-soft);color:var(--accent-ink)}
+  .jb-side{text-align:end;font-size:12.5px;color:var(--text-3);white-space:nowrap;display:grid;gap:6px;justify-items:end}
+  @media (max-width:620px){.jb-card{grid-template-columns:40px 1fr}.jb-logo{width:40px;height:40px;font-size:16px}.jb-side{grid-column:2;justify-items:start;text-align:start}}
+  .jb-more{display:flex;justify-content:center;margin:var(--sp-6) 0}
+  .jb-empty{max-width:40rem;margin:var(--sp-10) auto;text-align:center;color:var(--text-2);line-height:1.9}
+  .jb-note{max-width:58rem;margin:var(--sp-8) auto 0;font-size:13px;color:var(--text-3);line-height:1.8;text-align:center}
+  .jb-skel{height:96px;border-radius:var(--r-md);background:linear-gradient(90deg,var(--surface-alt),var(--surface),var(--surface-alt));background-size:200% 100%;animation:jbsk 1.2s infinite}
+  @keyframes jbsk{to{background-position:-200% 0}}
+  @media (prefers-reduced-motion:reduce){.jb-skel{animation:none}}
+
+  .jb-dlg{border:0;padding:0;max-width:min(52rem,calc(100vw - 32px));width:100%;max-height:calc(100vh - 48px);border-radius:var(--r-lg);
+    background:var(--surface);color:var(--text);box-shadow:var(--shadow-xl)}
+  .jb-dlg::backdrop{background:rgba(8,13,26,.55)}
+  @media (max-width:620px){.jb-dlg{max-width:100vw;max-height:100vh;height:100vh;border-radius:0;margin:0}}
+  .jb-dlg-in{display:grid;grid-template-rows:auto 1fr auto;max-height:inherit;height:100%}
+  .jb-dlg-hd{padding:var(--sp-5) var(--sp-6);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:var(--sp-3);align-items:start}
+  .jb-dlg-hd h2{font-size:21px;line-height:1.35;margin:0;overflow-wrap:anywhere}
+  .jb-x{border:0;background:var(--surface-alt);color:var(--text);width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;line-height:1}
+  .jb-dlg-body{overflow:auto;padding:var(--sp-5) var(--sp-6)}
+  .jb-desc{white-space:pre-line;line-height:1.85;font-size:15px;color:var(--text);overflow-wrap:anywhere}
+  .jb-desc[dir="ltr"]{text-align:left}
+  .jb-dlg-ft{padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--border);display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center}
+  .jb-dlg-ft .src{font-size:12.5px;color:var(--text-3);margin-inline-start:auto}
+  .jb-h3{font-size:15px;font-weight:800;margin:var(--sp-6) 0 var(--sp-2)}
+  .jb-sim{display:grid;gap:var(--sp-2)}
+  .jb-sim a{display:block;padding:10px 14px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);text-decoration:none;font-size:14px}
+  .jb-sim a:hover{border-color:var(--primary)}
+  .jb-sim small{color:var(--text-3);display:block}
+  .jb-cta{background:var(--primary-soft);border:1px solid color-mix(in srgb,var(--primary) 25%,transparent);border-radius:var(--r-md);padding:var(--sp-4);margin-top:var(--sp-5);font-size:14px;line-height:1.8}
+  .jb-cta a{font-weight:800}
+
+  /* Live status, query hints, LIVE badge, "new jobs" pill. */
+  .jb-status{max-width:58rem;margin:var(--sp-8) auto 0;display:grid;gap:6px;scroll-margin-top:96px}
+  .jb-status + .jb-meta{margin-top:var(--sp-3)}
+  .jb-live{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;font-size:13.5px;font-weight:700;color:var(--text-2)}
+  .jb-live[hidden]{display:none}
+  .jb-live .jb-when{color:var(--text-3);font-weight:600}
+  .jb-dot{position:relative;flex:none;width:9px;height:9px;border-radius:50%;background:var(--text-3)}
+  .jb-live.on .jb-dot{background:var(--green-500)}
+  .jb-live.on .jb-msg{color:var(--green-ink)}
+  .jb-hint{margin:0;font-size:13.5px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:6px 14px}
+  .jb-hint[hidden]{display:none}
+  .jb-hint > span{display:inline-flex;align-items:center;gap:6px}
+  .jb-hint b{color:var(--text)}
+  .jb-hint .relaxed{color:var(--accent-ink)}
+  .jb-badge-live{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.06em;padding:2px 8px;border-radius:var(--r-pill);
+    color:var(--green-ink);background:color-mix(in srgb,var(--green-500) 16%,transparent)}
+  html[lang="ar"] .jb-badge-live{letter-spacing:0}
+  .jb-badge-live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--green-500)}
+  .jb-newbar{position:sticky;top:84px;z-index:5;display:flex;justify-content:center;align-items:flex-start;height:0;overflow:visible}
+  .jb-new{flex:none;transform:translateY(-14px);border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:800;color:#fff;background:var(--primary-solid);
+    padding:9px 18px;border-radius:var(--r-pill);box-shadow:var(--shadow-lg)}
+  .jb-new:hover{background:var(--primary-solid-h)}
+  .jb-new[hidden]{display:none}
+  @media (prefers-reduced-motion:no-preference){
+    .jb-live.on .jb-dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--green-500);animation:jbping 1.8s cubic-bezier(0,0,.2,1) infinite}
+    .jb-new{animation:jbdrop .35s ease-out}
+  }
+  @keyframes jbping{75%,100%{transform:scale(2.6);opacity:0}}
+  @keyframes jbdrop{from{opacity:0;transform:translateY(-18px)}}
+</style>
+
+<section class="phero jb-hero">
+  <div class="wrap">
+    <div class="kicker"><span data-l="ar">وظائف</span><span data-l="en">Jobs</span></div>
+    <h1><span data-l="ar">وظيفتك القادمة، من أي مكان في العالم</span><span data-l="en">Your next job, from anywhere in the world</span></h1>
+    <p>
+      <span data-l="ar">نجمع الوظائف من صفحات التوظيف الرسمية للشركات ومن مواقع الوظائف، ونبحث في المصادر لحظة بحثك، ويتحدّث الفهرس تلقائيًا كل بضع دقائق. ابحث، قارن، ثم قدّم على الموقع الأصلي.</span>
+      <span data-l="en">We collect jobs from companies' own career pages and from job boards, searched live the moment you search and refreshed automatically every few minutes. Search, compare, then apply on the original site.</span>
+    </p>
+    <div class="jb-stats" id="jb-stats" aria-live="polite"></div>
+
+    <form class="jb-search" id="jb-form" role="search">
+      <input id="jb-q" name="q" type="search" maxlength="120" autocomplete="off"
+             placeholder="المسمى الوظيفي، مهارة، أو شركة" data-ph-en="Job title, skill or company" aria-label="بحث" data-aria-en="Search">
+      <select id="jb-country" name="country" aria-label="الدولة" data-aria-en="Country">
+        <option value="" data-ar="🌍 كل الدول" data-en="🌍 All countries">🌍 All countries</option>
+      </select>
+      <button class="btn btn-primary" type="submit"><span data-l="ar">ابحث</span><span data-l="en">Search</span></button>
+    </form>
+
+    <div class="jb-filters" id="jb-filters">
+      <button type="button" class="jb-chip" data-wp="remote" aria-pressed="false"><span data-l="ar">عن بُعد</span><span data-l="en">Remote</span></button>
+      <button type="button" class="jb-chip" data-wp="hybrid" aria-pressed="false"><span data-l="ar">هجين</span><span data-l="en">Hybrid</span></button>
+      <button type="button" class="jb-chip" data-wp="onsite" aria-pressed="false"><span data-l="ar">من المكتب</span><span data-l="en">On-site</span></button>
+      <select id="jb-seniority" aria-label="المستوى" data-aria-en="Level">
+        <option value="" data-ar="المستوى" data-en="Level">Level</option>
+        <option value="intern" data-ar="تدريب" data-en="Internship">Internship</option>
+        <option value="junior" data-ar="مبتدئ" data-en="Junior">Junior</option>
+        <option value="mid" data-ar="متوسط" data-en="Mid-level">Mid-level</option>
+        <option value="senior" data-ar="خبير" data-en="Senior">Senior</option>
+        <option value="lead" data-ar="قائد فريق" data-en="Lead">Lead</option>
+        <option value="executive" data-ar="إدارة عليا" data-en="Executive">Executive</option>
+      </select>
+      <select id="jb-type" aria-label="نوع الدوام" data-aria-en="Job type">
+        <option value="" data-ar="نوع الدوام" data-en="Job type">Job type</option>
+        <option value="full_time" data-ar="دوام كامل" data-en="Full-time">Full-time</option>
+        <option value="part_time" data-ar="دوام جزئي" data-en="Part-time">Part-time</option>
+        <option value="contract" data-ar="عقد" data-en="Contract">Contract</option>
+        <option value="internship" data-ar="تدريب" data-en="Internship">Internship</option>
+      </select>
+      <select id="jb-posted" aria-label="تاريخ النشر" data-aria-en="Date posted">
+        <option value="" data-ar="أي وقت" data-en="Any time">Any time</option>
+        <option value="1" data-ar="آخر 24 ساعة" data-en="Last 24 hours">Last 24 hours</option>
+        <option value="3" data-ar="آخر 3 أيام" data-en="Last 3 days">Last 3 days</option>
+        <option value="7" data-ar="آخر أسبوع" data-en="Last week">Last week</option>
+        <option value="30" data-ar="آخر شهر" data-en="Last month">Last month</option>
+      </select>
+      <label class="jb-check"><input type="checkbox" id="jb-salary"> <span data-l="ar">بالراتب فقط</span><span data-l="en">With salary</span></label>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="jb-status" id="jb-status">
+      <p class="jb-live" id="jb-live" hidden><span class="jb-dot" aria-hidden="true"></span><span class="jb-msg" id="jb-live-msg" role="status" aria-live="polite"></span><span class="jb-when" id="jb-live-when"></span></p>
+      <p class="jb-hint" id="jb-hint" aria-live="polite" hidden></p>
+    </div>
+    <div class="jb-meta">
+      <span id="jb-count" aria-live="polite"></span>
+      <select id="jb-sort" aria-label="الترتيب" data-aria-en="Sort" class="jb-chip" style="cursor:pointer">
+        <option value="best" data-ar="الأنسب" data-en="Best match">Best match</option>
+        <option value="date" data-ar="الأحدث" data-en="Newest">Newest</option>
+        <option value="salary" data-ar="الأعلى راتبًا" data-en="Highest salary">Highest salary</option>
+      </select>
+    </div>
+    <div class="jb-newbar"><button type="button" class="jb-new" id="jb-new" hidden></button></div>
+    <div class="jb-list" id="jb-list"></div>
+    <div class="jb-more"><button class="btn btn-ghost" type="button" id="jb-more" hidden><span data-l="ar">عرض المزيد</span><span data-l="en">Load more</span></button></div>
+
+    <div class="jb-cta" style="max-width:58rem;margin-inline:auto">
+      <span data-l="ar">🎯 <strong>اعرف نسبة تطابقك مع كل وظيفة</strong> — ارفع سيرتك الذاتية في تطبيق Interprova لترى ترتيب الوظائف حسب ملاءمتها لك، وجهّز نسخة من سيرتك مخصّصة لكل وظيفة، ثم تدرّب على مقابلتها. <a href="/app">افتح التطبيق</a> · <a href="/ats-checker">افحص سيرتك مجانًا</a></span>
+      <span data-l="en">🎯 <strong>See how well you match every job</strong> — upload your CV in the Interprova app to rank jobs by fit, get a CV tailored to each one, then practise its interview. <a href="/app">Open the app</a> · <a href="/ats-checker">Check your CV free</a></span>
+    </div>
+
+    <p class="jb-note">
+      <span data-l="ar">الوظائف مصدرها صفحات التوظيف العامة للشركات ومواقع الوظائف المذكورة على كل إعلان. Interprova لا يستقبل الطلبات نيابةً عن أصحاب العمل: زر «قدّم الآن» يفتح الإعلان الأصلي. لن يطلب منك صاحب عمل حقيقي دفع أي مبلغ للتقديم.</span>
+      <span data-l="en">Jobs come from companies' public career pages and the job boards named on each listing. Interprova does not take applications on an employer's behalf: "Apply" opens the original listing. A genuine employer will never ask you to pay to apply.</span>
+    </p>
+  </div>
+</section>
+
+<dialog class="jb-dlg" id="jb-dlg" aria-labelledby="jb-d-title">
+  <div class="jb-dlg-in">
+    <div class="jb-dlg-hd">
+      <div>
+        <h2 id="jb-d-title"></h2>
+        <div class="jb-co" id="jb-d-co"></div>
+        <div class="jb-tags" id="jb-d-tags"></div>
+      </div>
+      <button class="jb-x" type="button" id="jb-d-close" aria-label="إغلاق" data-aria-en="Close">×</button>
+    </div>
+    <div class="jb-dlg-body" id="jb-d-body"></div>
+    <div class="jb-dlg-ft">
+      <a class="btn btn-primary" id="jb-d-apply" target="_blank" rel="noopener nofollow"><span data-l="ar">قدّم الآن ↗</span><span data-l="en">Apply now ↗</span></a>
+      <a class="btn btn-ghost" id="jb-d-ats"><span data-l="ar">افحص سيرتك لهذه الوظيفة</span><span data-l="en">Check your CV for this job</span></a>
+      <span class="src" id="jb-d-src"></span>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var en = function () { return root.getAttribute('lang') === 'en'; };
+  var t = function (ar, e) { return en() ? e : ar; };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var list = $('jb-list'), more = $('jb-more'), count = $('jb-count');
+  var state = { page: 1, total: 0, jobs: [], loading: false, meta: null, sent: new URLSearchParams(), fresh: 0 };
+  var regionNames = {};
+  function countryName(code) {
+    if (!code) return '';
+    var l = en() ? 'en' : 'ar';
+    try {
+      if (!regionNames[l]) regionNames[l] = new Intl.DisplayNames([l], { type: 'region' });
+      return regionNames[l].of(code);
+    } catch (e) { return code; }
+  }
+  var LEVEL = { intern: ['تدريب', 'Internship'], junior: ['مبتدئ', 'Junior'], mid: ['متوسط', 'Mid-level'], senior: ['خبير', 'Senior'], lead: ['قائد فريق', 'Lead'], executive: ['إدارة عليا', 'Executive'] };
+  var TYPE = { full_time: ['دوام كامل', 'Full-time'], part_time: ['دوام جزئي', 'Part-time'], contract: ['عقد', 'Contract'], internship: ['تدريب', 'Internship'], temporary: ['مؤقت', 'Temporary'] };
+  var WP = { remote: ['عن بُعد', 'Remote'], hybrid: ['هجين', 'Hybrid'], onsite: ['من المكتب', 'On-site'] };
+  var tr = function (map, k) { return map[k] ? t(map[k][0], map[k][1]) : ''; };
+
+  function ago(iso) {
+    if (!iso) return '';
+    var d = Math.max(0, (Date.now() - new Date(iso).getTime()) / 864e5);
+    try {
+      var rtf = new Intl.RelativeTimeFormat(en() ? 'en' : 'ar', { numeric: 'auto' });
+      if (d < 1) return rtf.format(-Math.max(1, Math.round(d * 24)), 'hour');
+      if (d < 30) return rtf.format(-Math.round(d), 'day');
+      return rtf.format(-Math.round(d / 30), 'month');
+    } catch (e) { return ''; }
+  }
+  function money(s) {
+    if (!s) return '';
+    var f = function (n) { return n >= 1000 ? Math.round(n / 1000) + 'k' : String(n); };
+    var range = [s.min, s.max].filter(Boolean).map(f).join('–');
+    var per = { year: t('سنويًا', '/yr'), month: t('شهريًا', '/mo'), hour: t('بالساعة', '/hr') }[s.period] || '';
+    return (s.currency ? s.currency + ' ' : '') + range + ' ' + per;
+  }
+  function where(j) {
+    var parts = [];
+    if (j.city) parts.push(j.city);
+    if (j.country) parts.push(countryName(j.country));
+    if (!parts.length) parts.push(j.workplace === 'remote' ? t('أي مكان', 'Anywhere') : (j.location || ''));
+    return parts.join(en() ? ', ' : '، ');
+  }
+
+  /* ---------- query <-> URL ---------- */
+  function readQuery() {
+    var p = new URLSearchParams(location.search);
+    $('jb-q').value = p.get('q') || '';
+    $('jb-country').dataset.want = (p.get('country') || '').toUpperCase();
+    $('jb-seniority').value = p.get('seniority') || '';
+    $('jb-type').value = p.get('type') || '';
+    $('jb-posted').value = p.get('posted') || '';
+    $('jb-sort').value = p.get('sort') || 'best';
+    $('jb-salary').checked = p.get('salary') === '1';
+    var wp = (p.get('workplace') || '').split(',');
+    [].forEach.call(document.querySelectorAll('[data-wp]'), function (b) {
+      b.setAttribute('aria-pressed', String(wp.indexOf(b.dataset.wp) >= 0));
+    });
+  }
+  function params() {
+    var p = new URLSearchParams();
+    var q = $('jb-q').value.trim();
+    if (q) p.set('q', q);
+    var c = $('jb-country').value || $('jb-country').dataset.want;
+    if (c) p.set('country', c);
+    var wp = [].filter.call(document.querySelectorAll('[data-wp]'), function (b) { return b.getAttribute('aria-pressed') === 'true'; }).map(function (b) { return b.dataset.wp; });
+    if (wp.length) p.set('workplace', wp.join(','));
+    if ($('jb-seniority').value) p.set('seniority', $('jb-seniority').value);
+    if ($('jb-type').value) p.set('type', $('jb-type').value);
+    if ($('jb-posted').value) p.set('posted', $('jb-posted').value);
+    if ($('jb-salary').checked) p.set('salary', '1');
+    if ($('jb-sort').value !== 'best') p.set('sort', $('jb-sort').value);
+    var lang = new URLSearchParams(location.search).get('lang');
+    if (lang) p.set('lang', lang);
+    return p;
+  }
+
+  /* ---------- rendering ---------- */
+  function card(j) {
+    var initials = (j.company || '?').trim().charAt(0).toUpperCase();
+    var logo = j.companyLogo ? '<img src="' + esc(j.companyLogo) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '';
+    var tags = [];
+    if (j.workplace) tags.push('<span class="jb-tag' + (j.workplace === 'remote' ? ' remote' : '') + '">' + esc(tr(WP, j.workplace)) + '</span>');
+    if (j.seniority) tags.push('<span class="jb-tag">' + esc(tr(LEVEL, j.seniority)) + '</span>');
+    if (j.employmentType) tags.push('<span class="jb-tag">' + esc(tr(TYPE, j.employmentType)) + '</span>');
+    if (j.salary) tags.push('<span class="jb-tag pay" dir="ltr">' + esc(money(j.salary)) + '</span>');
+    (j.skills || []).slice(0, 4).forEach(function (s) { tags.push('<span class="jb-tag">' + esc(s.label) + '</span>'); });
+    return '<button type="button" class="jb-card" data-id="' + esc(j.id) + '">' +
+      '<span class="jb-logo" aria-hidden="true">' + esc(initials) + logo + '</span>' +
+      '<span><span class="jb-title" dir="auto">' + esc(j.title) + '</span>' +
+      '<span class="jb-co" style="display:block" dir="auto">' + esc(j.company) + ' · ' + esc(where(j)) + '</span>' +
+      '<span class="jb-tags">' + tags.join('') + '</span></span>' +
+      '<span class="jb-side">' + (j.live ? '<span class="jb-badge-live" title="' + esc(t('جُلبت من المصدر لحظة بحثك', 'Fetched from the source at the moment you searched')) + '">' + esc(t('لحظي', 'LIVE')) + '</span>' : '') +
+      '<span>' + esc(ago(j.postedAt)) + '</span><span>' + esc(j.sourceName || '') + '</span></span>' +
+      '</button>';
+  }
+  function render() {
+    if (!state.jobs.length && !state.loading) {
+      list.innerHTML = '<div class="jb-empty">' + t(
+        'لا توجد نتائج لهذا البحث. جرّب كلمات أقل، أو ألغِ بعض الفلاتر، أو ابحث في كل الدول.',
+        'No jobs match this search. Try fewer words, remove a filter, or search all countries.') + '</div>';
+    } else {
+      list.innerHTML = state.jobs.map(card).join('');
+    }
+    count.textContent = state.total ? t('عدد الوظائف: ', 'Jobs found: ') + state.total.toLocaleString(en() ? 'en' : 'ar-EG') : '';
+    more.hidden = state.jobs.length >= state.total || state.page >= 50;
+    renderStatus();
+  }
+
+  /* ---------- live status, query hints, "new jobs" pill ---------- */
+  var num = function (x) { return Number(x || 0).toLocaleString(en() ? 'en' : 'ar-EG'); };
+  // Arabic counts: 1, 2, 3–10 and 11+ each take a different noun form.
+  function arCount(n, one, two, few, many) {
+    if (n === 1) return one;
+    if (n === 2) return two;
+    return num(n) + ' ' + (n % 100 >= 3 && n % 100 <= 10 ? few : many);
+  }
+  function since(iso) {
+    var s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (!isFinite(s)) return '';
+    if (s < 60) return t('الآن', 'just now');
+    try {
+      var rtf = new Intl.RelativeTimeFormat(en() ? 'en' : 'ar', { numeric: 'auto' });
+      if (s < 3600) return rtf.format(-Math.round(s / 60), 'minute');
+      return rtf.format(-Math.round(s / 3600), 'hour');
+    } catch (e) { return ''; }
+  }
+  function clock(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    try { return d.toLocaleTimeString(en() ? 'en' : 'ar', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
+  }
+  function renderStatus() {
+    var m = state.meta, box = $('jb-live'), hint = $('jb-hint');
+    if (!m) { box.hidden = true; hint.hidden = true; return; }
+    var lv = m.live;
+    box.hidden = false;
+    box.classList.toggle('on', !!lv);
+    if (lv) {
+      var n = (lv.sources || []).length, c = lv.count || 0;
+      var msg = t('نتائج لحظية', 'Live results') + ' · ' +
+        (n ? t('بحثنا في ' + arCount(n, 'مصدر واحد', 'مصدرين', 'مصادر', 'مصدرًا'), 'searched ' + num(n) + (n === 1 ? ' source' : ' sources')) : t('بحثنا في المصادر', 'searched the sources'));
+      if (c) msg += ' · ' + t(arCount(c, 'وظيفة جديدة واحدة', 'وظيفتان جديدتان', 'وظائف جديدة', 'وظيفة جديدة'), num(c) + (c === 1 ? ' fresh job' : ' fresh jobs'));
+      $('jb-live-msg').textContent = msg;
+      $('jb-live-when').textContent = '· ' + since(lv.at || m.checkedAt);
+    } else {
+      $('jb-live-msg').textContent = t('تتحدّث الوظائف تلقائيًا كل بضع دقائق', 'Updated automatically every few minutes');
+      var at = m.checkedAt ? clock(m.checkedAt) : '';
+      $('jb-live-when').textContent = at ? '· ' + t('آخر فحص ', 'last checked ') + at : '';
+    }
+    // What the server actually searched for, when it differs from what was typed.
+    var q = m.query || {}, sent = state.sent, parts = [];
+    var inferredCountry = q.country && !sent.get('country');
+    var inferredRemote = q.remote && (sent.get('workplace') || '').indexOf('remote') < 0;
+    if (q.searched && (q.translated || inferredCountry || inferredRemote)) {
+      var s = t('نبحث عن', 'Searching for') + ' ' + t('«', '“') + '<bdi><b>' + esc(q.searched) + '</b></bdi>' + t('»', '”');
+      if (inferredCountry) s += ' ' + t('في', 'in') + ' <b>' + esc(countryName(q.country)) + '</b>';
+      if (inferredRemote) s += ' · ' + esc(tr(WP, 'remote'));
+      parts.push('<span>🔎 ' + s + '</span>');
+    }
+    if (m.relaxed) parts.push('<span class="relaxed">' + esc(t('لا توجد نتيجة مطابقة تمامًا — نعرض أقرب النتائج', 'No exact match — showing closest results')) + '</span>');
+    hint.innerHTML = parts.join('');
+    hint.hidden = !parts.length;
+  }
+
+  var POLL_MS = 90000, pollTimer = null, lastPoll = 0, pollOff = false, newBtn = $('jb-new');
+  function renderNew() {
+    var c = state.fresh;
+    newBtn.hidden = !c;
+    if (c) newBtn.textContent = '↑ ' + t(arCount(c, 'وظيفة جديدة واحدة', 'وظيفتان جديدتان', 'وظائف جديدة', 'وظيفة جديدة') + ' — اعرضها', num(c) + (c === 1 ? ' new job' : ' new jobs') + ' — show');
+  }
+  function schedule() {
+    clearTimeout(pollTimer);
+    if (pollOff || document.hidden || !state.meta || !state.meta.checkedAt) return;
+    pollTimer = setTimeout(poll, Math.max(1000, POLL_MS - (Date.now() - lastPoll)));
+  }
+  function poll() {
+    if (document.hidden || !state.meta || !state.meta.checkedAt) return;
+    lastPoll = Date.now();
+    var p = new URLSearchParams(state.sent);
+    ['page', 'pageSize', 'sort'].forEach(function (k) { p.delete(k); });
+    p.set('since', state.meta.checkedAt);
+    var mine = seq;
+    fetch('/api/jobs/new-count?' + p)
+      .then(function (r) { if (r.status === 404) pollOff = true; return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (mine !== seq || !d) return;
+        state.fresh = Math.max(0, Number(d.count) || 0);
+        renderNew();
+      })
+      .catch(function () {})
+      .then(function () {
+        // The relative time on the status line ages between searches.
+        if (state.meta && state.meta.live) $('jb-live-when').textContent = '· ' + since(state.meta.live.at || state.meta.checkedAt);
+        schedule();
+      });
+  }
+  document.addEventListener('visibilitychange', schedule);
+  newBtn.addEventListener('click', function () {
+    search(false);
+    var top = $('jb-status') || list;
+    var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+  });
+  function skeleton() {
+    list.innerHTML = '<div class="jb-skel"></div><div class="jb-skel"></div><div class="jb-skel"></div>';
+  }
+
+  /* ---------- data ---------- */
+  var seq = 0;
+  function search(append) {
+    var p = params();
+    if (!append) {
+      state.page = 1;
+      // Keep /jobs/<id> while a job is open, so a shared link still opens it.
+      var path = /^\/jobs\/\d+/.test(location.pathname) ? location.pathname : '/jobs';
+      history.replaceState(history.state, '', path + (p.toString() ? '?' + p : '') + location.hash);
+      skeleton();
+    }
+    p.set('page', String(state.page));
+    p.set('pageSize', '20');
+    if (p.get('sort') == null) p.set('sort', 'best');
+    p.delete('lang');
+    var mine = ++seq;
+    state.loading = true;
+    if (!append) { state.sent = new URLSearchParams(p); state.fresh = 0; renderNew(); }
+    return fetch('/api/jobs/search?' + p)
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        if (mine !== seq) return;
+        state.total = d.total;
+        state.jobs = append ? state.jobs.concat(d.jobs) : d.jobs;
+        state.loading = false;
+        if (!append) {
+          // Older API responses carry none of these; every field is optional.
+          state.meta = { live: d.live || false, query: d.query || null, relaxed: !!d.relaxed, checkedAt: d.checkedAt || null };
+          lastPoll = Date.now();
+          schedule();
+        }
+        render();
+      })
+      .catch(function () {
+        if (mine !== seq) return;
+        state.loading = false;
+        if (!append) { state.meta = null; renderStatus(); }
+        list.innerHTML = '<div class="jb-empty">' + t('تعذّر تحميل الوظائف. حاول مرة أخرى بعد قليل.', 'Could not load jobs. Please try again in a moment.') + '</div>';
+      });
+  }
+  function loadCountries() {
+    var sel = $('jb-country');
+    return fetch('/api/jobs/facets?lang=' + (en() ? 'en' : 'ar'))
+      .then(function (r) { return r.json(); })
+      .then(function (f) {
+        var want = sel.value || sel.dataset.want || '';
+        var first = sel.options[0].outerHTML;
+        var codes = (f.countries || []).map(function (c) { return c.key; });
+        if (want && codes.indexOf(want) < 0) codes.unshift(want);
+        var opts = codes.map(function (k) {
+          var c = (f.countries || []).filter(function (x) { return x.key === k; })[0];
+          return { k: k, name: countryName(k), n: c ? c.count : 0 };
+        }).sort(function (a, b) { return a.name.localeCompare(b.name, en() ? 'en' : 'ar'); });
+        sel.innerHTML = first + opts.map(function (o) {
+          return '<option value="' + esc(o.k) + '">' + esc(o.name) + (o.n ? ' (' + o.n + ')' : '') + '</option>';
+        }).join('');
+        sel.value = want;
+      })
+      .catch(function () {});
+  }
+  function loadStats() {
+    fetch('/api/jobs/stats').then(function (r) { return r.json(); }).then(function (s) {
+      var n = function (x) { return Number(x || 0).toLocaleString(en() ? 'en' : 'ar-EG'); };
+      $('jb-stats').innerHTML =
+        '<span><b>' + n(s.jobs) + '</b>' + t('وظيفة متاحة', 'open jobs') + '</span>' +
+        '<span><b>' + n(s.countries) + '</b>' + t('دولة', 'countries') + '</span>' +
+        '<span><b>' + n(s.companies) + '</b>' + t('شركة', 'companies') + '</span>' +
+        '<span><b>' + n(s.remote) + '</b>' + t('عن بُعد', 'remote') + '</span>';
+    }).catch(function () {});
+  }
+
+  /* ---------- detail ---------- */
+  var dlg = $('jb-dlg');
+  var current = null;
+  function openJob(id, push) {
+    fetch('/api/jobs/' + encodeURIComponent(id))
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var j = d.job;
+        current = j;
+        $('jb-d-title').textContent = j.title;
+        $('jb-d-title').setAttribute('dir', 'auto');
+        $('jb-d-co').textContent = j.company + ' · ' + where(j) + ' · ' + ago(j.postedAt);
+        var tags = [];
+        if (j.workplace) tags.push('<span class="jb-tag' + (j.workplace === 'remote' ? ' remote' : '') + '">' + esc(tr(WP, j.workplace)) + '</span>');
+        if (j.seniority) tags.push('<span class="jb-tag">' + esc(tr(LEVEL, j.seniority)) + '</span>');
+        if (j.employmentType) tags.push('<span class="jb-tag">' + esc(tr(TYPE, j.employmentType)) + '</span>');
+        if (j.salary) tags.push('<span class="jb-tag pay" dir="ltr">' + esc(money(j.salary)) + '</span>');
+        $('jb-d-tags').innerHTML = tags.join('');
+        var body = '';
+        if (!j.isActive) body += '<div class="form-msg show err" style="margin-bottom:12px">' + t('قد تكون هذه الوظيفة أُغلقت — لم تعد تظهر في مصدرها.', 'This job may be closed — it no longer appears at its source.') + '</div>';
+        if (j.skills && j.skills.length) {
+          body += '<div class="jb-tags" style="margin-bottom:14px">' + j.skills.map(function (s) { return '<span class="jb-tag">' + esc(s.label) + '</span>'; }).join('') + '</div>';
+        }
+        body += '<div class="jb-desc" dir="' + (j.language === 'ar' ? 'rtl' : 'ltr') + '">' + esc(j.description || '') + '</div>';
+        body += '<div class="jb-cta">' + t(
+          '✨ في تطبيق Interprova: اعرف نسبة تطابقك مع هذه الوظيفة، واحصل على سيرة ذاتية وخطاب تقديم مخصّصين لها، ثم تدرّب على مقابلتها. <a href="/app">افتح التطبيق</a>',
+          '✨ In the Interprova app: see your match for this job, get a CV and cover letter tailored to it, then practise its interview. <a href="/app">Open the app</a>') + '</div>';
+        if (d.similar && d.similar.length) {
+          body += '<h3 class="jb-h3">' + t('وظائف مشابهة', 'Similar jobs') + '</h3><div class="jb-sim">' + d.similar.map(function (s) {
+            return '<a href="/jobs/' + esc(s.id) + '" data-id="' + esc(s.id) + '" dir="auto">' + esc(s.title) + '<small>' + esc(s.company) + ' · ' + esc(where(s)) + '</small></a>';
+          }).join('') + '</div>';
+        }
+        $('jb-d-body').innerHTML = body;
+        $('jb-d-body').scrollTop = 0;
+        $('jb-d-apply').href = j.applyUrl || j.url;
+        $('jb-d-ats').href = '/ats-checker?job=' + encodeURIComponent(j.id);
+        $('jb-d-src').textContent = t('المصدر: ', 'Source: ') + (j.sourceName || '');
+        if (push) history.pushState({ job: j.id }, '', '/jobs/' + j.id + location.search);
+        document.title = j.title + ' — ' + j.company + ' | Interprova';
+        if (!dlg.open) { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); }
+      })
+      .catch(function () {
+        if (!push) history.replaceState(null, '', '/jobs' + location.search);
+      });
+  }
+  function closeJob(fromPop) {
+    if (dlg.open) dlg.close();
+    current = null;
+    document.title = t('وظائف حول العالم — Interprova', 'Jobs worldwide — Interprova');
+    if (!fromPop && /^\/jobs\/\d+/.test(location.pathname)) history.pushState(null, '', '/jobs' + location.search);
+  }
+  $('jb-d-close').addEventListener('click', function () { closeJob(false); });
+  dlg.addEventListener('cancel', function (e) { e.preventDefault(); closeJob(false); });
+  dlg.addEventListener('click', function (e) {
+    if (e.target === dlg) { closeJob(false); return; }
+    var a = e.target.closest && e.target.closest('.jb-sim a[data-id]');
+    if (a) { e.preventDefault(); openJob(a.dataset.id, true); }
+  });
+  list.addEventListener('click', function (e) {
+    var c = e.target.closest && e.target.closest('.jb-card');
+    if (c) openJob(c.dataset.id, true);
+  });
+  window.addEventListener('popstate', function () {
+    var m = location.pathname.match(/^\/jobs\/(\d+)/);
+    if (m) openJob(m[1], false); else closeJob(true);
+  });
+
+  /* ---------- controls ---------- */
+  $('jb-form').addEventListener('submit', function (e) { e.preventDefault(); search(false); });
+  [].forEach.call(document.querySelectorAll('[data-wp]'), function (b) {
+    b.addEventListener('click', function () {
+      b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      search(false);
+    });
+  });
+  ['jb-country', 'jb-seniority', 'jb-type', 'jb-posted', 'jb-salary', 'jb-sort'].forEach(function (id) {
+    $(id).addEventListener('change', function () { if (id === 'jb-country') $('jb-country').dataset.want = ''; search(false); });
+  });
+  more.addEventListener('click', function () { state.page += 1; search(true); });
+
+  // Placeholder text cannot hold the two-span pattern; swap it with the language.
+  var qIn = $('jb-q');
+  qIn.dataset.phAr = qIn.getAttribute('placeholder');
+  new MutationObserver(function () {
+    qIn.setAttribute('placeholder', en() ? qIn.dataset.phEn : qIn.dataset.phAr);
+    loadStats();
+    loadCountries();
+    render();
+    renderNew();
+  }).observe(root, { attributes: true, attributeFilter: ['lang'] });
+  qIn.setAttribute('placeholder', en() ? qIn.dataset.phEn : qIn.dataset.phAr);
+
+  readQuery();
+  loadStats();
+  loadCountries().then(function () { search(false); });
+  var m = location.pathname.match(/^\/jobs\/(\d+)/);
+  if (m) openJob(m[1], false);
+})();
+</script>
+
+
+<section class="section section-alt explore">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker"><span data-l="en">Explore the platform</span><span data-l="ar">اكتشف المنصة</span></div>
+      <h2><span data-l="en">Everything between you and the offer</span><span data-l="ar">كل ما بينك وبين العرض الوظيفي</span></h2>
+    </div>
+    <div class="bento">
+      <a class="tile reveal" href="/#assistant">
+        <span class="tico g-violet"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-headset"/></svg></span>
+        <h3><span data-l="en">Live Interview Assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></h3>
+        <p><span data-l="en">Live help in the real interview, from your own CV.</span><span data-l="ar">مساعدة لحظية في المقابلة الحقيقية من سيرتك أنت.</span></p>
+      </a>
+      <a class="tile reveal" href="/cv-builder.html">
+        <span class="tico g-amber"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pen"/></svg></span>
+        <h3><span data-l="en">CV builder</span><span data-l="ar">منشئ السيرة الذاتية</span></h3>
+        <p><span data-l="en">One CV in, a tailored application out.</span><span data-l="ar">سيرة واحدة تدخل، وطلب مخصّص يخرج.</span></p>
+      </a>
+      <a class="tile reveal" href="/ats-checker">
+        <span class="tico g-green"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-filecheck"/></svg></span>
+        <h3><span data-l="en">ATS CV checker</span><span data-l="ar">فاحص ATS</span></h3>
+        <p><span data-l="en">Free — see what hiring software sees.</span><span data-l="ar">مجاني — شاهد ما تراه أنظمة التوظيف.</span></p>
+      </a>
+      <a class="tile reveal" href="/integrations.html">
+        <span class="tico g-rose"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-calendar"/></svg></span>
+        <h3><span data-l="en">Calendar & Google Meet</span><span data-l="ar">التقويم و Google Meet</span></h3>
+        <p><span data-l="en">Interviews on your calendar, one tap from help.</span><span data-l="ar">مقابلاتك في تقويمك، على بُعد ضغطة من المساعدة.</span></p>
+      </a>
+      <a class="tile reveal" href="/desktop.html">
+        <span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-monitor"/></svg></span>
+        <h3><span data-l="en">Desktop app</span><span data-l="ar">تطبيق سطح المكتب</span></h3>
+        <p><span data-l="en">Meeting AI for Windows and macOS.</span><span data-l="ar">Meeting AI لويندوز وماك.</span></p>
+      </a>
+      <a class="tile reveal" href="/features.html#interviews">
+        <span class="tico g-blue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mic"/></svg></span>
+        <h3><span data-l="en">AI mock interviews</span><span data-l="ar">المقابلات التدريبية</span></h3>
+        <p><span data-l="en">Rehearse by voice and get scored out of 10.</span><span data-l="ar">تدرّب بصوتك واحصل على تقييم من ١٠.</span></p>
+      </a>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="ftr">
+  <div class="wrap">
+    <div class="ftr-grid">
+      <div>
+        <div class="brand" style="margin-bottom:var(--sp-4)">
+          <img class="brand-logo" src="/logo-mark.png" alt="" width="36" height="35" decoding="async">
+          <span>Interprova</span>
+        </div>
+        <p style="color:var(--text-3);font-size:14.5px;max-width:34ch">
+          <span data-l="en">Interprova — the AI career platform. Jobs worldwide, ATS-ready CVs, interview practice and a live interview assistant, in English and Arabic.</span>
+          <span data-l="ar">Interprova — المنصة المهنية بالذكاء الاصطناعي. وظائف حول العالم، سير ذاتية جاهزة لأنظمة التوظيف، تدريب على المقابلات، ومساعد مباشر للمقابلة — بالإنجليزية والعربية.</span>
+        </p>
+
+        <!-- Direct, unmediated contact. A support address a visitor can see
+             without opening a form is the difference between "they read this"
+             and "this is a shell". -->
+        <ul class="ftr-contact">
+          <li>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+            <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a>
+          </li>
+          <li>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-globe"/></svg>
+            <span>
+              <span data-l="en">Available worldwide · English &amp; Arabic</span>
+              <span data-l="ar">متاح حول العالم · بالإنجليزية والعربية</span>
+            </span>
+          </li>
+        </ul>
+
+        <!-- Interprova's own accounts. Instagram is not here yet — an icon linking nowhere
+             is worse than one fewer icon. -->
+        <div class="social" role="group" aria-label="حسابات التواصل الاجتماعي" data-aria-en="Social accounts">
+          <a href="https://www.facebook.com/profile.php?id=61593602555146" rel="noopener me" target="_blank" aria-label="Facebook">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-facebook"/></svg>
+          </a>
+          <a href="https://www.linkedin.com/company/interprova" rel="noopener me" target="_blank" aria-label="LinkedIn">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-linkedin"/></svg>
+          </a>
+          <a href="https://www.instagram.com/interprova.10541" rel="noopener me" target="_blank" aria-label="Instagram">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-s-instagram"/></svg>
+          </a>
+          <a href="mailto:info@interprova.com" aria-label="Email">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mail"/></svg>
+          </a>
+        </div>
+
+        <div class="store-row store-row-sm">
+          <a class="store-badge" href="https://play.google.com/store/apps/details?id=com.interprova.app"
+             rel="noopener" target="_blank"
+             aria-label="حمّل تطبيق Interprova من Google Play" data-aria-en="Get Interprova on Google Play">
+            <svg class="store-ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
+            <span class="store-txt">
+              <small><span data-l="ar">حمّله من</span><span data-l="en">GET IT ON</span></small>
+              <strong>Google Play</strong>
+            </span>
+          </a>
+          <a class="store-badge" href="/app/"
+             aria-label="افتح Interprova على iPhone من المتصفح" data-aria-en="Open Interprova on iPhone in the browser">
+            <svg class="store-ico store-ico-apple" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg>
+            <span class="store-txt">
+              <small><span data-l="ar">على iPhone</span><span data-l="en">On iPhone</span></small>
+              <strong><span data-l="ar">من المتصفح</span><span data-l="en">In the browser</span></strong>
+            </span>
+          </a>
+        </div>
+      </div>
+      <div>
+        <h4><span data-l="ar">المنتج</span><span data-l="en">Product</span></h4>
+        <ul>
+          <li><a href="/jobs"><span data-l="ar">وظائف حول العالم</span><span data-l="en">Jobs worldwide</span></a></li>
+          <li><a href="/ats-checker"><span data-l="ar">فحص السيرة الذاتية (ATS)</span><span data-l="en">ATS CV checker</span></a></li>
+          <li><a href="/#assistant"><span data-l="en">Live interview assistant</span><span data-l="ar">المساعد المباشر للمقابلات</span></a></li>
+          <li><a href="/features.html"><span data-l="en">AI mock interviews</span><span data-l="ar">المقابلات التدريبية</span></a></li>
+          <li><a href="/cv-builder.html"><span data-l="en">CV builder</span><span data-l="ar">منشئ السيرة الذاتية</span></a></li>
+          <li><a href="/integrations.html"><span data-l="en">Calendar &amp; Google Meet</span><span data-l="ar">التقويم و Google Meet</span></a></li>
+          <li><a href="/desktop.html"><span data-l="en">Desktop app</span><span data-l="ar">تطبيق سطح المكتب</span></a></li>
+          <li><a href="/how-it-works.html"><span data-l="ar">كيف يعمل</span><span data-l="en">How it works</span></a></li>
+          <li><a href="/pricing.html"><span data-l="ar">الأسعار</span><span data-l="en">Pricing</span></a></li>
+          <li><a href="/checkout"><span data-l="ar">الدفع والشراء</span><span data-l="en">Checkout</span></a></li>
+          <li><a href="/app"><span data-l="ar">تطبيق الويب</span><span data-l="en">Web app</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <h4><span data-l="ar">الشركة</span><span data-l="en">Company</span></h4>
+        <ul>
+          <li><a href="/about.html"><span data-l="ar">من نحن</span><span data-l="en">About us</span></a></li>
+          <li><a href="/blog.html"><span data-l="ar">المدوّنة</span><span data-l="en">Blog</span></a></li>
+          <li><a href="/contact.html"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact us</span></a></li>
+        </ul>
+      </div>
+      <div>
+        <h4><span data-l="ar">قانوني</span><span data-l="en">Legal</span></h4>
+        <ul>
+          <li><a href="/privacy.html"><span data-l="ar">سياسة الخصوصية</span><span data-l="en">Privacy policy</span></a></li>
+          <li><a href="/terms.html"><span data-l="ar">الشروط والأحكام</span><span data-l="en">Terms and conditions</span></a></li>
+          <li><a href="/refund"><span data-l="ar">سياسة الاستبدال والاسترجاع</span><span data-l="en">Exchange &amp; refund policy</span></a></li>
+          <li><a href="/delete-account.html"><span data-l="ar">حذف الحساب</span><span data-l="en">Delete account</span></a></li>
+          <li><a href="/contact.html"><span data-l="ar">الدعم الفني</span><span data-l="en">Support</span></a></li>
+          <li><a href="/faq.html"><span data-l="ar">أسئلة شائعة</span><span data-l="en">FAQ</span></a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ftr-bottom">
+      <span>© <span id="yr">2026</span> <span data-l="ar">Interprova — جميع الحقوق محفوظة</span><span data-l="en">Interprova — all rights reserved</span></span>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+document.body.classList.remove('no-js');
+var root = document.documentElement;
+
+// Sticky header border appears only once scrolled — avoids a hairline
+// floating over the hero at rest.
+var hdr = document.getElementById('hdr');
+var onScroll = function(){ hdr.classList.toggle('scrolled', window.scrollY > 8); };
+addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+// ── Mobile navigation drawer ──────────────────────────────────────────
+// Below 1080px .nav is display:none, so this is the ONLY route to the rest of
+// the site on a phone. It is written defensively for that reason: if any part
+// of it throws, the header still renders and the CTAs still work.
+(function(){
+  var btn    = document.getElementById('navBtn');
+  var panel  = document.getElementById('navDrawer');
+  var scrim  = document.getElementById('navScrim');
+  var closeB = document.getElementById('navClose');
+  if (!btn || !panel || !scrim) return;
+
+  // Mark the current page so the reader can see where they are. Compared on
+  // pathname only — the query string carries ?lang=en and would never match.
+  var here = location.pathname.replace(/\/index\.html$/, '/');
+  panel.querySelectorAll('a[href]').forEach(function(a){
+    var p = a.getAttribute('href').split('?')[0];
+    if (p === here) a.setAttribute('aria-current', 'page');
+  });
+
+  var open = false;
+  var lastFocus = null;
+
+  function focusables(){
+    return [].slice.call(panel.querySelectorAll('a[href],button:not([disabled])'));
+  }
+
+  function setOpen(next){
+    if (next === open) return;
+    open = next;
+    btn.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('nav-open', open);
+
+    if (open) {
+      lastFocus = document.activeElement;
+      // `hidden` must come off BEFORE the class that animates, or the element
+      // is display:none for the frame the transition would have started in and
+      // the panel simply appears.
+      panel.hidden = false; scrim.hidden = false;
+      requestAnimationFrame(function(){
+        panel.classList.add('open'); scrim.classList.add('open');
+      });
+      var f = focusables();
+      if (f.length) f[0].focus();
+    } else {
+      panel.classList.remove('open'); scrim.classList.remove('open');
+      // Re-hide only once the slide-out has finished, so it is not cut short.
+      // A timer rather than transitionend: under prefers-reduced-motion the
+      // transition is `none` and transitionend never fires, which would leave
+      // an invisible panel on top of the page swallowing every tap.
+      setTimeout(function(){
+        if (!open) { panel.hidden = true; scrim.hidden = true; }
+      }, 280);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+  }
+
+  btn.addEventListener('click', function(){ setOpen(!open); });
+  scrim.addEventListener('click', function(){ setOpen(false); });
+  if (closeB) closeB.addEventListener('click', function(){ setOpen(false); });
+
+  // Any navigation closes it — including same-page anchors, which change
+  // nothing about the document and would otherwise leave the drawer covering
+  // the section the reader just asked to see.
+  panel.addEventListener('click', function(e){
+    if (e.target.closest('a[href]')) setOpen(false);
+  });
+
+  document.addEventListener('keydown', function(e){
+    if (!open) return;
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key !== 'Tab') return;
+    // Trap focus: with the rest of the page behind a scrim, tabbing out of the
+    // drawer moves the caret somewhere the reader cannot see.
+    var f = focusables();
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  // Widening past the breakpoint brings the real .nav back; a drawer left open
+  // would then sit over a page that already has its navigation.
+  addEventListener('resize', function(){
+    if (open && innerWidth > 1080) setOpen(false);
+  });
+})();
+
+// Reveal on scroll. Falls back to "everything visible" when IntersectionObserver
+// is unavailable, so content is never trapped behind a broken animation.
+if ('IntersectionObserver' in window) {
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { rootMargin: '0px 0px -60px 0px', threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+} else {
+  document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+}
+
+// ── Numerals ──────────────────────────────────────────────────────────
+// Arabic-Indic under Arabic, grouped Latin under English. Everything that
+// prints a number goes through fmt(), so a language switch can never leave
+// ٩٩ sitting next to "EGP".
+var AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function currentLang(){ return root.getAttribute('lang') === 'ar' ? 'ar' : 'en'; }
+function fmt(n){
+  if (currentLang() === 'en') {
+    try { return Number(n).toLocaleString('en-US'); } catch (e) { return String(n); }
+  }
+  return String(n).replace(/[0-9]/g, function(d){ return AR_DIGITS[d]; });
+}
+
+// ── Animated counters ─────────────────────────────────────────────────
+// Numbers that tick up read as "measured", where a static figure reads as
+// decoration — and it gives the trust strip a reason to exist visually.
+// Skipped entirely under reduced-motion. The last painted value is kept on
+// the element so a language switch can repaint without restarting.
+var refreshNums = function(){};
+(function(){
+  // `[data-to]` is required, not merely usual. `.num` is also worn by figures
+  // that are not a single countable number — "٠–١٠" is a RANGE — and those
+  // were being fed to `+el.dataset.to`, which is `+undefined`, which is NaN.
+  // The strip rendered a confident "NaN" where the scoring scale should be.
+  // Elements without a target keep the text the HTML already gives them.
+  var nums = [].slice.call(document.querySelectorAll('.num[data-to]'));
+  if (!nums.length) return;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var render = function(el, v){
+    el.__v = v;
+    var pre = el.dataset.prefix || '';
+    var suf = currentLang() === 'en'
+      ? (el.dataset.suffixEn || '')
+      : (el.dataset.suffix || '');
+    el.textContent = pre + fmt(v) + (suf ? ' ' + suf : '');
+  };
+  refreshNums = function(){
+    nums.forEach(function(el){ render(el, el.__v == null ? +el.dataset.to : el.__v); });
+  };
+  if (reduce || !('IntersectionObserver' in window)) {
+    nums.forEach(function(el){ render(el, +el.dataset.to); });
+    return;
+  }
+  var run = function(el){
+    var to = +el.dataset.to, start = null, dur = 1100;
+    var tick = function(ts){
+      if (start === null) start = ts;
+      var t = Math.min(1, (ts - start) / dur);
+      // easeOutCubic — fast then settling, which feels like a readout.
+      render(el, Math.round(to * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  var io2 = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if (e.isIntersecting){ run(e.target); io2.unobserve(e.target); } });
+  }, { threshold: 0.6 });
+  nums.forEach(function(el){ render(el, 0); io2.observe(el); });
+})();
+
+// ── Pricing ───────────────────────────────────────────────────────────
+// Every figure in the pricing section is written from /api/payments/config,
+// so this page cannot quote a price the checkout will not honour. There is
+// deliberately NO hardcoded fallback: the markup ships em dashes, and if the
+// fetch fails they stay put and #price-error says so. A stale price is worse
+// than a missing one — and it is how the retired yearly plan would creep back.
+//
+// Two fillers, both language-aware per NODE rather than per page, because the
+// hidden translation is real DOM that a language switch must find correct:
+//   [data-num="pack_60m.egp"] → "١٠٠" / "100"
+//   [data-mins="pack_60m"]    → "٦٠ دقيقة" / "60 minutes"
+var PRICING = null;                                             // null until the API answers
+var numEls  = [].slice.call(document.querySelectorAll('[data-num]'));
+var minsEls = [].slice.call(document.querySelectorAll('[data-mins]'));
+
+// The language of the [data-l] wrapper a node sits in; the page language for
+// nodes that are not translated (the top-up tiles carry one copy only).
+function nodeLang(el){
+  var w = el.closest ? el.closest('[data-l]') : null;
+  var l = w && w.getAttribute('data-l');
+  return l === 'ar' ? 'ar' : (l === 'en' ? 'en' : currentLang());
+}
+function fmtIn(lang, n){
+  if (lang === 'en') { try { return Number(n).toLocaleString('en-US'); } catch (e) { return String(n); } }
+  return String(n).replace(/[0-9]/g, function(d){ return AR_DIGITS[d]; });
+}
+// Arabic counts its unit word off the number: ٢ → دقيقتان, ٣–١٠ → دقائق,
+// ١١+ → دقيقة. Worth the five lines: free_trial_seconds is an admin setting,
+// so "١٥ دقائق" is one edit away from being printed.
+function minutesPhrase(lang, mins){
+  if (lang === 'en') return fmtIn('en', mins) + (mins === 1 ? ' minute' : ' minutes');
+  if (mins === 1) return 'دقيقة واحدة';
+  if (mins === 2) return 'دقيقتان';
+  if (mins >= 3 && mins <= 10) return fmtIn('ar', mins) + ' دقائق';
+  return fmtIn('ar', mins) + ' دقيقة';
+}
+
+/**
+ * Rewrite the structured-data offers from the same response the page renders.
+ *
+ * The JSON-LD block in <head> is the one thing here a crawler reads and our
+ * fetch does not write, so it was a SECOND source of truth for the prices: it
+ * agreed with the catalogue on the day it was typed and had no way of noticing
+ * afterwards. The trial line was the sharpest edge — "أول ١٠ دقائق" is an
+ * app_settings row precisely so an operator CAN change it without a deploy,
+ * which is exactly how Google ends up indexing an offer the checkout will not
+ * honour.
+ *
+ * Any crawler that executes scripts (Googlebot does) therefore sees the live
+ * catalogue. The static block stays as the no-JS fallback, but its trial offer
+ * no longer states a duration it cannot know.
+ */
+function syncOffers(cfg){
+  try {
+    var node = document.querySelector('script[type="application/ld+json"]');
+    if (!node) return;
+    var data = JSON.parse(node.textContent);
+    var graph = data['@graph'] || [];
+    var product = null;
+    for (var i = 0; i < graph.length; i++) {
+      if (graph[i] && graph[i].offers) { product = graph[i]; break; }
+    }
+    if (!product) return;
+
+    var offers = [];
+    if (cfg.trial && cfg.trial.minutes > 0) {
+      offers.push({
+        '@type': 'Offer', name: 'Free trial', price: '0', priceCurrency: 'EGP',
+        description: 'First ' + minutesPhrase('en', cfg.trial.minutes) + ' of interview time free',
+      });
+    }
+    cfg.plans.forEach(function(p){
+      offers.push({
+        '@type': 'Offer',
+        name: p.labelEn || p.labelAr,
+        price: String(p.amountEgp),
+        priceCurrency: cfg.currency || 'EGP',
+        description: p.kind === 'pack'
+          ? minutesPhrase('en', p.minutes) + ' of interview credit that never expires'
+          : minutesPhrase('en', p.minutesPerMonth) + ' every 30 days',
+        availability: cfg.enabled
+          ? 'https://schema.org/InStock'
+          : 'https://schema.org/PreOrder',
+      });
+    });
+
+    product.offers = offers;
+    node.textContent = JSON.stringify(data);
+  } catch (e) { /* structured data is a bonus; never break the page for it */ }
+}
+
+function renderPricing(){
+  if (!PRICING) return;
+  numEls.forEach(function(el){
+    var v = PRICING.num[el.getAttribute('data-num')];
+    if (v != null) el.textContent = fmtIn(nodeLang(el), v);
+  });
+  minsEls.forEach(function(el){
+    var v = PRICING.mins[el.getAttribute('data-mins')];
+    if (v != null) el.textContent = minutesPhrase(nodeLang(el), v);
+  });
+}
+
+fetch('/api/payments/config').then(function(r){ return r.ok ? r.json() : null; }).then(function(cfg){
+  if (!cfg || !Array.isArray(cfg.plans) || !cfg.plans.length) throw new Error('no catalogue');
+  var num = {}, mins = {}, known = {};
+
+  // The trial is an app_settings row, not a plan: it is the one number here an
+  // operator can change — or zero, as the anti-farming kill switch — without a
+  // deploy. Read it, never assume it.
+  if (cfg.trial && cfg.trial.minutes > 0) { mins.trial = cfg.trial.minutes; known.trial = true; }
+
+  cfg.plans.forEach(function(p){
+    known[p.code] = true;
+    num[p.code + '.egp'] = p.amountEgp;
+    if (p.pricePerMinuteEgp != null) num[p.code + '.rate'] = p.pricePerMinuteEgp;
+    if (p.kind === 'pack') {
+      mins[p.code] = p.minutes;
+    } else {
+      // A subscription's headline is its per-cycle allowance, not the total
+      // over its term — the total is what "unlimited" used to hide.
+      mins[p.code] = p.minutesPerMonth;
+      num[p.code + '.days'] = p.days;
+      num[p.code + '.months'] = p.months;
+      num[p.code + '.savingPct'] = p.savingPct;
+    }
+  });
+  PRICING = { num: num, mins: mins };
+
+  // Anything keyed to a plan the catalogue no longer sells is removed, not
+  // left showing dashes. This is what makes retiring a plan — yearly, today —
+  // a catalogue edit rather than an HTML edit, and it covers the trial copy in
+  // the hero and the FAQ if the trial is ever switched off.
+  [].slice.call(document.querySelectorAll('[data-plan]')).forEach(function(el){
+    el.hidden = !known[el.getAttribute('data-plan')];
+  });
+
+  // EasyKash is not switched on yet. Promising a checkout that answers 503 is
+  // worse than saying so, so the note follows the server's own flag.
+  // Only the homepage carries these two notes; every other page shares this
+  // script, so look them up rather than assume them.
+  var pm = document.getElementById('pay-methods'), pp = document.getElementById('pay-pending');
+  if (pm) pm.hidden = !cfg.enabled;
+  if (pp) pp.hidden = !!cfg.enabled;
+  renderPricing();
+  syncOffers(cfg);
+}).catch(function(){
+  // Dashes stay. The section still explains the model; only the figures are
+  // missing, and the app is one tap away.
+  var pe = document.getElementById('price-error');
+  if (pe) pe.hidden = false;
+});
+
+// ── Theme ─────────────────────────────────────────────────────────────
+// Three states: system (no attribute), forced light, forced dark. The head
+// script already stamped data-theme before first paint; this only wires the
+// control, the aria state and the browser-chrome colour.
+// Every cycling button on the page — the header's and the drawer's. They are
+// the same control in two places, so they are driven from one list and can
+// never disagree about the current mode.
+var themeBtns = [].slice.call(document.querySelectorAll('[data-theme-cycle]'));
+var THEME_ORDER = ['light', 'dark', 'system'];
+var THEME_ICON = { light: '#i-sun', dark: '#i-moon', system: '#i-auto' };
+var THEME_LABEL_AR = { light: 'المظهر: فاتح', dark: 'المظهر: داكن', system: 'المظهر: حسب الجهاز' };
+var THEME_LABEL_EN = { light: 'Theme: light', dark: 'Theme: dark', system: 'Theme: system' };
+var themeMode = 'system';
+var tcLight = document.getElementById('tc-light');
+var tcDark = document.getElementById('tc-dark');
+var tcForced = document.getElementById('tc-forced');
+function syncThemeColor(mode){
+  if (mode === 'system'){
+    tcLight.setAttribute('media', '(prefers-color-scheme: light)');
+    tcDark.setAttribute('media', '(prefers-color-scheme: dark)');
+    tcForced.setAttribute('media', 'not all');
+  } else {
+    // A media-less tag earlier in the head would win, so the pair is disabled
+    // rather than left to fight the forced one.
+    tcLight.setAttribute('media', 'not all');
+    tcDark.setAttribute('media', 'not all');
+    tcForced.setAttribute('content', mode === 'dark' ? '#080D1A' : '#2D73FD');
+    tcForced.setAttribute('media', 'all');
+  }
+}
+function applyTheme(mode, persist){
+  if (mode !== 'light' && mode !== 'dark') mode = 'system';
+  if (mode === 'system'){
+    root.removeAttribute('data-theme');
+    if (persist){ try { localStorage.removeItem('interprova-theme'); } catch (e) {} }
+  } else {
+    root.setAttribute('data-theme', mode);
+    if (persist){ try { localStorage.setItem('interprova-theme', mode); } catch (e) {} }
+  }
+  themeMode = mode;
+  themeBtns.forEach(function(b){
+    var use = b.querySelector('use');
+    if (use) {
+      // Both forms: `href` is the standard, `xlink:href` is what older Safari
+      // still honours, and a <use> that resolves to neither renders nothing —
+      // a button with no icon in it.
+      use.setAttribute('href', THEME_ICON[mode]);
+      use.setAttribute('xlink:href', THEME_ICON[mode]);
+    }
+    // The label names the state it is IN — a screen reader announcing the
+    // NEXT state would describe a theme the page is not using.
+    b.__ar = THEME_LABEL_AR[mode];
+    b.setAttribute('data-aria-en', THEME_LABEL_EN[mode]);
+    b.setAttribute('aria-label',
+      root.getAttribute('lang') === 'en' ? THEME_LABEL_EN[mode] : THEME_LABEL_AR[mode]);
+  });
+  syncThemeColor(mode);
+}
+themeBtns.forEach(function(b){
+  b.addEventListener('click', function(){
+    var i = THEME_ORDER.indexOf(themeMode);
+    applyTheme(THEME_ORDER[(i + 1) % THEME_ORDER.length], true);
+  });
+});
+
+// ── Live numbers and fresh jobs ───────────────────────────────────────
+// Both come from the public jobs API. Every page carries this block (it is
+// part of the shared chrome), so it touches only what the page actually has:
+// [data-kpi] figures anywhere, and the #jobsLive grid on the homepage.
+// A failed request hides its section instead of leaving dashes or skeletons.
+(function(){
+  var kpiEls = [].slice.call(document.querySelectorAll('[data-kpi]'));
+  var jobsBox = document.getElementById('jobsLive');
+  var phEls = [].slice.call(document.querySelectorAll('[data-ph-en]'));
+  var STATS = null, JOBS = null;
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function countryName(code, lang){
+    try { return new Intl.DisplayNames([lang], { type: 'region' }).of(code) || code; } catch (e) { return code; }
+  }
+  function ago(iso, lang){
+    var s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (!(s >= 0)) return '';
+    try {
+      var rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' });
+      if (s < 3600) return rtf.format(-Math.max(1, Math.round(s / 60)), 'minute');
+      if (s < 86400) return rtf.format(-Math.round(s / 3600), 'hour');
+      return rtf.format(-Math.round(s / 86400), 'day');
+    } catch (e) { return ''; }
+  }
+  var WP = { remote: ['Remote', 'عن بُعد'], hybrid: ['Hybrid', 'هجين'], onsite: ['On-site', 'في المكتب'] };
+
+  function renderKpis(){
+    if (!STATS) return;
+    kpiEls.forEach(function(el){
+      var v = STATS[el.getAttribute('data-kpi')];
+      if (typeof v === 'number' && v > 0) el.textContent = fmtIn(nodeLang(el), v);
+    });
+  }
+  function renderJobs(){
+    if (!JOBS || !jobsBox) return;
+    var lang = currentLang(), en = lang === 'en';
+    jobsBox.innerHTML = JOBS.map(function(j){
+      var where = [j.city, j.country ? countryName(j.country, lang) : ''].filter(Boolean).join(en ? ', ' : '، ')
+        || (j.workplace === 'remote' ? (en ? 'Anywhere' : 'أي مكان') : (j.location || ''));
+      var wp = WP[j.workplace];
+      return '<a class="jcard" href="/jobs/' + encodeURIComponent(j.id) + '">'
+        + '<div class="jhead"><span class="jlogo">' + esc((j.company || '?').trim().charAt(0).toUpperCase()) + '</span>'
+        + '<div style="min-width:0"><h3>' + esc(j.title) + '</h3><span class="jco">' + esc(j.company) + '</span></div></div>'
+        + '<div class="jmeta">'
+        + (where ? '<span>' + esc(where) + '</span>' : '')
+        + (wp ? '<span class="' + (j.workplace === 'remote' ? 'remote' : '') + '">' + wp[en ? 0 : 1] + '</span>' : '')
+        + (j.postedAt ? '<span>' + esc(ago(j.postedAt, lang)) + '</span>' : '')
+        + '</div></a>';
+    }).join('');
+  }
+  function renderPlaceholders(){
+    var en = currentLang() === 'en';
+    phEls.forEach(function(el){ el.setAttribute('placeholder', en ? el.dataset.phEn : (el.dataset.phAr || el.dataset.phEn)); });
+    // Text that cannot hold a <span>, such as <option>: looked up fresh each
+    // time because pages rebuild their selects.
+    [].forEach.call(document.querySelectorAll('[data-en][data-ar]'), function(el){
+      el.textContent = en ? el.dataset.en : el.dataset.ar;
+    });
+  }
+
+  if (kpiEls.length) {
+    fetch('/api/jobs/stats').then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(d){ STATS = d; renderKpis(); })
+      .catch(function(){ var k = document.getElementById('kpis'); if (k) k.hidden = true; });
+  }
+  if (jobsBox) {
+    // Forty newest, then one per company: a single board that just posted
+    // thirty roles would otherwise fill the whole grid.
+    fetch('/api/jobs/search?sort=date&pageSize=80').then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .then(function(d){
+        var seen = {}, out = [];
+        (d.jobs || []).forEach(function(j){
+          var k = (j.company || '').toLowerCase();
+          if (out.length < 6 && !seen[k]) { seen[k] = 1; out.push(j); }
+        });
+        if (!out.length) throw 0;
+        JOBS = out; renderJobs();
+        if (window.ipFillMarquee) window.ipFillMarquee(d.jobs);
+      })
+      .catch(function(){ var s = document.getElementById('fresh-jobs'); if (s) s.hidden = true; });
+  }
+
+  renderPlaceholders();
+  // Repaint whenever the language switch flips <html lang>.
+  if ('MutationObserver' in window) {
+    new MutationObserver(function(){ renderKpis(); renderJobs(); renderPlaceholders(); })
+      .observe(root, { attributes: true, attributeFilter: ['lang'] });
+  }
+})();
+
+// ── Motion, product menu, app tour, companies strip ───────────────────
+// Everything here is progressive: with JS off or reduced motion the page is
+// complete and static; this only adds movement and the menu's open state.
+(function(){
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var hoverable = matchMedia('(hover: hover)');
+
+  // Product menu: click/tap toggles, hover opens on devices that hover,
+  // Escape and focus leaving close it.
+  [].forEach.call(document.querySelectorAll('[data-navdd]'), function(dd){
+    var btn = dd.querySelector('button'), t = null;
+    var set = function(open){ dd.classList.toggle('open', open); btn.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+    btn.addEventListener('click', function(e){ e.stopPropagation(); set(!dd.classList.contains('open')); });
+    dd.addEventListener('mouseenter', function(){ if (hoverable.matches){ clearTimeout(t); set(true); } });
+    dd.addEventListener('mouseleave', function(){ if (hoverable.matches){ t = setTimeout(function(){ set(false); }, 180); } });
+    dd.addEventListener('focusout', function(e){ if (!dd.contains(e.relatedTarget)) set(false); });
+    document.addEventListener('click', function(e){ if (!dd.contains(e.target)) set(false); });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape' && dd.classList.contains('open')){ set(false); btn.focus(); }
+    });
+  });
+
+  // Reading progress along the top edge.
+  var bar = document.createElement('div');
+  bar.className = 'scroll-progress'; bar.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(bar);
+  var queued = false;
+  var paint = function(){
+    queued = false;
+    var h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.transform = 'scaleX(' + (h > 0 ? Math.min(1, scrollY / h) : 0) + ')';
+  };
+  addEventListener('scroll', function(){ if (!queued){ queued = true; requestAnimationFrame(paint); } }, { passive: true });
+  paint();
+
+  if (!reduce){
+    // Siblings that arrive together cascade instead of popping as one block.
+    var counts = typeof Map === 'function' ? new Map() : null;
+    [].forEach.call(document.querySelectorAll('.reveal'), function(el){
+      if (!counts) return;
+      var p = el.parentElement, i = counts.get(p) || 0;
+      counts.set(p, i + 1);
+      if (i) el.style.setProperty('--rd', Math.min(i, 8) * 70 + 'ms');
+    });
+    // Once an element has arrived, hand its transitions back to its own
+    // hover styles (the reveal's delay would otherwise lag every hover).
+    if ('IntersectionObserver' in window){
+      var settle = new IntersectionObserver(function(es){
+        es.forEach(function(e){
+          if (!e.isIntersecting) return;
+          var el = e.target, d = parseInt(el.style.getPropertyValue('--rd'), 10) || 0;
+          setTimeout(function(){ el.classList.add('settled'); }, d + 900);
+          settle.unobserve(el);
+        });
+      }, { threshold: 0.12 });
+      [].forEach.call(document.querySelectorAll('.reveal'), function(el){ settle.observe(el); });
+    }
+    // A soft light that follows the pointer across feature tiles.
+    [].forEach.call(document.querySelectorAll('.tile'), function(tile){
+      tile.addEventListener('pointermove', function(e){
+        var r = tile.getBoundingClientRect();
+        tile.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        tile.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      });
+    });
+  }
+
+  // App tour: tabs on the left, one phone on the right. It advances on its
+  // own once it is on screen; any click or arrow key hands control over.
+  [].forEach.call(document.querySelectorAll('[data-tour]'), function(tour){
+    var tabs = [].slice.call(tour.querySelectorAll('.tour-tab'));
+    var screens = [].slice.call(tour.querySelectorAll('.tour-screen'));
+    var i = 0, auto = false;
+    var show = function(n){
+      i = (n + tabs.length) % tabs.length;
+      tabs.forEach(function(b, k){
+        b.setAttribute('aria-selected', k === i ? 'true' : 'false');
+        b.tabIndex = k === i ? 0 : -1;
+        b.classList.remove('run');
+      });
+      screens.forEach(function(s, k){ s.classList.toggle('on', k === i); });
+      if (auto){ void tabs[i].offsetWidth; tabs[i].classList.add('run'); }
+    };
+    tabs.forEach(function(b, k){
+      b.addEventListener('click', function(){ auto = false; show(k); });
+      b.addEventListener('keydown', function(e){
+        var d = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : (e.key === 'ArrowUp' || e.key === 'ArrowLeft') ? -1 : 0;
+        if (d && document.documentElement.dir === 'rtl' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) d = -d;
+        if (!d) return;
+        e.preventDefault(); auto = false; show(i + d); tabs[i].focus();
+      });
+      var fill = b.querySelector('.bar i');
+      if (fill) fill.addEventListener('animationend', function(){ if (auto && tabs[i] === b) show(i + 1); });
+    });
+    tour.addEventListener('mouseenter', function(){ tour.classList.add('hold'); });
+    tour.addEventListener('mouseleave', function(){ tour.classList.remove('hold'); });
+    show(0);
+    if (!reduce && 'IntersectionObserver' in window){
+      var o = new IntersectionObserver(function(es){
+        if (es[0].isIntersecting){ auto = true; show(i); o.disconnect(); }
+      }, { threshold: 0.35 });
+      o.observe(tour);
+    }
+  });
+
+  // Companies strip, fed by the same request as the fresh-jobs grid.
+  window.ipFillMarquee = function(jobs){
+    var track = document.getElementById('mqTrack'), sec = document.getElementById('hiring');
+    if (!track || !sec) return;
+    var seen = {}, list = [];
+    (jobs || []).forEach(function(j){
+      var name = (j.company || '').trim(), k = name.toLowerCase();
+      if (name && !seen[k] && list.length < 24){ seen[k] = 1; list.push({ name: name, where: j.city || j.country || '' }); }
+    });
+    if (list.length < 6) return;
+    var esc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+    var row = list.map(function(c){
+      return '<a href="/jobs?q=' + encodeURIComponent(c.name) + '"><i>' + esc(c.name.charAt(0).toUpperCase()) + '</i>' + esc(c.name)
+        + (c.where ? ' <small>' + esc(c.where) + '</small>' : '') + '</a>';
+    }).join('');
+    // Two copies make the loop seamless; the second is hidden from AT and
+    // taken out of the tab order.
+    track.innerHTML = row + '<span aria-hidden="true" style="display:contents">' + row.replace(/<a /g, '<a tabindex="-1" ') + '</span>';
+    track.style.setProperty('--mq-dur', Math.max(40, list.length * 4) + 's');
+    sec.hidden = false;
+  };
+})();
+
+// ── Language ──────────────────────────────────────────────────────────
+// Same mechanism as privacy.html / terms.html, same 'interprova-lang' key, so a
+// choice made on any of the four pages carries to the rest. Arabic is the
+// document default and renders with JS off; this only swaps which of the two
+// already-present translations (English is the document default) is visible, plus lang/dir and the handful of
+// strings that live in attributes or are written by script.
+var langBtns = [].slice.call(document.querySelectorAll('[data-set-lang]'));
+var altEls = [].slice.call(document.querySelectorAll('[data-alt-en]'));
+var ariaEls = [].slice.call(document.querySelectorAll('[data-aria-en]'));
+altEls.forEach(function(el){ el.__ar = el.dataset.altAr || el.getAttribute('alt') || ''; });
+ariaEls.forEach(function(el){ el.__ar = el.dataset.ariaAr || el.getAttribute('aria-label') || ''; });
+
+function applyLang(lang, persist){
+  lang = (lang === 'ar') ? 'ar' : 'en';
+  root.setAttribute('lang', lang);
+  root.setAttribute('dir', lang === 'en' ? 'ltr' : 'rtl');
+  langBtns.forEach(function(b){
+    b.setAttribute('aria-pressed', String(b.getAttribute('data-set-lang') === lang));
+  });
+  // Text that cannot hold a <span>.
+  altEls.forEach(function(el){ el.setAttribute('alt', lang === 'en' ? el.dataset.altEn : el.__ar); });
+  ariaEls.forEach(function(el){ el.setAttribute('aria-label', lang === 'en' ? el.dataset.ariaEn : el.__ar); });
+  // Text owned by script.
+  refreshNums();
+  renderPricing();
+  if (persist){ try { localStorage.setItem('interprova-lang', lang); } catch (e) {} }
+}
+langBtns.forEach(function(b){
+  b.addEventListener('click', function(){
+    applyLang(b.getAttribute('data-set-lang'), true);
+    // Re-anchor after the swap: the flow and FAQ blocks change height between
+    // languages, so a deep link like #pricing would otherwise drift.
+    if (location.hash){
+      var t = document.querySelector(location.hash);
+      if (t) t.scrollIntoView({ block: 'start' });
+    }
+  });
+});
+
+// The head script already picked the language (?lang=, then the stored choice,
+// then the browser). Sync the controls and the script-owned strings to it.
+applyLang(currentLang(), false);
+var storedTheme = null;
+try { storedTheme = localStorage.getItem('interprova-theme'); } catch (e) {}
+applyTheme(storedTheme || 'system', false);
+</script>
+</body>
+</html>

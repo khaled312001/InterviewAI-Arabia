@@ -76,6 +76,11 @@ function assertOurAppIsForeground() {
 function dumpUi(attempts = 6) {
   for (let i = 0; i < attempts; i++) {
     try {
+      // Delete first. `uiautomator dump` can fail with "could not get idle
+      // state" and still exit 0, and the file from the PREVIOUS dump is then
+      // read back as if it were the current screen — which is how a run ends
+      // up asserting against a screen it already left.
+      adb(['shell', 'rm', '-f', '/sdcard/window_dump.xml'], { stdio: 'pipe' });
       adb(['shell', 'uiautomator', 'dump', '/sdcard/window_dump.xml'], { stdio: 'pipe' });
       const xml = adb(['shell', 'cat', '/sdcard/window_dump.xml']);
       if (xml.includes('<hierarchy')) return parseNodes(xml);
@@ -106,6 +111,7 @@ function parseNodes(xml) {
       cls: get('class'),
       clickable: get('clickable') === 'true',
       enabled: get('enabled') === 'true',
+      focused: get('focused') === 'true',
       x1, y1, x2, y2,
       cx: Math.round((x1 + x2) / 2),
       cy: Math.round((y1 + y2) / 2),
@@ -405,12 +411,32 @@ try {
   } else if (cmd === 'wait') {
     const n = await waitFor(rest[0], Number(rest[1] || 20000));
     console.log(`found «${n.text || n.desc}» @${n.cx},${n.cy}`);
+  } else if (cmd === 'fields') {
+    // Every text field, its content, and which one holds focus (`*`). The
+    // question a form bug is usually about is "where did my typing go".
+    for (const n of dumpUi().filter((x) => /EditText/.test(x.cls))) {
+      console.log(`${n.focused ? '*' : ' '} ${JSON.stringify(n.text)}  @${n.cx},${n.cy}`);
+    }
+  } else if (cmd === 'type') {
+    // One key at a time with a pause, the way a person types. `input text`
+    // with a whole word injects it faster than any human, which hides bugs
+    // that only appear between keystrokes and invents ones that never do.
+    assertOurAppIsForeground();
+    const delay = Number(rest[1] || 250);
+    for (const ch of rest[0] || '') {
+      // adb hands the argument to the DEVICE shell, so `#` starts a comment,
+      // `&` backgrounds, quotes open strings… Escape anything the shell would
+      // eat. Space is `%s` by `input text`'s own convention.
+      const arg = ch === ' ' ? '%s' : /[#&|;<>()$`\\"'*?~!{}[\]]/.test(ch) ? `\\${ch}` : ch;
+      adb(['shell', 'input', 'text', arg]);
+      await sleep(delay);
+    }
   } else if (cmd === 'shot') {
     console.log(shot(rest[0] || 'shot'));
   } else if (cmd === 'record-test') {
     await recordTest();
   } else {
-    console.log('commands: ui | tap <text> | wait <text> [ms] | shot <name> | record-test');
+    console.log('commands: ui | fields | tap <text> | type <text> [ms] | wait <text> [ms] | shot <name> | record-test');
     process.exit(2);
   }
 } catch (e) {

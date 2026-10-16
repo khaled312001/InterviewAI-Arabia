@@ -1,0 +1,582 @@
+<!-- {
+  "titleAr": "وظائف حول العالم",
+  "titleEn": "Jobs worldwide",
+  "descAr": "ابحث في آلاف الوظائف من صفحات توظيف الشركات ومواقع الوظائف حول العالم — عن بُعد وفي مكتب — وقدّم على الموقع الأصلي مباشرة.",
+  "descEn": "Search thousands of jobs from company career pages and job boards worldwide — remote and on-site — and apply on the original site.",
+  "path": "/jobs"
+} -->
+<style>
+  .jb-hero{padding-block:var(--sp-12) var(--sp-6)}
+  .jb-stats{display:flex;gap:var(--sp-6);justify-content:center;flex-wrap:wrap;margin-top:var(--sp-5);color:var(--text-2);font-size:14.5px}
+  .jb-stats b{color:var(--text);font-size:18px;font-weight:800;margin-inline-end:4px}
+  .jb-search{max-width:58rem;margin:var(--sp-6) auto 0;display:grid;grid-template-columns:1fr 14rem auto;gap:var(--sp-2);
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:var(--sp-2);box-shadow:var(--shadow-md)}
+  .jb-search input,.jb-search select{border:0;background:transparent;font:inherit;font-size:15.5px;color:var(--text);padding:12px 14px;min-width:0;outline:none}
+  .jb-search select{border-inline-start:1px solid var(--border);border-radius:0}
+  .jb-search .btn{white-space:nowrap}
+  @media (max-width:720px){.jb-search{grid-template-columns:1fr}.jb-search select{border-inline-start:0;border-top:1px solid var(--border)}}
+  .jb-filters{display:flex;flex-wrap:wrap;gap:var(--sp-2);align-items:center;margin:var(--sp-5) auto 0;max-width:58rem;justify-content:center}
+  .jb-chip{border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:var(--r-pill);padding:7px 14px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+  .jb-chip[aria-pressed="true"]{background:var(--primary-solid);border-color:var(--primary-solid);color:#fff}
+  .jb-filters select{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-pill);padding:7px 12px;font:inherit;font-size:13.5px}
+  .jb-filters label.jb-check{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--text-2);font-weight:700}
+  .jb-meta{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);max-width:58rem;margin:var(--sp-8) auto var(--sp-3);color:var(--text-2);font-size:14px;flex-wrap:wrap}
+  .jb-list{max-width:58rem;margin:0 auto;display:grid;gap:var(--sp-3)}
+  .jb-card{display:grid;grid-template-columns:48px 1fr auto;gap:var(--sp-4);align-items:start;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--r-md);padding:var(--sp-4) var(--sp-5);cursor:pointer;text-align:start;font:inherit;color:inherit;width:100%;transition:border-color .15s,box-shadow .15s}
+  .jb-card:hover,.jb-card:focus-visible{border-color:color-mix(in srgb,var(--primary) 50%,var(--border));box-shadow:var(--shadow-md);outline:none}
+  .jb-logo{width:48px;height:48px;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:grid;place-items:center;font-weight:900;font-size:19px;overflow:hidden}
+  .jb-logo img{width:100%;height:100%;object-fit:contain;background:#fff}
+  .jb-title{font-size:16.5px;font-weight:800;line-height:1.4;color:var(--text);overflow-wrap:anywhere}
+  .jb-co{color:var(--text-2);font-size:14.5px;margin-top:2px}
+  .jb-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--sp-2)}
+  .jb-tag{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:var(--r-pill);background:var(--surface-alt);color:var(--text-2)}
+  .jb-tag.remote{background:rgba(21,128,61,.12);color:var(--green-ink)}
+  .jb-tag.pay{background:var(--accent-soft);color:var(--accent-ink)}
+  .jb-side{text-align:end;font-size:12.5px;color:var(--text-3);white-space:nowrap;display:grid;gap:6px;justify-items:end}
+  @media (max-width:620px){.jb-card{grid-template-columns:40px 1fr}.jb-logo{width:40px;height:40px;font-size:16px}.jb-side{grid-column:2;justify-items:start;text-align:start}}
+  .jb-more{display:flex;justify-content:center;margin:var(--sp-6) 0}
+  .jb-empty{max-width:40rem;margin:var(--sp-10) auto;text-align:center;color:var(--text-2);line-height:1.9}
+  .jb-note{max-width:58rem;margin:var(--sp-8) auto 0;font-size:13px;color:var(--text-3);line-height:1.8;text-align:center}
+  .jb-skel{height:96px;border-radius:var(--r-md);background:linear-gradient(90deg,var(--surface-alt),var(--surface),var(--surface-alt));background-size:200% 100%;animation:jbsk 1.2s infinite}
+  @keyframes jbsk{to{background-position:-200% 0}}
+  @media (prefers-reduced-motion:reduce){.jb-skel{animation:none}}
+
+  .jb-dlg{border:0;padding:0;max-width:min(52rem,calc(100vw - 32px));width:100%;max-height:calc(100vh - 48px);border-radius:var(--r-lg);
+    background:var(--surface);color:var(--text);box-shadow:var(--shadow-xl)}
+  .jb-dlg::backdrop{background:rgba(8,13,26,.55)}
+  @media (max-width:620px){.jb-dlg{max-width:100vw;max-height:100vh;height:100vh;border-radius:0;margin:0}}
+  .jb-dlg-in{display:grid;grid-template-rows:auto 1fr auto;max-height:inherit;height:100%}
+  .jb-dlg-hd{padding:var(--sp-5) var(--sp-6);border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr auto;gap:var(--sp-3);align-items:start}
+  .jb-dlg-hd h2{font-size:21px;line-height:1.35;margin:0;overflow-wrap:anywhere}
+  .jb-x{border:0;background:var(--surface-alt);color:var(--text);width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;line-height:1}
+  .jb-dlg-body{overflow:auto;padding:var(--sp-5) var(--sp-6)}
+  .jb-desc{white-space:pre-line;line-height:1.85;font-size:15px;color:var(--text);overflow-wrap:anywhere}
+  .jb-desc[dir="ltr"]{text-align:left}
+  .jb-dlg-ft{padding:var(--sp-4) var(--sp-6);border-top:1px solid var(--border);display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center}
+  .jb-dlg-ft .src{font-size:12.5px;color:var(--text-3);margin-inline-start:auto}
+  .jb-h3{font-size:15px;font-weight:800;margin:var(--sp-6) 0 var(--sp-2)}
+  .jb-sim{display:grid;gap:var(--sp-2)}
+  .jb-sim a{display:block;padding:10px 14px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);text-decoration:none;font-size:14px}
+  .jb-sim a:hover{border-color:var(--primary)}
+  .jb-sim small{color:var(--text-3);display:block}
+  .jb-cta{background:var(--primary-soft);border:1px solid color-mix(in srgb,var(--primary) 25%,transparent);border-radius:var(--r-md);padding:var(--sp-4);margin-top:var(--sp-5);font-size:14px;line-height:1.8}
+  .jb-cta a{font-weight:800}
+
+  /* Live status, query hints, LIVE badge, "new jobs" pill. */
+  .jb-status{max-width:58rem;margin:var(--sp-8) auto 0;display:grid;gap:6px;scroll-margin-top:96px}
+  .jb-status + .jb-meta{margin-top:var(--sp-3)}
+  .jb-live{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0;font-size:13.5px;font-weight:700;color:var(--text-2)}
+  .jb-live[hidden]{display:none}
+  .jb-live .jb-when{color:var(--text-3);font-weight:600}
+  .jb-dot{position:relative;flex:none;width:9px;height:9px;border-radius:50%;background:var(--text-3)}
+  .jb-live.on .jb-dot{background:var(--green-500)}
+  .jb-live.on .jb-msg{color:var(--green-ink)}
+  .jb-hint{margin:0;font-size:13.5px;color:var(--text-2);display:flex;flex-wrap:wrap;gap:6px 14px}
+  .jb-hint[hidden]{display:none}
+  .jb-hint > span{display:inline-flex;align-items:center;gap:6px}
+  .jb-hint b{color:var(--text)}
+  .jb-hint .relaxed{color:var(--accent-ink)}
+  .jb-badge-live{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.06em;padding:2px 8px;border-radius:var(--r-pill);
+    color:var(--green-ink);background:color-mix(in srgb,var(--green-500) 16%,transparent)}
+  html[lang="ar"] .jb-badge-live{letter-spacing:0}
+  .jb-badge-live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--green-500)}
+  .jb-newbar{position:sticky;top:84px;z-index:5;display:flex;justify-content:center;align-items:flex-start;height:0;overflow:visible}
+  .jb-new{flex:none;transform:translateY(-14px);border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:800;color:#fff;background:var(--primary-solid);
+    padding:9px 18px;border-radius:var(--r-pill);box-shadow:var(--shadow-lg)}
+  .jb-new:hover{background:var(--primary-solid-h)}
+  .jb-new[hidden]{display:none}
+  @media (prefers-reduced-motion:no-preference){
+    .jb-live.on .jb-dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--green-500);animation:jbping 1.8s cubic-bezier(0,0,.2,1) infinite}
+    .jb-new{animation:jbdrop .35s ease-out}
+  }
+  @keyframes jbping{75%,100%{transform:scale(2.6);opacity:0}}
+  @keyframes jbdrop{from{opacity:0;transform:translateY(-18px)}}
+</style>
+
+<section class="phero jb-hero">
+  <div class="wrap">
+    <div class="kicker"><span data-l="ar">وظائف</span><span data-l="en">Jobs</span></div>
+    <h1><span data-l="ar">وظيفتك القادمة، من أي مكان في العالم</span><span data-l="en">Your next job, from anywhere in the world</span></h1>
+    <p>
+      <span data-l="ar">نجمع الوظائف من صفحات التوظيف الرسمية للشركات ومن مواقع الوظائف، ونبحث في المصادر لحظة بحثك، ويتحدّث الفهرس تلقائيًا كل بضع دقائق. ابحث، قارن، ثم قدّم على الموقع الأصلي.</span>
+      <span data-l="en">We collect jobs from companies' own career pages and from job boards, searched live the moment you search and refreshed automatically every few minutes. Search, compare, then apply on the original site.</span>
+    </p>
+    <div class="jb-stats" id="jb-stats" aria-live="polite"></div>
+
+    <form class="jb-search" id="jb-form" role="search">
+      <input id="jb-q" name="q" type="search" maxlength="120" autocomplete="off"
+             placeholder="المسمى الوظيفي، مهارة، أو شركة" data-ph-en="Job title, skill or company" aria-label="بحث" data-aria-en="Search">
+      <select id="jb-country" name="country" aria-label="الدولة" data-aria-en="Country">
+        <option value="" data-ar="🌍 كل الدول" data-en="🌍 All countries">🌍 All countries</option>
+      </select>
+      <button class="btn btn-primary" type="submit"><span data-l="ar">ابحث</span><span data-l="en">Search</span></button>
+    </form>
+
+    <div class="jb-filters" id="jb-filters">
+      <button type="button" class="jb-chip" data-wp="remote" aria-pressed="false"><span data-l="ar">عن بُعد</span><span data-l="en">Remote</span></button>
+      <button type="button" class="jb-chip" data-wp="hybrid" aria-pressed="false"><span data-l="ar">هجين</span><span data-l="en">Hybrid</span></button>
+      <button type="button" class="jb-chip" data-wp="onsite" aria-pressed="false"><span data-l="ar">من المكتب</span><span data-l="en">On-site</span></button>
+      <select id="jb-seniority" aria-label="المستوى" data-aria-en="Level">
+        <option value="" data-ar="المستوى" data-en="Level">Level</option>
+        <option value="intern" data-ar="تدريب" data-en="Internship">Internship</option>
+        <option value="junior" data-ar="مبتدئ" data-en="Junior">Junior</option>
+        <option value="mid" data-ar="متوسط" data-en="Mid-level">Mid-level</option>
+        <option value="senior" data-ar="خبير" data-en="Senior">Senior</option>
+        <option value="lead" data-ar="قائد فريق" data-en="Lead">Lead</option>
+        <option value="executive" data-ar="إدارة عليا" data-en="Executive">Executive</option>
+      </select>
+      <select id="jb-type" aria-label="نوع الدوام" data-aria-en="Job type">
+        <option value="" data-ar="نوع الدوام" data-en="Job type">Job type</option>
+        <option value="full_time" data-ar="دوام كامل" data-en="Full-time">Full-time</option>
+        <option value="part_time" data-ar="دوام جزئي" data-en="Part-time">Part-time</option>
+        <option value="contract" data-ar="عقد" data-en="Contract">Contract</option>
+        <option value="internship" data-ar="تدريب" data-en="Internship">Internship</option>
+      </select>
+      <select id="jb-posted" aria-label="تاريخ النشر" data-aria-en="Date posted">
+        <option value="" data-ar="أي وقت" data-en="Any time">Any time</option>
+        <option value="1" data-ar="آخر 24 ساعة" data-en="Last 24 hours">Last 24 hours</option>
+        <option value="3" data-ar="آخر 3 أيام" data-en="Last 3 days">Last 3 days</option>
+        <option value="7" data-ar="آخر أسبوع" data-en="Last week">Last week</option>
+        <option value="30" data-ar="آخر شهر" data-en="Last month">Last month</option>
+      </select>
+      <label class="jb-check"><input type="checkbox" id="jb-salary"> <span data-l="ar">بالراتب فقط</span><span data-l="en">With salary</span></label>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="jb-status" id="jb-status">
+      <p class="jb-live" id="jb-live" hidden><span class="jb-dot" aria-hidden="true"></span><span class="jb-msg" id="jb-live-msg" role="status" aria-live="polite"></span><span class="jb-when" id="jb-live-when"></span></p>
+      <p class="jb-hint" id="jb-hint" aria-live="polite" hidden></p>
+    </div>
+    <div class="jb-meta">
+      <span id="jb-count" aria-live="polite"></span>
+      <select id="jb-sort" aria-label="الترتيب" data-aria-en="Sort" class="jb-chip" style="cursor:pointer">
+        <option value="best" data-ar="الأنسب" data-en="Best match">Best match</option>
+        <option value="date" data-ar="الأحدث" data-en="Newest">Newest</option>
+        <option value="salary" data-ar="الأعلى راتبًا" data-en="Highest salary">Highest salary</option>
+      </select>
+    </div>
+    <div class="jb-newbar"><button type="button" class="jb-new" id="jb-new" hidden></button></div>
+    <div class="jb-list" id="jb-list"></div>
+    <div class="jb-more"><button class="btn btn-ghost" type="button" id="jb-more" hidden><span data-l="ar">عرض المزيد</span><span data-l="en">Load more</span></button></div>
+
+    <div class="jb-cta" style="max-width:58rem;margin-inline:auto">
+      <span data-l="ar">🎯 <strong>اعرف نسبة تطابقك مع كل وظيفة</strong> — ارفع سيرتك الذاتية في تطبيق Interprova لترى ترتيب الوظائف حسب ملاءمتها لك، وجهّز نسخة من سيرتك مخصّصة لكل وظيفة، ثم تدرّب على مقابلتها. <a href="/app">افتح التطبيق</a> · <a href="/ats-checker">افحص سيرتك مجانًا</a></span>
+      <span data-l="en">🎯 <strong>See how well you match every job</strong> — upload your CV in the Interprova app to rank jobs by fit, get a CV tailored to each one, then practise its interview. <a href="/app">Open the app</a> · <a href="/ats-checker">Check your CV free</a></span>
+    </div>
+
+    <p class="jb-note">
+      <span data-l="ar">الوظائف مصدرها صفحات التوظيف العامة للشركات ومواقع الوظائف المذكورة على كل إعلان. Interprova لا يستقبل الطلبات نيابةً عن أصحاب العمل: زر «قدّم الآن» يفتح الإعلان الأصلي. لن يطلب منك صاحب عمل حقيقي دفع أي مبلغ للتقديم.</span>
+      <span data-l="en">Jobs come from companies' public career pages and the job boards named on each listing. Interprova does not take applications on an employer's behalf: "Apply" opens the original listing. A genuine employer will never ask you to pay to apply.</span>
+    </p>
+  </div>
+</section>
+
+<dialog class="jb-dlg" id="jb-dlg" aria-labelledby="jb-d-title">
+  <div class="jb-dlg-in">
+    <div class="jb-dlg-hd">
+      <div>
+        <h2 id="jb-d-title"></h2>
+        <div class="jb-co" id="jb-d-co"></div>
+        <div class="jb-tags" id="jb-d-tags"></div>
+      </div>
+      <button class="jb-x" type="button" id="jb-d-close" aria-label="إغلاق" data-aria-en="Close">×</button>
+    </div>
+    <div class="jb-dlg-body" id="jb-d-body"></div>
+    <div class="jb-dlg-ft">
+      <a class="btn btn-primary" id="jb-d-apply" target="_blank" rel="noopener nofollow"><span data-l="ar">قدّم الآن ↗</span><span data-l="en">Apply now ↗</span></a>
+      <a class="btn btn-ghost" id="jb-d-ats"><span data-l="ar">افحص سيرتك لهذه الوظيفة</span><span data-l="en">Check your CV for this job</span></a>
+      <span class="src" id="jb-d-src"></span>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var en = function () { return root.getAttribute('lang') === 'en'; };
+  var t = function (ar, e) { return en() ? e : ar; };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var list = $('jb-list'), more = $('jb-more'), count = $('jb-count');
+  var state = { page: 1, total: 0, jobs: [], loading: false, meta: null, sent: new URLSearchParams(), fresh: 0 };
+  var regionNames = {};
+  function countryName(code) {
+    if (!code) return '';
+    var l = en() ? 'en' : 'ar';
+    try {
+      if (!regionNames[l]) regionNames[l] = new Intl.DisplayNames([l], { type: 'region' });
+      return regionNames[l].of(code);
+    } catch (e) { return code; }
+  }
+  var LEVEL = { intern: ['تدريب', 'Internship'], junior: ['مبتدئ', 'Junior'], mid: ['متوسط', 'Mid-level'], senior: ['خبير', 'Senior'], lead: ['قائد فريق', 'Lead'], executive: ['إدارة عليا', 'Executive'] };
+  var TYPE = { full_time: ['دوام كامل', 'Full-time'], part_time: ['دوام جزئي', 'Part-time'], contract: ['عقد', 'Contract'], internship: ['تدريب', 'Internship'], temporary: ['مؤقت', 'Temporary'] };
+  var WP = { remote: ['عن بُعد', 'Remote'], hybrid: ['هجين', 'Hybrid'], onsite: ['من المكتب', 'On-site'] };
+  var tr = function (map, k) { return map[k] ? t(map[k][0], map[k][1]) : ''; };
+
+  function ago(iso) {
+    if (!iso) return '';
+    var d = Math.max(0, (Date.now() - new Date(iso).getTime()) / 864e5);
+    try {
+      var rtf = new Intl.RelativeTimeFormat(en() ? 'en' : 'ar', { numeric: 'auto' });
+      if (d < 1) return rtf.format(-Math.max(1, Math.round(d * 24)), 'hour');
+      if (d < 30) return rtf.format(-Math.round(d), 'day');
+      return rtf.format(-Math.round(d / 30), 'month');
+    } catch (e) { return ''; }
+  }
+  function money(s) {
+    if (!s) return '';
+    var f = function (n) { return n >= 1000 ? Math.round(n / 1000) + 'k' : String(n); };
+    var range = [s.min, s.max].filter(Boolean).map(f).join('–');
+    var per = { year: t('سنويًا', '/yr'), month: t('شهريًا', '/mo'), hour: t('بالساعة', '/hr') }[s.period] || '';
+    return (s.currency ? s.currency + ' ' : '') + range + ' ' + per;
+  }
+  function where(j) {
+    var parts = [];
+    if (j.city) parts.push(j.city);
+    if (j.country) parts.push(countryName(j.country));
+    if (!parts.length) parts.push(j.workplace === 'remote' ? t('أي مكان', 'Anywhere') : (j.location || ''));
+    return parts.join(en() ? ', ' : '، ');
+  }
+
+  /* ---------- query <-> URL ---------- */
+  function readQuery() {
+    var p = new URLSearchParams(location.search);
+    $('jb-q').value = p.get('q') || '';
+    $('jb-country').dataset.want = (p.get('country') || '').toUpperCase();
+    $('jb-seniority').value = p.get('seniority') || '';
+    $('jb-type').value = p.get('type') || '';
+    $('jb-posted').value = p.get('posted') || '';
+    $('jb-sort').value = p.get('sort') || 'best';
+    $('jb-salary').checked = p.get('salary') === '1';
+    var wp = (p.get('workplace') || '').split(',');
+    [].forEach.call(document.querySelectorAll('[data-wp]'), function (b) {
+      b.setAttribute('aria-pressed', String(wp.indexOf(b.dataset.wp) >= 0));
+    });
+  }
+  function params() {
+    var p = new URLSearchParams();
+    var q = $('jb-q').value.trim();
+    if (q) p.set('q', q);
+    var c = $('jb-country').value || $('jb-country').dataset.want;
+    if (c) p.set('country', c);
+    var wp = [].filter.call(document.querySelectorAll('[data-wp]'), function (b) { return b.getAttribute('aria-pressed') === 'true'; }).map(function (b) { return b.dataset.wp; });
+    if (wp.length) p.set('workplace', wp.join(','));
+    if ($('jb-seniority').value) p.set('seniority', $('jb-seniority').value);
+    if ($('jb-type').value) p.set('type', $('jb-type').value);
+    if ($('jb-posted').value) p.set('posted', $('jb-posted').value);
+    if ($('jb-salary').checked) p.set('salary', '1');
+    if ($('jb-sort').value !== 'best') p.set('sort', $('jb-sort').value);
+    var lang = new URLSearchParams(location.search).get('lang');
+    if (lang) p.set('lang', lang);
+    return p;
+  }
+
+  /* ---------- rendering ---------- */
+  function card(j) {
+    var initials = (j.company || '?').trim().charAt(0).toUpperCase();
+    var logo = j.companyLogo ? '<img src="' + esc(j.companyLogo) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '';
+    var tags = [];
+    if (j.workplace) tags.push('<span class="jb-tag' + (j.workplace === 'remote' ? ' remote' : '') + '">' + esc(tr(WP, j.workplace)) + '</span>');
+    if (j.seniority) tags.push('<span class="jb-tag">' + esc(tr(LEVEL, j.seniority)) + '</span>');
+    if (j.employmentType) tags.push('<span class="jb-tag">' + esc(tr(TYPE, j.employmentType)) + '</span>');
+    if (j.salary) tags.push('<span class="jb-tag pay" dir="ltr">' + esc(money(j.salary)) + '</span>');
+    (j.skills || []).slice(0, 4).forEach(function (s) { tags.push('<span class="jb-tag">' + esc(s.label) + '</span>'); });
+    return '<button type="button" class="jb-card" data-id="' + esc(j.id) + '">' +
+      '<span class="jb-logo" aria-hidden="true">' + esc(initials) + logo + '</span>' +
+      '<span><span class="jb-title" dir="auto">' + esc(j.title) + '</span>' +
+      '<span class="jb-co" style="display:block" dir="auto">' + esc(j.company) + ' · ' + esc(where(j)) + '</span>' +
+      '<span class="jb-tags">' + tags.join('') + '</span></span>' +
+      '<span class="jb-side">' + (j.live ? '<span class="jb-badge-live" title="' + esc(t('جُلبت من المصدر لحظة بحثك', 'Fetched from the source at the moment you searched')) + '">' + esc(t('لحظي', 'LIVE')) + '</span>' : '') +
+      '<span>' + esc(ago(j.postedAt)) + '</span><span>' + esc(j.sourceName || '') + '</span></span>' +
+      '</button>';
+  }
+  function render() {
+    if (!state.jobs.length && !state.loading) {
+      list.innerHTML = '<div class="jb-empty">' + t(
+        'لا توجد نتائج لهذا البحث. جرّب كلمات أقل، أو ألغِ بعض الفلاتر، أو ابحث في كل الدول.',
+        'No jobs match this search. Try fewer words, remove a filter, or search all countries.') + '</div>';
+    } else {
+      list.innerHTML = state.jobs.map(card).join('');
+    }
+    count.textContent = state.total ? t('عدد الوظائف: ', 'Jobs found: ') + state.total.toLocaleString(en() ? 'en' : 'ar-EG') : '';
+    more.hidden = state.jobs.length >= state.total || state.page >= 50;
+    renderStatus();
+  }
+
+  /* ---------- live status, query hints, "new jobs" pill ---------- */
+  var num = function (x) { return Number(x || 0).toLocaleString(en() ? 'en' : 'ar-EG'); };
+  // Arabic counts: 1, 2, 3–10 and 11+ each take a different noun form.
+  function arCount(n, one, two, few, many) {
+    if (n === 1) return one;
+    if (n === 2) return two;
+    return num(n) + ' ' + (n % 100 >= 3 && n % 100 <= 10 ? few : many);
+  }
+  function since(iso) {
+    var s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (!isFinite(s)) return '';
+    if (s < 60) return t('الآن', 'just now');
+    try {
+      var rtf = new Intl.RelativeTimeFormat(en() ? 'en' : 'ar', { numeric: 'auto' });
+      if (s < 3600) return rtf.format(-Math.round(s / 60), 'minute');
+      return rtf.format(-Math.round(s / 3600), 'hour');
+    } catch (e) { return ''; }
+  }
+  function clock(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    try { return d.toLocaleTimeString(en() ? 'en' : 'ar', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; }
+  }
+  function renderStatus() {
+    var m = state.meta, box = $('jb-live'), hint = $('jb-hint');
+    if (!m) { box.hidden = true; hint.hidden = true; return; }
+    var lv = m.live;
+    box.hidden = false;
+    box.classList.toggle('on', !!lv);
+    if (lv) {
+      var n = (lv.sources || []).length, c = lv.count || 0;
+      var msg = t('نتائج لحظية', 'Live results') + ' · ' +
+        (n ? t('بحثنا في ' + arCount(n, 'مصدر واحد', 'مصدرين', 'مصادر', 'مصدرًا'), 'searched ' + num(n) + (n === 1 ? ' source' : ' sources')) : t('بحثنا في المصادر', 'searched the sources'));
+      if (c) msg += ' · ' + t(arCount(c, 'وظيفة جديدة واحدة', 'وظيفتان جديدتان', 'وظائف جديدة', 'وظيفة جديدة'), num(c) + (c === 1 ? ' fresh job' : ' fresh jobs'));
+      $('jb-live-msg').textContent = msg;
+      $('jb-live-when').textContent = '· ' + since(lv.at || m.checkedAt);
+    } else {
+      $('jb-live-msg').textContent = t('تتحدّث الوظائف تلقائيًا كل بضع دقائق', 'Updated automatically every few minutes');
+      var at = m.checkedAt ? clock(m.checkedAt) : '';
+      $('jb-live-when').textContent = at ? '· ' + t('آخر فحص ', 'last checked ') + at : '';
+    }
+    // What the server actually searched for, when it differs from what was typed.
+    var q = m.query || {}, sent = state.sent, parts = [];
+    var inferredCountry = q.country && !sent.get('country');
+    var inferredRemote = q.remote && (sent.get('workplace') || '').indexOf('remote') < 0;
+    if (q.searched && (q.translated || inferredCountry || inferredRemote)) {
+      var s = t('نبحث عن', 'Searching for') + ' ' + t('«', '“') + '<bdi><b>' + esc(q.searched) + '</b></bdi>' + t('»', '”');
+      if (inferredCountry) s += ' ' + t('في', 'in') + ' <b>' + esc(countryName(q.country)) + '</b>';
+      if (inferredRemote) s += ' · ' + esc(tr(WP, 'remote'));
+      parts.push('<span>🔎 ' + s + '</span>');
+    }
+    if (m.relaxed) parts.push('<span class="relaxed">' + esc(t('لا توجد نتيجة مطابقة تمامًا — نعرض أقرب النتائج', 'No exact match — showing closest results')) + '</span>');
+    hint.innerHTML = parts.join('');
+    hint.hidden = !parts.length;
+  }
+
+  var POLL_MS = 90000, pollTimer = null, lastPoll = 0, pollOff = false, newBtn = $('jb-new');
+  function renderNew() {
+    var c = state.fresh;
+    newBtn.hidden = !c;
+    if (c) newBtn.textContent = '↑ ' + t(arCount(c, 'وظيفة جديدة واحدة', 'وظيفتان جديدتان', 'وظائف جديدة', 'وظيفة جديدة') + ' — اعرضها', num(c) + (c === 1 ? ' new job' : ' new jobs') + ' — show');
+  }
+  function schedule() {
+    clearTimeout(pollTimer);
+    if (pollOff || document.hidden || !state.meta || !state.meta.checkedAt) return;
+    pollTimer = setTimeout(poll, Math.max(1000, POLL_MS - (Date.now() - lastPoll)));
+  }
+  function poll() {
+    if (document.hidden || !state.meta || !state.meta.checkedAt) return;
+    lastPoll = Date.now();
+    var p = new URLSearchParams(state.sent);
+    ['page', 'pageSize', 'sort'].forEach(function (k) { p.delete(k); });
+    p.set('since', state.meta.checkedAt);
+    var mine = seq;
+    fetch('/api/jobs/new-count?' + p)
+      .then(function (r) { if (r.status === 404) pollOff = true; return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (mine !== seq || !d) return;
+        state.fresh = Math.max(0, Number(d.count) || 0);
+        renderNew();
+      })
+      .catch(function () {})
+      .then(function () {
+        // The relative time on the status line ages between searches.
+        if (state.meta && state.meta.live) $('jb-live-when').textContent = '· ' + since(state.meta.live.at || state.meta.checkedAt);
+        schedule();
+      });
+  }
+  document.addEventListener('visibilitychange', schedule);
+  newBtn.addEventListener('click', function () {
+    search(false);
+    var top = $('jb-status') || list;
+    var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: 'start', behavior: calm ? 'auto' : 'smooth' });
+  });
+  function skeleton() {
+    list.innerHTML = '<div class="jb-skel"></div><div class="jb-skel"></div><div class="jb-skel"></div>';
+  }
+
+  /* ---------- data ---------- */
+  var seq = 0;
+  function search(append) {
+    var p = params();
+    if (!append) {
+      state.page = 1;
+      // Keep /jobs/<id> while a job is open, so a shared link still opens it.
+      var path = /^\/jobs\/\d+/.test(location.pathname) ? location.pathname : '/jobs';
+      history.replaceState(history.state, '', path + (p.toString() ? '?' + p : '') + location.hash);
+      skeleton();
+    }
+    p.set('page', String(state.page));
+    p.set('pageSize', '20');
+    if (p.get('sort') == null) p.set('sort', 'best');
+    p.delete('lang');
+    var mine = ++seq;
+    state.loading = true;
+    if (!append) { state.sent = new URLSearchParams(p); state.fresh = 0; renderNew(); }
+    return fetch('/api/jobs/search?' + p)
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        if (mine !== seq) return;
+        state.total = d.total;
+        state.jobs = append ? state.jobs.concat(d.jobs) : d.jobs;
+        state.loading = false;
+        if (!append) {
+          // Older API responses carry none of these; every field is optional.
+          state.meta = { live: d.live || false, query: d.query || null, relaxed: !!d.relaxed, checkedAt: d.checkedAt || null };
+          lastPoll = Date.now();
+          schedule();
+        }
+        render();
+      })
+      .catch(function () {
+        if (mine !== seq) return;
+        state.loading = false;
+        if (!append) { state.meta = null; renderStatus(); }
+        list.innerHTML = '<div class="jb-empty">' + t('تعذّر تحميل الوظائف. حاول مرة أخرى بعد قليل.', 'Could not load jobs. Please try again in a moment.') + '</div>';
+      });
+  }
+  function loadCountries() {
+    var sel = $('jb-country');
+    return fetch('/api/jobs/facets?lang=' + (en() ? 'en' : 'ar'))
+      .then(function (r) { return r.json(); })
+      .then(function (f) {
+        var want = sel.value || sel.dataset.want || '';
+        var first = sel.options[0].outerHTML;
+        var codes = (f.countries || []).map(function (c) { return c.key; });
+        if (want && codes.indexOf(want) < 0) codes.unshift(want);
+        var opts = codes.map(function (k) {
+          var c = (f.countries || []).filter(function (x) { return x.key === k; })[0];
+          return { k: k, name: countryName(k), n: c ? c.count : 0 };
+        }).sort(function (a, b) { return a.name.localeCompare(b.name, en() ? 'en' : 'ar'); });
+        sel.innerHTML = first + opts.map(function (o) {
+          return '<option value="' + esc(o.k) + '">' + esc(o.name) + (o.n ? ' (' + o.n + ')' : '') + '</option>';
+        }).join('');
+        sel.value = want;
+      })
+      .catch(function () {});
+  }
+  function loadStats() {
+    fetch('/api/jobs/stats').then(function (r) { return r.json(); }).then(function (s) {
+      var n = function (x) { return Number(x || 0).toLocaleString(en() ? 'en' : 'ar-EG'); };
+      $('jb-stats').innerHTML =
+        '<span><b>' + n(s.jobs) + '</b>' + t('وظيفة متاحة', 'open jobs') + '</span>' +
+        '<span><b>' + n(s.countries) + '</b>' + t('دولة', 'countries') + '</span>' +
+        '<span><b>' + n(s.companies) + '</b>' + t('شركة', 'companies') + '</span>' +
+        '<span><b>' + n(s.remote) + '</b>' + t('عن بُعد', 'remote') + '</span>';
+    }).catch(function () {});
+  }
+
+  /* ---------- detail ---------- */
+  var dlg = $('jb-dlg');
+  var current = null;
+  function openJob(id, push) {
+    fetch('/api/jobs/' + encodeURIComponent(id))
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var j = d.job;
+        current = j;
+        $('jb-d-title').textContent = j.title;
+        $('jb-d-title').setAttribute('dir', 'auto');
+        $('jb-d-co').textContent = j.company + ' · ' + where(j) + ' · ' + ago(j.postedAt);
+        var tags = [];
+        if (j.workplace) tags.push('<span class="jb-tag' + (j.workplace === 'remote' ? ' remote' : '') + '">' + esc(tr(WP, j.workplace)) + '</span>');
+        if (j.seniority) tags.push('<span class="jb-tag">' + esc(tr(LEVEL, j.seniority)) + '</span>');
+        if (j.employmentType) tags.push('<span class="jb-tag">' + esc(tr(TYPE, j.employmentType)) + '</span>');
+        if (j.salary) tags.push('<span class="jb-tag pay" dir="ltr">' + esc(money(j.salary)) + '</span>');
+        $('jb-d-tags').innerHTML = tags.join('');
+        var body = '';
+        if (!j.isActive) body += '<div class="form-msg show err" style="margin-bottom:12px">' + t('قد تكون هذه الوظيفة أُغلقت — لم تعد تظهر في مصدرها.', 'This job may be closed — it no longer appears at its source.') + '</div>';
+        if (j.skills && j.skills.length) {
+          body += '<div class="jb-tags" style="margin-bottom:14px">' + j.skills.map(function (s) { return '<span class="jb-tag">' + esc(s.label) + '</span>'; }).join('') + '</div>';
+        }
+        body += '<div class="jb-desc" dir="' + (j.language === 'ar' ? 'rtl' : 'ltr') + '">' + esc(j.description || '') + '</div>';
+        body += '<div class="jb-cta">' + t(
+          '✨ في تطبيق Interprova: اعرف نسبة تطابقك مع هذه الوظيفة، واحصل على سيرة ذاتية وخطاب تقديم مخصّصين لها، ثم تدرّب على مقابلتها. <a href="/app">افتح التطبيق</a>',
+          '✨ In the Interprova app: see your match for this job, get a CV and cover letter tailored to it, then practise its interview. <a href="/app">Open the app</a>') + '</div>';
+        if (d.similar && d.similar.length) {
+          body += '<h3 class="jb-h3">' + t('وظائف مشابهة', 'Similar jobs') + '</h3><div class="jb-sim">' + d.similar.map(function (s) {
+            return '<a href="/jobs/' + esc(s.id) + '" data-id="' + esc(s.id) + '" dir="auto">' + esc(s.title) + '<small>' + esc(s.company) + ' · ' + esc(where(s)) + '</small></a>';
+          }).join('') + '</div>';
+        }
+        $('jb-d-body').innerHTML = body;
+        $('jb-d-body').scrollTop = 0;
+        $('jb-d-apply').href = j.applyUrl || j.url;
+        $('jb-d-ats').href = '/ats-checker?job=' + encodeURIComponent(j.id);
+        $('jb-d-src').textContent = t('المصدر: ', 'Source: ') + (j.sourceName || '');
+        if (push) history.pushState({ job: j.id }, '', '/jobs/' + j.id + location.search);
+        document.title = j.title + ' — ' + j.company + ' | Interprova';
+        if (!dlg.open) { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); }
+      })
+      .catch(function () {
+        if (!push) history.replaceState(null, '', '/jobs' + location.search);
+      });
+  }
+  function closeJob(fromPop) {
+    if (dlg.open) dlg.close();
+    current = null;
+    document.title = t('وظائف حول العالم — Interprova', 'Jobs worldwide — Interprova');
+    if (!fromPop && /^\/jobs\/\d+/.test(location.pathname)) history.pushState(null, '', '/jobs' + location.search);
+  }
+  $('jb-d-close').addEventListener('click', function () { closeJob(false); });
+  dlg.addEventListener('cancel', function (e) { e.preventDefault(); closeJob(false); });
+  dlg.addEventListener('click', function (e) {
+    if (e.target === dlg) { closeJob(false); return; }
+    var a = e.target.closest && e.target.closest('.jb-sim a[data-id]');
+    if (a) { e.preventDefault(); openJob(a.dataset.id, true); }
+  });
+  list.addEventListener('click', function (e) {
+    var c = e.target.closest && e.target.closest('.jb-card');
+    if (c) openJob(c.dataset.id, true);
+  });
+  window.addEventListener('popstate', function () {
+    var m = location.pathname.match(/^\/jobs\/(\d+)/);
+    if (m) openJob(m[1], false); else closeJob(true);
+  });
+
+  /* ---------- controls ---------- */
+  $('jb-form').addEventListener('submit', function (e) { e.preventDefault(); search(false); });
+  [].forEach.call(document.querySelectorAll('[data-wp]'), function (b) {
+    b.addEventListener('click', function () {
+      b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+      search(false);
+    });
+  });
+  ['jb-country', 'jb-seniority', 'jb-type', 'jb-posted', 'jb-salary', 'jb-sort'].forEach(function (id) {
+    $(id).addEventListener('change', function () { if (id === 'jb-country') $('jb-country').dataset.want = ''; search(false); });
+  });
+  more.addEventListener('click', function () { state.page += 1; search(true); });
+
+  // Placeholder text cannot hold the two-span pattern; swap it with the language.
+  var qIn = $('jb-q');
+  qIn.dataset.phAr = qIn.getAttribute('placeholder');
+  new MutationObserver(function () {
+    qIn.setAttribute('placeholder', en() ? qIn.dataset.phEn : qIn.dataset.phAr);
+    loadStats();
+    loadCountries();
+    render();
+    renderNew();
+  }).observe(root, { attributes: true, attributeFilter: ['lang'] });
+  qIn.setAttribute('placeholder', en() ? qIn.dataset.phEn : qIn.dataset.phAr);
+
+  readQuery();
+  loadStats();
+  loadCountries().then(function () { search(false); });
+  var m = location.pathname.match(/^\/jobs\/(\d+)/);
+  if (m) openJob(m[1], false);
+})();
+</script>

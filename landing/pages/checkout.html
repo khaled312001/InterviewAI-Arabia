@@ -1,0 +1,519 @@
+<!-- {
+  "titleAr": "الدفع",
+  "titleEn": "Checkout",
+  "descAr": "اشترِ باقة دقائق أو اشتراكًا في Interprova بالجنيه المصري. ادفع بالبطاقة أو المحفظة الإلكترونية أو فوري عبر بوابة EasyKash الآمنة.",
+  "descEn": "Buy an Interprova minute pack or subscription in Egyptian pounds. Pay by card, mobile wallet or Fawry through the secure EasyKash gateway."
+} -->
+<section class="phero">
+  <div class="wrap">
+    <div class="kicker"><span data-l="ar">الدفع</span><span data-l="en">Checkout</span></div>
+    <h1><span data-l="ar">إتمام الشراء</span><span data-l="en">Complete your purchase</span></h1>
+    <p>
+      <span data-l="ar">اختر الباقة، وراجع الطلب، وادفع بالجنيه المصري على صفحة بوابة الدفع الآمنة. تُضاف الدقائق إلى حسابك فور تأكيد العملية.</span>
+      <span data-l="en">Pick a plan, review the order, and pay in Egyptian pounds on the gateway's secure page. The minutes reach your account as soon as the payment is confirmed.</span>
+    </p>
+  </div>
+</section>
+
+<!-- Shown instead of the form when the gateway sends the customer back here
+     (/api/payments/return redirects to /checkout?payment=…&ref=…). -->
+<section class="section co-result" id="co-result" hidden>
+  <div class="wrap">
+    <div class="co-card co-result-card" role="status" aria-live="polite">
+      <h2 id="co-result-title"></h2>
+      <p id="co-result-text"></p>
+      <p class="note" id="co-result-ref"></p>
+      <div class="co-actions" id="co-result-actions"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="co-main">
+  <div class="wrap co">
+
+    <form class="form co-form" id="co-form" novalidate>
+
+      <!-- 1 ── plan ─────────────────────────────────────────────── -->
+      <fieldset class="co-step">
+        <legend><span class="co-n">1</span>
+          <span data-l="ar">اختر الباقة</span><span data-l="en">Choose a plan</span></legend>
+
+        <!-- The prices below are the server's own (/api/payments/config) at the
+             time of writing, so the page is complete with JavaScript off. The
+             script re-renders this list from the live config, which is the
+             only source of truth for what is charged. -->
+        <div class="co-plans" id="co-plans">
+          <p class="co-group"><span data-l="ar">باقات دقائق — لا تنتهي صلاحيتها</span><span data-l="en">Minute packs — never expire</span></p>
+          <label class="co-plan"><input type="radio" name="plan" value="pack_20m">
+            <span class="co-plan-name"><span data-l="ar">باقة ٢٠ دقيقة</span><span data-l="en">20 Minutes</span></span>
+            <span class="co-plan-meta"><span data-l="ar">٢ جنيه للدقيقة</span><span data-l="en">2 EGP per minute</span></span>
+            <span class="co-plan-price"><b>40</b> <span data-l="ar">جنيه</span><span data-l="en">EGP</span></span></label>
+          <label class="co-plan"><input type="radio" name="plan" value="pack_60m" checked>
+            <span class="co-plan-name"><span data-l="ar">باقة ٦٠ دقيقة</span><span data-l="en">60 Minutes</span> <span class="co-pop"><span data-l="ar">الأكثر اختيارًا</span><span data-l="en">Most chosen</span></span></span>
+            <span class="co-plan-meta"><span data-l="ar">١٫٦٧ جنيه للدقيقة</span><span data-l="en">1.67 EGP per minute</span></span>
+            <span class="co-plan-price"><b>100</b> <span data-l="ar">جنيه</span><span data-l="en">EGP</span></span></label>
+          <label class="co-plan"><input type="radio" name="plan" value="pack_180m">
+            <span class="co-plan-name"><span data-l="ar">باقة ٣ ساعات</span><span data-l="en">3 Hours</span></span>
+            <span class="co-plan-meta"><span data-l="ar">١٫٣٩ جنيه للدقيقة</span><span data-l="en">1.39 EGP per minute</span></span>
+            <span class="co-plan-price"><b>250</b> <span data-l="ar">جنيه</span><span data-l="en">EGP</span></span></label>
+          <p class="co-group"><span data-l="ar">اشتراكات — ٣٠٠ دقيقة كل شهر، بلا تجديد تلقائي</span><span data-l="en">Subscriptions — 300 minutes a month, no auto-renewal</span></p>
+          <label class="co-plan"><input type="radio" name="plan" value="monthly">
+            <span class="co-plan-name"><span data-l="ar">اشتراك شهري</span><span data-l="en">Monthly</span></span>
+            <span class="co-plan-meta"><span data-l="ar">٣٠٠ دقيقة لمدة شهر</span><span data-l="en">300 minutes for one month</span></span>
+            <span class="co-plan-price"><b>150</b> <span data-l="ar">جنيه</span><span data-l="en">EGP</span></span></label>
+          <label class="co-plan"><input type="radio" name="plan" value="quarterly">
+            <span class="co-plan-name"><span data-l="ar">اشتراك ربع سنوي</span><span data-l="en">Quarterly</span></span>
+            <span class="co-plan-meta"><span data-l="ar">٩٠٠ دقيقة على ٣ أشهر</span><span data-l="en">900 minutes over 3 months</span></span>
+            <span class="co-plan-price"><b>399</b> <span data-l="ar">جنيه</span><span data-l="en">EGP</span></span></label>
+        </div>
+      </fieldset>
+
+      <!-- 2 ── account ──────────────────────────────────────────── -->
+      <fieldset class="co-step">
+        <legend><span class="co-n">2</span>
+          <span data-l="ar">حسابك</span><span data-l="en">Your account</span></legend>
+
+        <div id="co-signed-in" hidden>
+          <p class="co-who">
+            <span data-l="ar">ستُضاف الدقائق إلى حساب</span><span data-l="en">The minutes go to the account</span>
+            <strong id="co-who-name"></strong> <bdi dir="ltr" id="co-who-email"></bdi>
+          </p>
+          <button type="button" class="co-link" id="co-signout">
+            <span data-l="ar">ليس حسابك؟ سجّل الخروج</span><span data-l="en">Not you? Sign out</span>
+          </button>
+        </div>
+
+        <div id="co-signed-out">
+          <p class="note co-tight">
+            <span data-l="ar">سجّل الدخول بالحساب الذي ستستخدمه في التدريب، فالدقائق تُضاف إليه.</span>
+            <span data-l="en">Sign in with the account you practise with — that is where the minutes go.</span>
+          </p>
+          <div class="row">
+            <div>
+              <label for="co-email"><span data-l="ar">البريد الإلكتروني</span><span data-l="en">Email</span></label>
+              <input id="co-email" type="email" autocomplete="email" dir="ltr" maxlength="190">
+            </div>
+            <div>
+              <label for="co-password"><span data-l="ar">كلمة المرور</span><span data-l="en">Password</span></label>
+              <input id="co-password" type="password" autocomplete="current-password" dir="ltr">
+            </div>
+          </div>
+          <button type="button" class="btn btn-ghost" id="co-login">
+            <span data-l="ar">تسجيل الدخول</span><span data-l="en">Sign in</span>
+          </button>
+          <p class="note co-tight">
+            <span data-l="ar">ليس لديك حساب؟ <a href="/app?signup=1">أنشئ حسابًا مجانًا</a> واحصل على ١٠ دقائق مجانية، ثم عُد إلى هذه الصفحة. تدخل بحساب Google؟ <a href="/app">سجّل الدخول من التطبيق</a> ثم عُد هنا.</span>
+            <span data-l="en">No account yet? <a href="/app?signup=1">Create one free</a> with 10 free minutes, then come back here. Use Google sign-in? <a href="/app">Sign in from the app</a>, then come back.</span>
+          </p>
+        </div>
+      </fieldset>
+
+      <!-- 3 ── phone ────────────────────────────────────────────── -->
+      <fieldset class="co-step">
+        <legend><span class="co-n">3</span>
+          <span data-l="ar">رقم الموبايل</span><span data-l="en">Mobile number</span></legend>
+        <div>
+          <label for="co-phone"><span data-l="ar">رقم موبايل مصري</span><span data-l="en">Egyptian mobile number</span></label>
+          <input id="co-phone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="01xxxxxxxxx" maxlength="16">
+          <p class="note co-tight">
+            <span data-l="ar">تطلبه بوابة الدفع لإرسال تأكيد العملية، ويُستخدم للدفع بالمحفظة أو فوري.</span>
+            <span data-l="en">The payment gateway requires it to confirm the transaction, and it is used for wallet and Fawry payments.</span>
+          </p>
+        </div>
+      </fieldset>
+
+      <label class="co-agree">
+        <input type="checkbox" id="co-agree">
+        <span>
+          <span data-l="ar">قرأت وأوافق على <a href="/terms" target="_blank" rel="noopener">الشروط والأحكام</a> و<a href="/refund" target="_blank" rel="noopener">سياسة الاستبدال والاسترجاع</a> و<a href="/privacy" target="_blank" rel="noopener">سياسة الخصوصية</a>.</span>
+          <span data-l="en">I have read and agree to the <a href="/terms" target="_blank" rel="noopener">Terms &amp; Conditions</a>, the <a href="/refund" target="_blank" rel="noopener">Exchange &amp; Refund Policy</a> and the <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+        </span>
+      </label>
+
+      <button class="btn btn-primary btn-lg co-pay" type="submit" id="co-pay">
+        <span data-l="ar">ادفع <b class="co-pay-amt">100</b> جنيه</span><span data-l="en">Pay <b class="co-pay-amt">100</b> EGP</span>
+      </button>
+
+      <div class="form-msg" id="co-msg" role="status" aria-live="polite"></div>
+    </form>
+
+    <!-- ── order summary ──────────────────────────────────────────── -->
+    <aside class="co-sum" aria-labelledby="co-sum-title">
+      <div class="co-card">
+        <h2 id="co-sum-title"><span data-l="ar">ملخّص الطلب</span><span data-l="en">Order summary</span></h2>
+        <dl class="co-dl">
+          <div><dt><span data-l="ar">الباقة</span><span data-l="en">Plan</span></dt><dd id="co-sum-plan">—</dd></div>
+          <div><dt><span data-l="ar">الدقائق</span><span data-l="en">Minutes</span></dt><dd id="co-sum-minutes">—</dd></div>
+          <div><dt><span data-l="ar">الصلاحية</span><span data-l="en">Validity</span></dt><dd id="co-sum-validity">—</dd></div>
+          <div class="co-total"><dt><span data-l="ar">الإجمالي</span><span data-l="en">Total</span></dt><dd><b id="co-sum-total">—</b> <span data-l="ar">جنيه مصري</span><span data-l="en">EGP</span></dd></div>
+        </dl>
+        <p class="note co-tight">
+          <span data-l="ar">السعر بالجنيه المصري وشامل لأي ضرائب مطبّقة. دفعة واحدة — لا تجديد تلقائي ولا خصم متكرّر.</span>
+          <span data-l="en">Priced in Egyptian pounds, including any applicable tax. One payment — no auto-renewal and no recurring charge.</span>
+        </p>
+      </div>
+
+      <div class="co-card">
+        <h3><span data-l="ar">طرق الدفع المقبولة</span><span data-l="en">Accepted payment methods</span></h3>
+        <ul class="co-methods">
+          <li><span data-l="ar">بطاقات فيزا وماستركارد وميزة</span><span data-l="en">Visa, Mastercard and Meeza cards</span></li>
+          <li><span data-l="ar">المحافظ الإلكترونية (فودافون كاش وغيرها)</span><span data-l="en">Mobile wallets (Vodafone Cash and others)</span></li>
+          <li><span data-l="ar">إنستاباي</span><span data-l="en">InstaPay</span></li>
+          <li><span data-l="ar">الدفع النقدي عبر فوري</span><span data-l="en">Cash through Fawry</span></li>
+        </ul>
+        <p class="note co-tight">
+          <span data-l="ar">يتم الدفع على صفحة بوابة الدفع الآمنة. لا تمرّ بيانات بطاقتك على خوادمنا ولا نحتفظ بها.</span>
+          <span data-l="en">Payment happens on the payment gateway's secure page. Your card details never pass through our servers and we never store them.</span>
+        </p>
+      </div>
+
+      <div class="co-card">
+        <h3><span data-l="ar">استرجاع خلال ١٤ يومًا</span><span data-l="en">14-day refunds</span></h3>
+        <p class="note co-tight">
+          <span data-l="ar">يحقّ لك استرجاع كامل المبلغ خلال ١٤ يومًا ما لم تستخدم أكثر من ١٠٪ من الباقة. التفاصيل في <a href="/refund">سياسة الاستبدال والاسترجاع</a>.</span>
+          <span data-l="en">Get your money back within 14 days as long as you have used no more than 10% of the plan. Details in the <a href="/refund">Exchange &amp; Refund Policy</a>.</span>
+        </p>
+      </div>
+
+      <div class="co-card">
+        <h3><span data-l="ar">البائع</span><span data-l="en">Merchant</span></h3>
+        <p class="note co-tight">
+          <span data-l="ar">شركة برمجلي (Barmagly) — القاهرة، مصر</span><span data-l="en">Barmagly — Cairo, Egypt</span><br>
+          <a href="mailto:info@interprova.com" dir="ltr">info@interprova.com</a><br>
+          <a href="tel:+201204593124"><bdi dir="ltr">01204593124</bdi></a>
+        </p>
+      </div>
+    </aside>
+
+  </div>
+</section>
+
+<script>
+(function () {
+  var API = '/api';
+  var $ = function (id) { return document.getElementById(id); };
+  var en = function () { return document.documentElement.lang === 'en'; };
+  var T = function (ar, enText) { return en() ? enText : ar; };
+  var AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+  var arNum = function (n) { return String(n).replace(/\d/g, function (d) { return AR_DIGITS[d]; }).replace('.', '٫'); };
+
+  /* ── session ──────────────────────────────────────────────────────────
+     The same three localStorage keys the web app at /app uses (see
+     mobile/src/storage/secureStorage.ts), on the same origin. Signing in here
+     signs you in there and the reverse — one account, one session. */
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+
+  function clearSession() { store.del('access_token'); store.del('refresh_token'); store.del('user'); }
+
+  function refresh() {
+    var rt = store.get('refresh_token');
+    if (!rt) return Promise.resolve(null);
+    return fetch(API + '/auth/refresh', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt })
+    }).then(function (r) {
+      // Only a rejected TOKEN ends the session; an outage leaves it alone.
+      if (r.status === 401 || r.status === 403) { clearSession(); return null; }
+      if (!r.ok) return null;
+      return r.json().then(function (d) {
+        if (!d || !d.token || !d.refreshToken) return null;
+        store.set('access_token', d.token); store.set('refresh_token', d.refreshToken);
+        return d.token;
+      });
+    }).catch(function () { return null; });
+  }
+
+  function call(path, opts) {
+    opts = opts || {};
+    var send = function (tok) {
+      var h = { 'content-type': 'application/json' };
+      if (tok) h.authorization = 'Bearer ' + tok;
+      return fetch(API + path, { method: opts.method || 'GET', headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    };
+    return send(store.get('access_token')).then(function (r) {
+      if (r.status !== 401 || !store.get('refresh_token')) return r;
+      return refresh().then(function (tok) { return tok ? send(tok) : r; });
+    });
+  }
+
+  function errorText(r) {
+    return r.json().then(function (d) { return (d && d.error) || ''; }).catch(function () { return ''; });
+  }
+
+  /* ── message box ─────────────────────────────────────────────────── */
+  var msg = $('co-msg');
+  function say(kind, ar, enText) {
+    msg.textContent = T(ar, enText);
+    msg.className = 'form-msg show ' + kind;
+  }
+  function hush() { msg.className = 'form-msg'; msg.textContent = ''; }
+
+  /* ── plans ───────────────────────────────────────────────────────── */
+  // code -> plan. Seeded with the same figures as the static list above so the
+  // summary and the Pay button are right before (or without) the live config;
+  // /api/payments/config then replaces them, and the server charges its own
+  // price whatever this page shows.
+  var plans = {
+    pack_20m:  { code: 'pack_20m',  kind: 'pack', labelAr: 'باقة ٢٠ دقيقة', labelEn: '20 Minutes', amountEgp: 40,  minutes: 20 },
+    pack_60m:  { code: 'pack_60m',  kind: 'pack', labelAr: 'باقة ٦٠ دقيقة', labelEn: '60 Minutes', amountEgp: 100, minutes: 60 },
+    pack_180m: { code: 'pack_180m', kind: 'pack', labelAr: 'باقة ٣ ساعات',  labelEn: '3 Hours',    amountEgp: 250, minutes: 180 },
+    monthly:   { code: 'monthly',   kind: 'subscription', labelAr: 'اشتراك شهري',     labelEn: 'Monthly',   amountEgp: 150, minutes: 300, months: 1 },
+    quarterly: { code: 'quarterly', kind: 'subscription', labelAr: 'اشتراك ربع سنوي', labelEn: 'Quarterly', amountEgp: 399, minutes: 900, months: 3 }
+  };
+  var params = new URLSearchParams(location.search);
+
+  function planLabel(p) { return T(p.labelAr || p.code, p.labelEn || p.code); }
+
+  function validity(p) {
+    if (p.kind === 'pack') return T('لا تنتهي صلاحيتها', 'Never expires');
+    var m = p.months || 1;
+    return m === 1 ? T('شهر واحد', 'One month') : T(arNum(m) + ' أشهر', m + ' months');
+  }
+
+  function renderPlans(list) {
+    var box = $('co-plans');
+    var chosen = (box.querySelector('input:checked') || {}).value || params.get('plan');
+    var html = '';
+    var groups = [
+      ['pack', 'باقات دقائق — لا تنتهي صلاحيتها', 'Minute packs — never expire'],
+      ['subscription', 'اشتراكات — بلا تجديد تلقائي', 'Subscriptions — no auto-renewal']
+    ];
+    groups.forEach(function (g) {
+      var items = list.filter(function (p) { return p.kind === g[0]; });
+      if (!items.length) return;
+      html += '<p class="co-group"><span data-l="ar">' + g[1] + '</span><span data-l="en">' + g[2] + '</span></p>';
+      items.forEach(function (p) {
+        var meta = p.kind === 'pack'
+          ? ['<span data-l="ar">' + arNum(p.pricePerMinuteEgp) + ' جنيه للدقيقة</span>', '<span data-l="en">' + p.pricePerMinuteEgp + ' EGP per minute</span>']
+          : ['<span data-l="ar">' + arNum(p.minutes) + ' دقيقة على ' + (p.months > 1 ? arNum(p.months) + ' أشهر' : 'شهر') + '</span>', '<span data-l="en">' + p.minutes + ' minutes over ' + (p.months > 1 ? p.months + ' months' : 'one month') + '</span>'];
+        html += '<label class="co-plan"><input type="radio" name="plan" value="' + p.code + '">'
+          + '<span class="co-plan-name"><span data-l="ar">' + p.labelAr + '</span><span data-l="en">' + p.labelEn + '</span>'
+          + (p.popular ? ' <span class="co-pop"><span data-l="ar">الأكثر اختيارًا</span><span data-l="en">Most chosen</span></span>' : '')
+          + '</span><span class="co-plan-meta">' + meta.join('') + '</span>'
+          + '<span class="co-plan-price"><b>' + p.amountEgp + '</b> <span data-l="ar">جنيه</span><span data-l="en">EGP</span></span></label>';
+      });
+    });
+    box.innerHTML = html;
+    var pick = plans[chosen] ? chosen : (list.filter(function (p) { return p.popular; })[0] || list[0]).code;
+    var input = box.querySelector('input[value="' + pick + '"]');
+    if (input) input.checked = true;
+    summarise();
+  }
+
+  function selected() {
+    var input = $('co-plans').querySelector('input:checked');
+    return input ? (plans[input.value] || { code: input.value }) : null;
+  }
+
+  function summarise() {
+    var p = selected();
+    var ready = p && p.amountEgp != null;
+    $('co-sum-plan').textContent = ready ? planLabel(p) : '—';
+    $('co-sum-minutes').textContent = ready ? (en() ? String(p.minutes) : arNum(p.minutes)) : '—';
+    $('co-sum-validity').textContent = ready ? validity(p) : '—';
+    $('co-sum-total').textContent = ready ? String(p.amountEgp) : '—';
+    var amts = document.querySelectorAll('.co-pay-amt');
+    for (var i = 0; i < amts.length; i++) amts[i].textContent = ready ? String(p.amountEgp) : '';
+  }
+
+  $('co-plans').addEventListener('change', function () { hush(); summarise(); });
+
+  // The static list above is complete on its own; this makes it the server's.
+  fetch(API + '/payments/config').then(function (r) { return r.ok ? r.json() : null; }).then(function (cfg) {
+    var list = cfg && Array.isArray(cfg.plans) ? cfg.plans : [];
+    if (!list.length) return;
+    plans = {};
+    list.forEach(function (p) { plans[p.code] = p; });
+    renderPlans(list);
+  }).catch(function () {});
+
+  if (params.get('plan')) {
+    var pre = $('co-plans').querySelector('input[value="' + params.get('plan') + '"]');
+    if (pre) pre.checked = true;
+  }
+
+  /* ── account ─────────────────────────────────────────────────────── */
+  function showUser(user) {
+    var signedIn = !!user;
+    $('co-signed-in').hidden = !signedIn;
+    $('co-signed-out').hidden = signedIn;
+    if (!signedIn) return;
+    $('co-who-name').textContent = user.name || '';
+    $('co-who-email').textContent = user.email ? '(' + user.email + ')' : '';
+    if (user.phone && !$('co-phone').value) $('co-phone').value = user.phone;
+  }
+
+  function loadUser() {
+    var cached = null;
+    try { cached = JSON.parse(store.get('user') || 'null'); } catch (e) {}
+    if (store.get('access_token') || store.get('refresh_token')) showUser(cached || { name: '' });
+    else { showUser(null); return; }
+    call('/user/me').then(function (r) {
+      if (r.status === 401) { clearSession(); showUser(null); return null; }
+      return r.ok ? r.json() : null;
+    }).then(function (d) {
+      if (d && d.user) { store.set('user', JSON.stringify(d.user)); showUser(d.user); }
+    }).catch(function () {});
+  }
+
+  $('co-signout').addEventListener('click', function () { clearSession(); showUser(null); hush(); });
+
+  $('co-login').addEventListener('click', function () {
+    var email = $('co-email').value.trim();
+    var password = $('co-password').value;
+    if (!email || !password) {
+      say('err', 'اكتب البريد الإلكتروني وكلمة المرور.', 'Enter your email and password.');
+      return;
+    }
+    var btn = this; btn.disabled = true; hush();
+    fetch(API + '/auth/login', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    }).then(function (r) {
+      if (r.status === 401 || r.status === 400) {
+        say('err', 'البريد الإلكتروني أو كلمة المرور غير صحيحة.', 'That email and password do not match an account.');
+        return null;
+      }
+      if (r.status === 429) {
+        say('err', 'محاولات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.', 'Too many attempts. Wait a little and try again.');
+        return null;
+      }
+      if (!r.ok) { say('err', 'تعذّر تسجيل الدخول الآن. حاول مرة أخرى.', 'Could not sign in right now. Please try again.'); return null; }
+      return r.json();
+    }).then(function (d) {
+      if (!d || !d.token) return;
+      store.set('access_token', d.token);
+      store.set('refresh_token', d.refreshToken);
+      if (d.user) store.set('user', JSON.stringify(d.user));
+      $('co-password').value = '';
+      showUser(d.user || { name: '' });
+    }).catch(function () {
+      say('err', 'تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.', 'Could not connect. Check your connection and try again.');
+    }).then(function () { btn.disabled = false; });
+  });
+
+  /* ── pay ─────────────────────────────────────────────────────────── */
+  $('co-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    hush();
+    var p = selected();
+    if (!p) { say('err', 'اختر باقة أولًا.', 'Choose a plan first.'); return; }
+    if (!(store.get('access_token') || store.get('refresh_token'))) {
+      say('err', 'سجّل الدخول أولًا حتى نعرف إلى أي حساب نضيف الدقائق.', 'Sign in first so we know which account the minutes go to.');
+      $('co-email').focus();
+      return;
+    }
+    var phone = $('co-phone').value.replace(/[^\d+]/g, '');
+    if (phone.replace(/\D/g, '').length < 10) {
+      say('err', 'اكتب رقم موبايل مصري صحيحًا، مثل 01xxxxxxxxx.', 'Enter a valid Egyptian mobile number, such as 01xxxxxxxxx.');
+      $('co-phone').focus();
+      return;
+    }
+    if (!$('co-agree').checked) {
+      say('err', 'يجب الموافقة على الشروط والأحكام وسياسة الاسترجاع قبل الدفع.', 'Please agree to the terms and the refund policy before paying.');
+      $('co-agree').focus();
+      return;
+    }
+
+    var btn = $('co-pay'); btn.disabled = true;
+    say('ok', 'جارٍ تجهيز صفحة الدفع…', 'Preparing the payment page…');
+
+    call('/payments/checkout', { method: 'POST', body: { plan: p.code, phone: phone } }).then(function (r) {
+      if (r.status === 201 || r.ok) return r.json().then(function (d) {
+        if (d && d.redirectUrl) { location.href = d.redirectUrl; return; }
+        say('err', 'لم تُرجع بوابة الدفع رابطًا. حاول مرة أخرى.', 'The gateway returned no payment link. Please try again.');
+        btn.disabled = false;
+      });
+      return errorText(r).then(function (text) {
+        btn.disabled = false;
+        if (r.status === 401) { clearSession(); showUser(null); say('err', 'انتهت جلستك. سجّل الدخول مرة أخرى.', 'Your session has ended. Please sign in again.'); return; }
+        if (r.status === 503) { say('err', 'الدفع الإلكتروني غير مفعّل في هذه اللحظة. تواصل معنا على info@interprova.com لإتمام طلبك.', 'Online payment is not switched on at this moment. Contact us at info@interprova.com to complete your order.'); return; }
+        if (r.status === 400 && /mobile|موبايل/i.test(text)) { say('err', 'رقم الموبايل غير مقبول. تأكّد منه وحاول مرة أخرى.', 'That mobile number was not accepted. Check it and try again.'); $('co-phone').focus(); return; }
+        if (r.status === 429) { say('err', 'محاولات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.', 'Too many attempts. Wait a minute and try again.'); return; }
+        say('err', 'تعذّر بدء عملية الدفع. حاول مرة أخرى بعد قليل.', 'Could not start the payment. Please try again shortly.');
+      });
+    }).catch(function () {
+      btn.disabled = false;
+      say('err', 'تعذّر الاتصال. تحقّق من الإنترنت وحاول مرة أخرى.', 'Could not connect. Check your connection and try again.');
+    });
+  });
+
+  /* ── return from the gateway ──────────────────────────────────────── */
+  function result(kind, titleAr, titleEn, textAr, textEn, actions) {
+    $('co-result').hidden = false;
+    $('co-main').hidden = true;
+    var card = $('co-result').querySelector('.co-result-card');
+    card.className = 'co-card co-result-card ' + kind;
+    $('co-result-title').textContent = T(titleAr, titleEn);
+    $('co-result-text').textContent = T(textAr, textEn);
+    var ref = params.get('ref');
+    $('co-result-ref').textContent = ref ? T('رقم العملية: ', 'Transaction reference: ') + ref : '';
+    $('co-result-actions').innerHTML = actions || '';
+  }
+
+  var BTN_APP = '<a class="btn btn-primary" href="/app"><span data-l="ar">ابدأ التدريب</span><span data-l="en">Start practising</span></a>';
+  var BTN_RETRY = '<a class="btn btn-ghost" href="/checkout"><span data-l="ar">حاول مرة أخرى</span><span data-l="en">Try again</span></a>';
+  var BTN_CONTACT = '<a class="btn btn-ghost" href="/contact"><span data-l="ar">تواصل معنا</span><span data-l="en">Contact us</span></a>';
+
+  function settle(status) {
+    if (status === 'paid') {
+      result('ok', 'تم الدفع بنجاح', 'Payment successful',
+        'أُضيفت الدقائق إلى رصيدك. يمكنك أن تبدأ مقابلتك الآن.',
+        'Your minutes have been added to your balance. You can start an interview now.', BTN_APP);
+      return true;
+    }
+    if (status === 'failed' || status === 'expired') {
+      result('err', 'لم تكتمل عملية الدفع', 'The payment did not go through',
+        'لم يُخصم منك شيء مقابل هذه العملية. يمكنك المحاولة مرة أخرى أو اختيار وسيلة دفع مختلفة.',
+        'Nothing was charged for this attempt. You can try again or choose a different payment method.', BTN_RETRY + BTN_CONTACT);
+      return true;
+    }
+    if (status === 'refunded') {
+      result('ok', 'تم استرجاع المبلغ', 'This payment was refunded',
+        'هذه العملية مستردّة إلى وسيلة الدفع الأصلية.', 'This transaction has been refunded to the original payment method.', BTN_CONTACT);
+      return true;
+    }
+    return false;
+  }
+
+  var returned = params.get('payment');
+  if (returned) {
+    if (!settle(returned)) {
+      // The gateway can send the customer back before its webhook reaches us,
+      // so "pending" here is normal. Ask the server — it is the source of
+      // truth — for half a minute before saying so.
+      result('', 'جارٍ تأكيد الدفع…', 'Confirming your payment…',
+        'نتحقّق من العملية مع بوابة الدفع. لا تغلق هذه الصفحة.',
+        'We are checking the transaction with the payment gateway. Please keep this page open.', '');
+      var ref = params.get('ref');
+      var tries = ref ? 0 : 14;   // nothing to look up: go straight to the final word
+      var poll = function () {
+        tries += 1;
+        (ref ? call('/payments/status/' + encodeURIComponent(ref)) : Promise.resolve({ ok: false })).then(function (r) {
+          return r.ok ? r.json() : null;
+        }).then(function (d) {
+          if (d && settle(d.status)) return;
+          if (tries < 15) { setTimeout(poll, 2000); return; }
+          result('', 'الدفع قيد التأكيد', 'Your payment is being confirmed',
+            'قد يستغرق التأكيد بضع دقائق. ستظهر الدقائق في رصيدك تلقائيًا فور وصوله. إن لم تظهر خلال ساعة، راسلنا برقم العملية.',
+            'Confirmation can take a few minutes. The minutes will appear in your balance automatically once it arrives. If they have not appeared within an hour, write to us with the transaction reference.',
+            BTN_APP + BTN_CONTACT);
+        }).catch(function () { if (tries < 15) setTimeout(poll, 2000); });
+      };
+      poll();
+    }
+  }
+
+  // Re-run language-dependent text when the visitor switches language.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-set-lang]')) setTimeout(summarise, 0);
+  });
+
+  loadUser();
+  summarise();
+})();
+</script>

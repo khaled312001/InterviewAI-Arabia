@@ -111,3 +111,12 @@ firebase-service-account.json
 # them to reach a commit.
 android-crash-report.txt
 google-signin-log.txt
+
+# Gradle caches from building a local Expo module on its own. They change on
+# every build and were committed once by accident.
+mobile/modules/*/android/.gradle/
+mobile/modules/*/android/build/
+
+# Emulator driver screenshots and the JS hot-swap build output.
+.drive/
+.hotswap/
