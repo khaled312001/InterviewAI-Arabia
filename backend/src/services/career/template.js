@@ -42,10 +42,10 @@ const FONTS = {
   montserrat: { head: 'Montserrat', body: 'Open Sans', gf: ['Montserrat:wght@300;400;600;700;800;900', 'Open+Sans:wght@400;600;700'], ar: 'Cairo' },
   raleway: { head: 'Raleway', body: 'Lato', gf: ['Raleway:wght@300;500;600;700;800', 'Lato:wght@400;700'], ar: 'Tajawal' },
   playfair: { head: 'Playfair Display', body: 'Lato', gf: ['Playfair+Display:ital,wght@0,400;0,600;0,700;1,400', 'Lato:wght@300;400;700'], ar: 'Amiri' },
-  merriweather: { head: 'Merriweather', body: 'Source Sans 3', gf: ['Merriweather:wght@300;400;700;900', 'Source+Sans+3:wght@400;600;700'], ar: 'Noto Naskh Arabic' },
+  merriweather: { head: 'Merriweather', body: 'Source Sans 3', gf: ['Merriweather:wght@300;400;700;900', 'Source+Sans+3:wght@400;600;700'], ar: 'Amiri' },
   garamond: { head: 'EB Garamond', body: 'EB Garamond', gf: ['EB+Garamond:wght@400;500;600;700'], ar: 'Amiri' },
   cormorant: { head: 'Cormorant Garamond', body: 'Montserrat', gf: ['Cormorant+Garamond:wght@400;500;600;700', 'Montserrat:wght@300;400;500;600'], ar: 'Amiri' },
-  dmserif: { head: 'DM Serif Display', body: 'DM Sans', gf: ['DM+Serif+Display:ital@0;1', 'DM+Sans:wght@300;400;500;700'], ar: 'Noto Naskh Arabic' },
+  dmserif: { head: 'DM Serif Display', body: 'DM Sans', gf: ['DM+Serif+Display:ital@0;1', 'DM+Sans:wght@300;400;500;700'], ar: 'Amiri' },
   space: { head: 'Space Grotesk', body: 'Inter', gf: ['Space+Grotesk:wght@400;500;600;700', 'Inter:wght@400;500;600;700', 'JetBrains+Mono:wght@400;500'], ar: 'IBM Plex Sans Arabic' },
   archivo: { head: 'Archivo Black', body: 'Archivo', gf: ['Archivo+Black', 'Archivo:wght@400;500;600;700'], ar: 'Cairo' },
   bebas: { head: 'Bebas Neue', body: 'Inter', gf: ['Bebas+Neue', 'Inter:wght@400;500;600;700'], ar: 'Cairo' },
@@ -53,19 +53,20 @@ const FONTS = {
   outfit: { head: 'Outfit', body: 'Outfit', gf: ['Outfit:wght@300;400;500;600;700;800'], ar: 'Readex Pro' },
   nunito: { head: 'Nunito', body: 'Nunito', gf: ['Nunito:wght@400;600;700;800;900'], ar: 'Almarai' },
   worksans: { head: 'Work Sans', body: 'Work Sans', gf: ['Work+Sans:wght@300;400;500;600;700'], ar: 'Readex Pro' },
-  lora: { head: 'Lora', body: 'Lora', gf: ['Lora:ital,wght@0,400;0,500;0,600;0,700;1,400'], ar: 'Noto Naskh Arabic' },
-  fraunces: { head: 'Fraunces', body: 'Inter', gf: ['Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800', 'Inter:wght@400;500;600;700'], ar: 'Noto Naskh Arabic' },
+  lora: { head: 'Lora', body: 'Lora', gf: ['Lora:ital,wght@0,400;0,500;0,600;0,700;1,400'], ar: 'Amiri' },
+  fraunces: { head: 'Fraunces', body: 'Inter', gf: ['Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800', 'Inter:wght@400;500;600;700'], ar: 'Amiri' },
 };
 const AR_GF = {
   Cairo: 'Cairo:wght@400;600;700;800;900',
   Tajawal: 'Tajawal:wght@300;400;500;700;800',
+  // Amiri, not Noto Naskh: Noto Naskh draws the dots as separate marks, and the
+  // text a PDF reader (or an ATS) pulls out of it comes back without them.
   Amiri: 'Amiri:wght@400;700',
-  'Noto Naskh Arabic': 'Noto+Naskh+Arabic:wght@400;600;700',
   'IBM Plex Sans Arabic': 'IBM+Plex+Sans+Arabic:wght@400;500;600;700',
   Almarai: 'Almarai:wght@400;700;800',
   'Readex Pro': 'Readex+Pro:wght@300;400;500;600;700',
 };
-const SERIF = new Set(['Playfair Display', 'Merriweather', 'EB Garamond', 'Cormorant Garamond', 'DM Serif Display', 'Lora', 'Fraunces', 'Amiri', 'Noto Naskh Arabic']);
+const SERIF = new Set(['Playfair Display', 'Merriweather', 'EB Garamond', 'Cormorant Garamond', 'DM Serif Display', 'Lora', 'Fraunces', 'Amiri']);
 const stack = (f) => `'${f}', ${SERIF.has(f) ? "Georgia, 'Times New Roman', serif" : "'Segoe UI', Arial, sans-serif"}`;
 
 /* -------------------------------------------------------------- icons */
@@ -117,7 +118,7 @@ function initials(name) {
   return String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => [...p][0]).join('').toUpperCase();
 }
 
-/** "Sara Ahmed" → ["Sara", "Ahmed"]; one word stays whole. */
+/** "Emma Carter" → ["Emma", "Carter"]; one word stays whole. */
 function splitName(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (parts.length < 2) return [parts[0] || '', ''];
@@ -248,7 +249,7 @@ function baseCss(v, rtl) {
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   html { background: #DDE1E7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { margin: 0; color: var(--ink); font-family: var(--body); font-size: ${v.size || 10}pt; line-height: ${rtl ? 1.62 : 1.48}; }
+  body { margin: 0; color: var(--ink); font-family: var(--body); font-size: ${(v.size || 10) + (rtl && f.ar === 'Amiri' ? 1 : 0)}pt; line-height: ${rtl ? 1.62 : 1.48}; }
   .page { position: relative; background: var(--paper); width: 210mm; min-height: 297mm; margin: 18px auto; box-shadow: 0 6px 30px rgba(15,23,42,.18);
           padding: var(--pt) 0 var(--pb); -webkit-box-decoration-break: clone; box-decoration-break: clone; overflow: hidden; }
   .deco { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
@@ -351,7 +352,7 @@ function baseCss(v, rtl) {
     .page { margin: 0; width: auto; min-height: 0; box-shadow: none; overflow: visible; }
     .deco > * { position: fixed; }
   }
-  @media (max-width: 820px) {
+  @media screen and (max-width: 820px) {
     .page { width: auto; margin: 0; min-height: 0; }
     :root { --px: 18px; --pt: 18px; --pb: 18px; }
     .row { flex-direction: column; gap: 0; }
@@ -515,7 +516,7 @@ const DESIGNS = {
     columns: 2, ats: 'good',
     html: (c) => `<div class="deco"><div class="side">${c.art('side')}</div></div>
       <div class="content cols"><main>${nameBlockHd(c)}${mainSecs(c)}</main>
-      <aside>${c.s.photo}${sideSecs(c, ['contact', 'skills', 'languages', 'certifications'], c.v.sideSkills || 'list')}</aside></div>`,
+      <aside>${c.s.photo}${sideSecs(c, ['contact', 'skills', 'languages', 'certifications'], c.v.sideSkills || 'tags')}</aside></div>`,
     css: (c) => {
       const dark = isDark(c.v.side);
       const ink = dark ? '#fff' : c.v.dark;
@@ -968,7 +969,7 @@ export function renderCvHtml(cvInput, opts = {}) {
 ${fontLink(v, rtl)}
 <style>${baseCss(v, rtl)}
 ${design.css(ctx)}
-  @media (max-width: 820px) {
+  @media screen and (max-width: 820px) {
     .content[style] { padding-inline: var(--px) !important; padding-top: 0 !important; }
     .hd, .top, .kp, .glass { flex-wrap: wrap; }
     .hd { grid-template-columns: minmax(0, 1fr) !important; }
@@ -1023,7 +1024,7 @@ ${fontLink(v, rtl)}
  .toolbar { position:sticky; top:0; display:flex; gap:12px; justify-content:center; align-items:center; padding:10px; background:#0f172a; color:#e2e8f0; font:14px system-ui; flex-wrap:wrap }
  .toolbar button { background:#1A56E8; color:#fff; border:0; border-radius:8px; padding:9px 16px; font:600 14px system-ui; cursor:pointer }
  @media print { html{background:#fff} .toolbar{display:none} .page{margin:0; width:auto; min-height:0; box-shadow:none} }
- @media (max-width:820px){ .page{width:auto; margin:0; min-height:0} .hd,.bd{padding:18px} }
+ @media screen and (max-width:820px){ .page{width:auto; margin:0; min-height:0} .hd,.bd{padding:18px} }
 </style></head><body>
 <div class="toolbar"><button type="button" onclick="window.print()">${esc(h.print)}</button><span>${esc(h.hint)}</span></div>
 <div class="page"><header class="hd"><h1>${esc(c.basics.name)}</h1>${c.basics.headline ? `<div class="hl">${esc(c.basics.headline)}</div>` : ''}${contact ? `<ul>${contact}</ul>` : ''}</header><div class="bd">${paras}</div></div>

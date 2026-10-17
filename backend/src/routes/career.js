@@ -34,6 +34,7 @@ import {
 } from '../services/career/template.js';
 import { exampleCv, exampleRoleList, EXAMPLE_ROLES } from '../services/career/examples.js';
 import { renderCvDocx } from '../services/career/docx.js';
+import { htmlToPdf, pdfAvailable } from '../services/career/pdf.js';
 import { extractCvText, acceptsCvFile } from '../services/career/extract.js';
 import {
   loadProfile, saveProfile, matchProfileOf, profileIsUsable,
@@ -490,8 +491,18 @@ router.get('/print/:token', asyncHandler(async (req, res) => {
 
   res.set('Cache-Control', 'private, no-store');
   res.set('X-Robots-Tag', 'noindex');
+  const sendPdf = async (html, name) => {
+    const buf = await htmlToPdf(html);
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(name)}.pdf"; filename*=UTF-8''${encodeURIComponent(name)}.pdf`);
+    return res.send(buf);
+  };
   if (p.k === 'letter') {
-    return res.type('html').send(renderLetterHtml({ letter, cv, lang: language, template }));
+    const html = renderLetterHtml({ letter, cv, lang: language, template });
+    if (p.f === 'pdf' && pdfAvailable()) {
+      try { return await sendPdf(html.replace(html.slice(html.indexOf('<div class="toolbar">'), html.indexOf('<div class="page">')), ''), `${fileBase}_cover_letter`); } catch { /* fall back to the page */ }
+    }
+    return res.type('html').send(html);
   }
   if (p.f === 'docx') {
     const buf = renderCvDocx(cv, { lang: language });
@@ -499,9 +510,15 @@ router.get('/print/:token', asyncHandler(async (req, res) => {
     res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(fileBase)}.docx"; filename*=UTF-8''${encodeURIComponent(fileBase)}.docx`);
     return res.send(buf);
   }
-  // PDF is produced by the browser's own print-to-PDF: it embeds real text
-  // (what an ATS reads) and handles every script, Arabic included, which a
-  // server-side PDF library on this host would not.
+  // PDF: headless Chrome prints the very page the preview shows, so the file
+  // matches the design exactly and keeps real, selectable text (what an ATS
+  // reads), Arabic included. If the renderer is missing or fails, the same page
+  // opens with the browser's print dialog instead.
+  if (p.f === 'pdf' && pdfAvailable()) {
+    try {
+      return await sendPdf(renderCvHtml(cv, { template, lang: language, title: `${fileBase} — ${title}`, toolbar: false }), fileBase);
+    } catch { /* fall back to the print page */ }
+  }
   res.type('html').send(renderCvHtml(cv, { template, lang: language, title: `${fileBase} — ${title}`, toolbar: true, autoPrint: p.f === 'pdf' }));
 }));
 

@@ -27,6 +27,10 @@ const OPEN: Record<string, OpenTarget> = {
 let authEntry: AuthEntry | null = null;
 let openTarget: OpenTarget | null = null;
 
+/** A template picked in the site's CV gallery: build a CV in it, by upload or by hand. */
+export interface CvIntent { template: string; start: 'import' | 'manual' }
+let cvIntent: CvIntent | null = null;
+
 if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -35,7 +39,14 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
     openTarget = OPEN[String(params.get('open') || '').toLowerCase()]
       // "Buy minutes" on the pricing section links to /app?upgrade=1.
       ?? (params.get('upgrade') === '1' ? 'Subscription' : null);
-    if (['signup', 'login', 'open', 'upgrade'].some((k) => params.has(k))) {
+    const tpl = String(params.get('tpl') || '').toLowerCase();
+    if (/^[a-z0-9-]{2,40}$/.test(tpl)) {
+      cvIntent = { template: tpl, start: params.get('start') === 'import' ? 'import' : 'manual' };
+      openTarget = openTarget ?? 'CvBuilder';
+    }
+    if (['signup', 'login', 'open', 'upgrade', 'tpl', 'start'].some((k) => params.has(k))) {
+      params.delete('tpl');
+      params.delete('start');
       params.delete('signup');
       params.delete('login');
       params.delete('open');
@@ -55,6 +66,13 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
 /** The signed-out screen a website link asked for, if any. */
 export function webAuthEntry(): AuthEntry | null {
   return authEntry;
+}
+
+/** The template a website link asked to build a CV in, at most once. */
+export function takeCvIntent(): CvIntent | null {
+  const value = cvIntent;
+  cvIntent = null;
+  return value;
 }
 
 /** The screen a website link asked to open, at most once. */

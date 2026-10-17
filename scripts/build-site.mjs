@@ -31,7 +31,7 @@ const ORIGIN = 'https://interprova.com';
  * different address. `og-image.png` still exists and holds the same bytes, for
  * links shared before the bump. See scripts/render-text-assets.mjs.
  */
-const OG_IMAGE = `${ORIGIN}/og-image-v2.png`;
+const OG_IMAGE = `${ORIGIN}/og-image-v3.png`;
 
 const home = fs.readFileSync(path.join(LANDING, 'index.html'), 'utf8');
 

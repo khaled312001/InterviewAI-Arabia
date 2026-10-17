@@ -47,9 +47,9 @@
     </div>
     <div class="reveal from-right" style="position:relative;padding:20px" aria-hidden="true">
       <div class="cvdoc">
-        <h4>Sara Mansour</h4>
+        <h4>Emily Parker</h4>
         <div class="role"><span data-l="en">Data Analyst</span><span data-l="ar">محللة بيانات</span></div>
-        <div class="contact">sara@email.com · Dubai · linkedin.com/in/sara</div>
+        <div class="contact">emily@email.com · Dubai · linkedin.com/in/emily</div>
         <h5><span data-l="en">Summary</span><span data-l="ar">الملخص المهني</span></h5>
         <p><span data-l="en">Data analyst with 3 years turning raw data into decisions with <mark>SQL</mark>, Python and <mark>Power BI</mark>.</span><span data-l="ar">محللة بيانات بخبرة ٣ سنوات في تحويل البيانات إلى قرارات باستخدام <mark>SQL</mark> و Python و <mark>Power BI</mark>.</span></p>
         <h5><span data-l="en">Experience</span><span data-l="ar">الخبرات العملية</span></h5>
@@ -345,6 +345,51 @@
     });
     [].forEach.call(filterBox.querySelectorAll('.ex-chip'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.f === tplFilter)); });
   }
+  /* "Use this template": a big preview and the two ways to fill it — upload a
+     CV (the app reads it into the design) or type it in. Both open the app's
+     CV builder with the design already chosen; signing up first if needed. */
+  var dlg = null;
+  function useUrl(id, start) {
+    return '/app?signup=1&open=cv&tpl=' + encodeURIComponent(id) + (start === 'import' ? '&start=import' : '');
+  }
+  function openUse(id) {
+    var p = (tpls || []).filter(function (x) { return x.id === id; })[0] || { id: id, nameEn: id, nameAr: id, descEn: '', descAr: '' };
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.className = 'tg-dlg';
+      dlg.addEventListener('click', function (e) { if (e.target === dlg || (e.target.closest && e.target.closest('.tg-x'))) dlg.close(); });
+      document.body.appendChild(dlg);
+    }
+    dlg.innerHTML =
+      '<div class="tg-dlg-in">' +
+      '<button type="button" class="tg-x" aria-label="Close">×</button>' +
+      '<div class="tg-dlg-img"><img src="' + esc(thumbUrl(p.id)) + '" alt=""></div>' +
+      '<div class="tg-dlg-body">' +
+      '<div class="kicker-pill"><span data-l="en">' + esc(p.categoryEn || 'Template') + '</span><span data-l="ar">' + esc(p.categoryAr || 'قالب') + '</span></div>' +
+      '<h3><span data-l="en">' + esc(p.nameEn) + '</span><span data-l="ar">' + esc(p.nameAr) + '</span></h3>' +
+      '<p><span data-l="en">' + esc(p.descEn) + '</span><span data-l="ar">' + esc(p.descAr) + '</span></p>' +
+      '<ul class="tg-dlg-facts">' +
+      '<li><span data-l="en">' + (p.ats === 'best' ? 'One column — the easiest for ATS' : 'Two columns — readable by most ATS') + '</span><span data-l="ar">' + (p.ats === 'best' ? 'عمود واحد — الأسهل لأنظمة ATS' : 'عمودان — تقرؤه معظم أنظمة ATS') + '</span></li>' +
+      (p.photo ? '<li><span data-l="en">Has a photo circle — you can upload your photo</span><span data-l="ar">فيه دائرة صورة — يمكنك رفع صورتك</span></li>' : '') +
+      '<li><span data-l="en">PDF download in exactly this design</span><span data-l="ar">تنزيل PDF بهذا التصميم نفسه تمامًا</span></li>' +
+      '<li><span data-l="en">English, Arabic, German, French or Spanish headings</span><span data-l="ar">عناوين بالإنجليزية أو العربية أو الألمانية أو الفرنسية أو الإسبانية</span></li>' +
+      '</ul>' +
+      '<div class="tg-dlg-acts">' +
+      '<a class="btn btn-primary" href="' + esc(useUrl(p.id, 'import')) + '"><span data-l="en">Upload my CV</span><span data-l="ar">رفع سيرتي الحالية</span></a>' +
+      '<a class="btn btn-ghost" href="' + esc(useUrl(p.id, 'manual')) + '"><span data-l="en">Fill in manually</span><span data-l="ar">إدخال يدوي</span></a>' +
+      '</div>' +
+      '<p class="tg-dlg-note"><span data-l="en">Either way you can edit every part afterwards. </span><span data-l="ar">في الحالتين تستطيع تعديل كل جزء بعد ذلك. </span>' +
+      '<a href="' + esc(previewUrl(p.id)) + '" target="_blank" rel="noopener"><span data-l="en">Full-page preview ↗</span><span data-l="ar">معاينة الصفحة كاملة ↗</span></a></p>' +
+      '</div></div>';
+    if (dlg.showModal) dlg.showModal(); else location.href = useUrl(p.id, 'manual');
+  }
+  grid.addEventListener('click', function (e) {
+    var hit = e.target.closest ? e.target.closest('.tg-thumb, .tg-use') : null;
+    if (!hit || !tpls) return;
+    e.preventDefault();
+    openUse(hit.closest('.tg-card').dataset.tpl);
+  });
+
   function buildFilters() {
     var cats = [], seen = {};
     tpls.forEach(function (p) { if (p.category && !seen[p.category]) { seen[p.category] = 1; cats.push(p); } });
@@ -376,7 +421,8 @@
         '<a class="tg-thumb" href="' + u + '" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">' + (mocks[p.id] || fallbackMock) + '<img src="' + esc(thumbUrl(p.id)) + '" alt="" loading="lazy" decoding="async"></a>' +
         '<div class="tg-body"><h3><span data-l="en">' + esc(p.nameEn) + '</span><span data-l="ar">' + esc(p.nameAr) + '</span></h3>' +
         '<p><span data-l="en">' + esc(p.descEn) + '</span><span data-l="ar">' + esc(p.descAr) + '</span></p>' +
-        '<a class="tg-prev" href="' + u + '" target="_blank" rel="noopener"><span data-l="en">Preview ↗</span><span data-l="ar">معاينة ↗</span></a></div>' +
+        '<div class="tg-acts"><button type="button" class="btn btn-primary btn-sm tg-use"><span data-l="en">Use this template</span><span data-l="ar">استخدم هذا القالب</span></button>' +
+        '<a class="tg-prev" href="' + u + '" target="_blank" rel="noopener"><span data-l="en">Preview ↗</span><span data-l="ar">معاينة ↗</span></a></div></div>' +
         '</article>';
     }).join('');
     syncGallery();

@@ -73,7 +73,7 @@ const HASHED = new Set(['.png', '.jpg', '.jpeg', '.webp', '.svg', '.css', '.woff
  */
 const PINNED = new Set([
   'favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'site.webmanifest',
-  'og-image.png', 'og-image-v2.png',
+  'og-image.png', 'og-image-v2.png', 'og-image-v3.png',
   'logo-mark.png', 'logo-mark-ondark.png', 'logo-horizontal.png',
 ]);
 

@@ -122,6 +122,97 @@ const OG = ({ w, h }) => page({
   </div>`,
 });
 
+
+/**
+ * The English share card (og:image). English is the site's default language,
+ * so this is what a shared link shows. Split layout: the claims on the left,
+ * a picture of the product on the right — a real CV template thumbnail with
+ * floating product cards. Same rule as above: describe what the product does;
+ * no rank, popularity or outcome claims.
+ */
+const CV_THUMB = `data:image/webp;base64,${b64(path.join(ROOT, 'landing/shots/cv/infographic-en.webp'))}`;
+const ICONS = {
+  mic: '<path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1a7 7 0 0 0 6-6.9z"/>',
+  live: '<path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4.9 4.9l1.4 1.4a8 8 0 0 0 0 11.4l-1.4 1.4a10 10 0 0 1 0-14.2zm14.2 0a10 10 0 0 1 0 14.2l-1.4-1.4a8 8 0 0 0 0-11.4z"/>',
+  cv: '<path d="M6 2h9l5 5v15H6zm8 1.5V8h4.5zM9 12h8v1.6H9zm0 3.4h8V17H9zm0-6.8h3.5v1.6H9z"/>',
+  ats: '<path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.8-4.8 1.4 1.4z"/>',
+  jobs: '<path d="M9 4h6a2 2 0 0 1 2 2v1h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h3V6a2 2 0 0 1 2-2zm0 3h6V6H9z"/>',
+  devices: '<path d="M2 5h16v9H2zm-1 11h18v1.5H1zM19 8h4v12h-4z"/>',
+};
+const ic = (k) => `<svg viewBox="0 0 24 24" fill="currentColor">${ICONS[k]}</svg>`;
+
+const OG_EN = ({ w, h }) => page({
+  w, h,
+  extra: `
+  body{background:radial-gradient(circle at 78% 40%, #3B7BFF 0, transparent 48%), linear-gradient(135deg, #1F5FE8 0%, ${NAVY} 72%)}
+  .grid{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.10) 1.2px, transparent 1.3px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0%, #000 55%, #000 100%)}
+  .left{position:absolute;left:64px;top:56px;bottom:50px;width:610px;display:flex;flex-direction:column;direction:ltr;text-align:left}
+  .lockup{display:flex;align-items:center;gap:14px}
+  .lockup img{width:58px}
+  .word{font-weight:700;font-size:40px;letter-spacing:-.02em;line-height:1}
+  .tag{margin-left:6px;padding:5px 12px;border-radius:999px;background:rgba(254,175,4,.16);border:1px solid rgba(254,175,4,.45);color:${GOLD};font-size:14px;font-weight:700;letter-spacing:.06em}
+  h1{margin-top:26px;font-weight:700;font-size:46px;line-height:1.12;letter-spacing:-.025em}
+  h1 .hl{color:${GOLD}}
+  .sub{margin-top:12px;font-size:18.5px;line-height:1.45;color:#C9DBFF;max-width:560px}
+  .feats{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:11px 14px}
+  .f{display:flex;align-items:center;gap:11px;font-size:18px;font-weight:600;color:#EAF2FF;white-space:nowrap}
+  .f i{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:${GOLD};flex:none}
+  .f svg{width:18px;height:18px}
+  .foot{margin-top:20px;display:flex;align-items:center;gap:12px;font-size:17px;font-weight:600;color:#9FC0F5}
+  .foot b{color:#fff;font-weight:700}
+  .foot .sep{width:5px;height:5px;border-radius:50%;background:${GOLD}}
+
+  .stage{position:absolute;right:0;top:0;bottom:0;width:520px}
+  .cv{position:absolute;left:160px;top:64px;width:290px;border-radius:12px;overflow:hidden;transform:rotate(4deg);
+    box-shadow:0 40px 80px -20px rgba(2,8,40,.75), 0 0 0 1px rgba(255,255,255,.25)}
+  .cv img{display:block;width:100%}
+  .card{position:absolute;background:#fff;color:#0F172A;border-radius:16px;padding:14px 16px;direction:ltr;text-align:left;
+    box-shadow:0 24px 50px -16px rgba(2,8,40,.6)}
+  .card small{display:block;font-size:12.5px;font-weight:700;color:#64748B;letter-spacing:.03em;text-transform:uppercase}
+  .score{left:22px;top:150px;display:flex;align-items:center;gap:12px}
+  .ring{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;flex:none;
+    background:conic-gradient(${BRAND} 0 86%, #E2E8F0 86% 100%)}
+  .ring span{width:48px;height:48px;border-radius:50%;background:#fff;display:grid;place-items:center;font-weight:700;font-size:19px;color:${NAVY}}
+  .score b{display:block;font-size:16px;line-height:1.25}
+  .ats{right:24px;top:300px;width:186px}
+  .ats .row{display:flex;align-items:baseline;gap:6px;margin-top:2px}
+  .ats .n{font-size:34px;font-weight:700;color:#059669;line-height:1}
+  .ats .bar{margin-top:8px;height:8px;border-radius:5px;background:#E2E8F0;overflow:hidden}
+  .ats .bar i{display:block;height:100%;width:94%;background:linear-gradient(90deg,#10B981,#059669)}
+  .job{left:22px;bottom:44px;width:372px;display:flex;gap:12px;align-items:center}
+  .job .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,${GOLD},#FB923C);display:grid;place-items:center;color:#fff;font-weight:700;font-size:19px;flex:none}
+  .job b{display:block;font-size:16px;line-height:1.25}
+  .job .m{margin-left:auto;padding:5px 9px;border-radius:999px;background:#DCFCE7;color:#047857;font-size:13px;font-weight:700;white-space:nowrap}
+  .live{right:22px;top:44px;display:flex;align-items:center;gap:9px;padding:10px 14px;background:#0F172A;color:#fff;font-size:14px;font-weight:700}
+  .live i{width:9px;height:9px;border-radius:50%;background:#EF4444;box-shadow:0 0 0 4px rgba(239,68,68,.25)}
+  `,
+  body: `
+  <div class="grid"></div>
+  <div class="glow" style="width:${w * 0.34}px;height:${w * 0.34}px;background:${GOLD};top:${-h * 0.42}px;left:${-w * 0.1}px;opacity:.35"></div>
+  <div class="left">
+    <div class="lockup"><img src="${markSrc}" alt=""><div class="word">Interprova</div><span class="tag">AI CAREER PLATFORM</span></div>
+    <h1>Practise interviews,<br>build your CV and<br><span class="hl">find your next job.</span></h1>
+    <div class="sub">AI mock interviews with instant feedback, a live assistant for real calls, and jobs matched to your CV.</div>
+    <div class="feats">
+      <div class="f"><i>${ic('mic')}</i>AI mock interviews</div>
+      <div class="f"><i>${ic('live')}</i>Live interview assistant</div>
+      <div class="f"><i>${ic('cv')}</i>CV builder · 56 templates</div>
+      <div class="f"><i>${ic('ats')}</i>ATS checker &amp; tailoring</div>
+      <div class="f"><i>${ic('jobs')}</i>Global job search</div>
+      <div class="f"><i>${ic('devices')}</i>Web · Android · Desktop</div>
+    </div>
+    <div class="foot"><b>interprova.com</b><span class="sep"></span>English &amp; Arabic</div>
+  </div>
+  <div class="stage">
+    <div class="cv"><img src="${CV_THUMB}" alt=""></div>
+    <div class="card live"><i></i>Live assistant on</div>
+    <div class="card score"><div class="ring"><span>8.6</span></div><div><small>Interview score</small><b>Clear, structured<br>answers</b></div></div>
+    <div class="card ats"><small>ATS score</small><div class="row"><span class="n">94</span><span style="color:#64748B;font-weight:700">/ 100</span></div><div class="bar"><i></i></div></div>
+    <div class="card job"><div class="logo">N</div><div><b>Senior Software Engineer</b><small style="text-transform:none;letter-spacing:0">Dubai · Full-time</small></div><span class="m">91% match</span></div>
+  </div>`,
+});
+
 const SPLASH = ({ w, h }) => page({
   w, h,
   extra: `
@@ -155,12 +246,12 @@ const SPLASH = ({ w, h }) => page({
  * documented way to force a refetch — it should be rare, and each bump costs
  * the preview on links shared before it.
  */
-const OG_CARD = 'landing/og-image-v2.png';
-/** Kept in step with OG_CARD so old links resolve to the corrected card. */
-const OG_ALIAS = 'landing/og-image.png';
+const OG_CARD = 'landing/og-image-v3.png';
+/** Kept in step with OG_CARD, so links shared before each bump show the current card. */
+const OG_ALIASES = ['landing/og-image.png', 'landing/og-image-v2.png'];
 
 const shots = [
-  { name: OG_CARD,                            w: 1200, h: 630,  html: OG,     scale: 1 },
+  { name: OG_CARD,                            w: 1200, h: 630,  html: OG_EN,  scale: 1 },
   { name: 'store-assets/feature-graphic.png', w: 1024, h: 500,  html: OG,     scale: 1 },
   { name: 'mobile/assets/splash.png',         w: 621,  h: 1344, html: SPLASH, scale: 2 },
 ];
@@ -188,7 +279,9 @@ await browser.close();
 
 // The alias is a copy, not a symlink: the deploy tars the tree and a link
 // would either be followed (duplicating anyway) or arrive broken.
-fs.copyFileSync(path.join(ROOT, OG_CARD), path.join(ROOT, OG_ALIAS));
-console.log(`  ${OG_ALIAS}  (alias of ${path.basename(OG_CARD)}, for links already shared)`);
+for (const alias of OG_ALIASES) {
+  fs.copyFileSync(path.join(ROOT, OG_CARD), path.join(ROOT, alias));
+  console.log(`  ${alias}  (alias of ${path.basename(OG_CARD)}, for links already shared)`);
+}
 
 console.log('done');

@@ -11,8 +11,8 @@
 import { sanitizeCv } from './cv.js';
 
 const NAMES = {
-  en: ['Sara Ahmed', 'Omar Hassan', 'Lina Haddad', 'Youssef Karim', 'Maya Nasser', 'Adam Saleh', 'Nour Khalil', 'Karim Mansour', 'Hana Farouk', 'Ali Rahman'],
-  ar: ['سارة أحمد', 'عمر حسن', 'لينا حداد', 'يوسف كريم', 'مايا ناصر', 'آدم صالح', 'نور خليل', 'كريم منصور', 'هنا فاروق', 'علي رحمن'],
+  en: ['Emma Carter', 'James Walker', 'Sophie Martin', 'Lucas Bennett', 'Olivia Hayes', 'Daniel Brooks', 'Chloe Anderson', 'Ethan Clarke', 'Mia Thompson', 'Noah Fischer'],
+  ar: ['إيما كارتر', 'جيمس ووكر', 'صوفي مارتن', 'لوكاس بينيت', 'أوليفيا هايز', 'دانيال بروكس', 'كلوي أندرسون', 'إيثان كلارك', 'ميا طومسون', 'نوح فيشر'],
 };
 const CITIES = {
   en: ['Dubai, UAE', 'Riyadh, Saudi Arabia', 'Doha, Qatar', 'London, UK', 'Berlin, Germany', 'Amman, Jordan', 'Toronto, Canada', 'Casablanca, Morocco'],

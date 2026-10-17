@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { takeCvIntent } from '../../navigation/webEntry';
 
 import { authFetch } from '../../api/client';
 import { useAppTheme } from '../../theme/useTheme';
@@ -22,6 +24,7 @@ const CV_TYPES = [
   'text/plain',
 ];
 const MAX_BYTES = 4 * 1024 * 1024;
+const TEMPLATE_KEY = 'career.cv.template';
 const COUNTRIES = ['AE', 'SA', 'EG', 'QA', 'KW', 'BH', 'OM', 'JO', 'MA', 'GB', 'DE', 'NL', 'FR', 'IE', 'US', 'CA', 'AU', 'SG'];
 
 type Exp = CvData['experience'][number];
@@ -58,7 +61,14 @@ export function CvBuilderScreen({ navigation }: any) {
   const [tips, setTips] = useState<Record<number, string[]>>({});
   const [message, setMessage] = useState<{ text: string; tone: 'success' | 'danger' } | null>(null);
   const [needsTopUp, setNeedsTopUp] = useState(false);
-  const [template, setTemplate] = useState<Template>('modern');
+  /** A template picked in the site's gallery ("use this design"), if that is how we got here. */
+  const [intent, setIntent] = useState(() => takeCvIntent());
+  const [template, setTemplateState] = useState<Template>(intent?.template || 'modern');
+  /** The chosen design is remembered on this device, so the download keeps it next time. */
+  const setTemplate = useCallback((id: Template) => {
+    setTemplateState(id);
+    AsyncStorage.setItem(TEMPLATE_KEY, id).catch(() => {});
+  }, []);
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [roles, setRoles] = useState<ExampleRole[]>([]);
   const [loadingExample, setLoadingExample] = useState<string | null>(null);
@@ -69,6 +79,11 @@ export function CvBuilderScreen({ navigation }: any) {
   const [tplFilter, setTplFilter] = useState<'all' | 'ats' | 'photo' | string>('all');
   const [photoNote, setPhotoNote] = useState<{ text: string; tone: 'success' | 'danger' } | null>(null);
   const refreshFree = useCallback(() => { careerApi.freeUses().then(setFreeUses).catch(() => {}); }, []);
+  useEffect(() => {
+    if (intent) AsyncStorage.setItem(TEMPLATE_KEY, intent.template).catch(() => {});
+    else AsyncStorage.getItem(TEMPLATE_KEY).then((v) => { if (v) setTemplateState(v); }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     careerApi.templates().then(setTemplates)
       .catch(() => setTemplates(TEMPLATES.map((id) => ({ id, nameEn: id, nameAr: id, descEn: '', descAr: '' }))));
@@ -161,10 +176,10 @@ export function CvBuilderScreen({ navigation }: any) {
     setExampleLabel('');
   }, [beforeExample, fill, targetTitle, targetCountry, openToRemote]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<boolean> => {
     const data = collect();
-    if (!data) return;
-    if (!data.basics.name.trim()) { setMessage({ text: t('career.cv.nameRequired'), tone: 'danger' }); return; }
+    if (!data) return false;
+    if (!data.basics.name.trim()) { setMessage({ text: t('career.cv.nameRequired'), tone: 'danger' }); return false; }
     setSaving(true);
     setMessage(null);
     try {
@@ -173,14 +188,17 @@ export function CvBuilderScreen({ navigation }: any) {
       setBeforeExample(null);
       setExampleLabel('');
       setMessage({ text: t('career.cv.savedOk'), tone: 'success' });
+      return true;
     } catch (e) {
       setMessage({ text: describe(e).message, tone: 'danger' });
+      return false;
     } finally {
       setSaving(false);
     }
   }, [collect, targetTitle, targetCountry, openToRemote, fill, t, describe]);
 
   const importFile = useCallback(async () => {
+    setIntent(null);
     setMessage(null);
     setNeedsTopUp(false);
     const res = await DocumentPicker.getDocumentAsync({ type: CV_TYPES, copyToCacheDirectory: true, multiple: false }).catch(() => null);
@@ -237,13 +255,15 @@ export function CvBuilderScreen({ navigation }: any) {
     }
   }, [bulletsText, cv, i18n.language, describe, refreshBalance, refreshFree]);
 
-  const download = useCallback(async (format: 'pdf' | 'docx') => {
+  /** Save the form first, so the file is exactly what is on screen, in the chosen design. */
+  const download = useCallback(async (format: 'pdf' | 'docx' | 'html') => {
+    if (!(await save())) return;
     try {
       await openDownload({ format, template, language: i18n.language === 'ar' ? 'ar' : 'en' });
     } catch (e) {
       setMessage({ text: describe(e).message, tone: 'danger' });
     }
-  }, [i18n.language, describe, template]);
+  }, [i18n.language, describe, template, save]);
 
   if (!cv) {
     return <Screen contentStyle={{ paddingTop: theme.spacing.lg, gap: theme.spacing.md }}><SkeletonCard /><SkeletonCard height={240} /></Screen>;
@@ -258,6 +278,50 @@ export function CvBuilderScreen({ navigation }: any) {
       keyboardAvoiding
       contentStyle={{ paddingTop: theme.spacing.lg, gap: theme.spacing.xl, paddingBottom: theme.spacing['3xl'] }}
     >
+      {(() => {
+        const tp = templates.find((x) => x.id === template);
+        const name = tp ? (ar ? tp.nameAr : tp.nameEn) : template;
+        return (
+          <Card padding="lg" variant={intent ? 'filled' : 'outlined'}>
+            <View style={[styles.row, { gap: theme.spacing.md, alignItems: 'flex-start' }]}>
+              <Image
+                source={{ uri: templateThumbUrl(template, ar ? 'ar' : 'en') }}
+                accessibilityIgnoresInvertColors
+                style={{ width: 84, aspectRatio: 480 / 679, borderRadius: theme.radii.sm, backgroundColor: '#fff', borderWidth: theme.layout.hairline, borderColor: theme.colors.border }}
+              />
+              <View style={[styles.grow, { gap: theme.spacing.xxs }]}>
+                <Text role="micro" weight="bold" tone="primary">{t('career.cv.designLabel')}</Text>
+                <Text role="h4" weight="bold">{intent ? t('career.cv.designStart', { name }) : name}</Text>
+                <Text role="bodySm" tone="secondary">{intent ? t('career.cv.designHow') : t('career.cv.designBody')}</Text>
+              </View>
+            </View>
+            {intent ? (
+              <View style={[styles.row, { gap: theme.spacing.sm, marginTop: theme.spacing.md, flexWrap: 'wrap' }]}>
+                <View style={styles.grow}>
+                  <Button title={importing ? t('career.cv.importing') : t('career.cv.designUpload')} loading={importing} onPress={importFile} fullWidth
+                    iconLeft={<Ionicons name="cloud-upload-outline" size={18} color={theme.colors.textOnBrand} />} />
+                </View>
+                <View style={styles.grow}>
+                  <Button title={t('career.cv.designManual')} variant="outline" onPress={() => setIntent(null)} fullWidth
+                    iconLeft={<Ionicons name="create-outline" size={18} color={theme.colors.primary} />} />
+                </View>
+              </View>
+            ) : (
+              <View style={[styles.row, { gap: theme.spacing.sm, marginTop: theme.spacing.md }]}>
+                <View style={styles.grow}>
+                  <Button title={t('career.cv.designPdf')} size="sm" onPress={() => download('pdf')} fullWidth loading={saving}
+                    iconLeft={<Ionicons name="download-outline" size={16} color={theme.colors.textOnBrand} />} />
+                </View>
+                <View style={styles.grow}>
+                  <Button title={t('career.cv.designView')} size="sm" variant="outline" onPress={() => download('html')} fullWidth
+                    iconLeft={<Ionicons name="eye-outline" size={16} color={theme.colors.primary} />} />
+                </View>
+              </View>
+            )}
+          </Card>
+        );
+      })()}
+
       <Card padding="lg" variant="filled">
         <View style={[styles.row, { gap: theme.spacing.sm }]}>
           <Text role="h4" weight="bold" flex>{t('career.cv.importTitle')}</Text>
