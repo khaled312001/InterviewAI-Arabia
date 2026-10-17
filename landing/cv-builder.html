@@ -307,7 +307,7 @@
          aria-label="حمّل التطبيق من Google Play" data-aria-en="Get the app on Google Play">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-googleplay"/></svg>
       </a>
-      <a class="btn btn-ghost btn-sm" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
+      <a class="btn btn-ghost btn-sm" href="/app?login=1&amp;open=dashboard"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
       <a class="btn btn-primary btn-sm" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
       <!-- The phone's only route to the other thirteen pages. `.nav` above is
            display:none under 1080px and nothing replaced it, so every visitor
@@ -353,7 +353,7 @@
       <!-- Repeated here because .hdr-tools hides the login link under 520px:
            without this, a phone had a "start free" button and no way to sign
            back IN to an account it already had. -->
-      <a class="btn btn-ghost" href="/app"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
+      <a class="btn btn-ghost" href="/app?login=1&amp;open=dashboard"><span data-l="ar">تسجيل الدخول</span><span data-l="en">Log in</span></a>
       <a class="btn btn-primary" href="/app?signup=1"><span data-l="ar">ابدأ مجاناً</span><span data-l="en">Start free</span></a>
 
       <!-- The drawer is a phone's menu, and a phone is where an install
@@ -479,7 +479,7 @@
       <li class="reveal"><div><h3><span data-l="en">Polish each section</span><span data-l="ar">حسّن كل قسم</span></h3>
         <p><span data-l="en">Edit roles, dates and bullet points. "Improve with AI" suggests stronger wording for the bullets you pick — you accept or ignore each one.</span><span data-l="ar">عدّل الوظائف والتواريخ والنقاط. «حسّن بالذكاء الاصطناعي» يقترح صياغة أقوى للنقاط التي تختارها — تقبل كل اقتراح أو تتجاهله.</span></p></div></li>
       <li class="reveal"><div><h3><span data-l="en">Pick a template and a language</span><span data-l="ar">اختر قالباً ولغة</span></h3>
-        <p><span data-l="en">Ten ATS-safe templates; section headings in English, Arabic, German, French or Spanish.</span><span data-l="ar">عشرة قوالب متوافقة مع ATS؛ وعناوين الأقسام بالإنجليزية أو العربية أو الألمانية أو الفرنسية أو الإسبانية.</span></p></div></li>
+        <p><span data-l="en">Over fifty templates — plain ATS-first to illustrated and photo designs; section headings in English, Arabic, German, French or Spanish.</span><span data-l="ar">أكثر من خمسين قالبًا — من البسيط المتوافق مع ATS إلى المرسوم وبصورة شخصية؛ وعناوين الأقسام بالإنجليزية أو العربية أو الألمانية أو الفرنسية أو الإسبانية.</span></p></div></li>
       <li class="reveal" id="tailor"><div><h3><span data-l="en">Tailor it to a job</span><span data-l="ar">خصّصها لوظيفة</span></h3>
         <p><span data-l="en">From any job on the board — or a description you paste — get a version written for that role, its ATS score before and after, and the skills the job asks for that your CV doesn't show.</span><span data-l="ar">من أي وظيفة على لوحة الوظائف — أو وصف تلصقه — احصل على نسخة مكتوبة لهذا الدور، ودرجة ATS قبل وبعد، والمهارات المطلوبة التي لا تُظهرها سيرتك.</span></p></div></li>
       <li class="reveal"><div><h3><span data-l="en">Add a cover letter</span><span data-l="ar">أضف خطاب تقديم</span></h3>
@@ -494,12 +494,13 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <div class="kicker"><span data-l="en">Templates</span><span data-l="ar">القوالب</span></div>
-      <h2><span data-l="en">Ten looks, one rule: parsers can read them</span><span data-l="ar">عشرة أشكال وقاعدة واحدة: الأنظمة تقرؤها</span></h2>
+      <h2><span data-l="en">Over fifty designs — and parsers can still read them</span><span data-l="ar">أكثر من خمسين تصميمًا — وما زالت الأنظمة تقرؤها</span></h2>
       <p>
-        <span data-l="en">Every template is a single column of real text with conventional headings — no tables for layout, no text in images, no icons standing in for words. They differ only in typography and colour.</span>
-        <span data-l="ar">كل قالب عمود واحد من نص حقيقي بعناوين معتادة — بلا جداول للتنسيق، ولا نص داخل صور، ولا أيقونات بدل الكلمات. الفرق بينها في الخطوط والألوان فقط.</span>
+        <span data-l="en">From plain one-column pages to illustrated, infographic and photo layouts. Whatever the look, the text is real text in reading order with conventional headings — charts are drawn from your real dates, never invented skill percentages. Filter by “ATS-first” for the plainest.</span>
+        <span data-l="ar">من صفحات بسيطة بعمود واحد إلى تصميمات برسومات وإنفوجرافيك وصورة شخصية. مهما كان الشكل، النص حقيقي ومرتب بعناوين معتادة — والرسوم البيانية من تواريخك الحقيقية، لا نسب مهارات مخترعة. اختر "متوافق مع ATS" للأبسط.</span>
       </p>
     </div>
+    <div class="ex-chips tg-filter" id="tg-filter" hidden></div>
     <div class="tg-grid" id="tg-grid">
       <article class="tg-card" data-tpl="classic">
         <a class="tg-thumb" href="/api/career/templates/classic/preview?lang=en" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"><div class="tpl-page" style="--acc:#111827" aria-hidden="true"><i class="h" style="background:#111827;margin-inline:auto"></i><i style="--w:45%;margin-inline:auto"></i><i class="s"></i><i></i><i style="--w:90%"></i><i style="--w:70%"></i><i class="s"></i><i style="--w:80%"></i><i></i><i style="--w:60%"></i><i class="s"></i><i></i><i style="--w:85%"></i><i style="--w:65%"></i></div></a>
@@ -726,12 +727,39 @@
     var x = (tpls || []).filter(function (p) { return p.id === id; })[0];
     return x ? t(x.nameAr, x.nameEn) : id.charAt(0).toUpperCase() + id.slice(1);
   }
+  function thumbUrl(id) { return '/shots/cv/' + encodeURIComponent(id) + '-' + (lang() === 'ar' ? 'ar' : 'en') + '.webp'; }
   function syncGallery() {
     [].forEach.call(grid.querySelectorAll('.tg-card'), function (c) {
       var u = previewUrl(c.dataset.tpl);
       [].forEach.call(c.querySelectorAll('a.tg-thumb, a.tg-prev'), function (a) { a.href = u; });
-      if (tpls) frame(c.querySelector('.tg-thumb'), u);
+      var img = c.querySelector('.tg-thumb > img');
+      if (img && img.getAttribute('src') !== thumbUrl(c.dataset.tpl)) img.setAttribute('src', thumbUrl(c.dataset.tpl));
     });
+  }
+  /* Filters: all, the plainest (ATS-first), with a photo, then each category. */
+  var filterBox = $('tg-filter'), tplFilter = 'all';
+  function applyFilter() {
+    [].forEach.call(grid.querySelectorAll('.tg-card'), function (c) {
+      var p = (tpls || []).filter(function (x) { return x.id === c.dataset.tpl; })[0] || {};
+      c.hidden = !(tplFilter === 'all' || (tplFilter === 'ats' ? p.ats === 'best' : tplFilter === 'photo' ? p.photo : p.category === tplFilter));
+    });
+    [].forEach.call(filterBox.querySelectorAll('.ex-chip'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.f === tplFilter)); });
+  }
+  function buildFilters() {
+    var cats = [], seen = {};
+    tpls.forEach(function (p) { if (p.category && !seen[p.category]) { seen[p.category] = 1; cats.push(p); } });
+    var items = [['all', 'All', 'الكل'], ['ats', 'ATS-first', 'متوافق مع ATS'], ['photo', 'With photo', 'بصورة شخصية']]
+      .concat(cats.map(function (p) { return [p.category, p.categoryEn || p.category, p.categoryAr || p.category]; }));
+    filterBox.innerHTML = items.map(function (x) {
+      return '<button type="button" class="ex-chip" data-f="' + esc(x[0]) + '" aria-pressed="false"><span data-l="en">' + esc(x[1]) + '</span><span data-l="ar">' + esc(x[2]) + '</span></button>';
+    }).join('');
+    filterBox.hidden = false;
+    filterBox.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.ex-chip') : null;
+      if (!b) return;
+      tplFilter = b.dataset.f; applyFilter();
+    });
+    applyFilter();
   }
   getJson('/api/career/templates').then(function (d) {
     if (!d || !d.templates || !d.templates.length) return;
@@ -744,13 +772,14 @@
     grid.innerHTML = tpls.map(function (p) {
       var u = esc(previewUrl(p.id));
       return '<article class="tg-card" data-tpl="' + esc(p.id) + '">' +
-        '<a class="tg-thumb" href="' + u + '" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">' + (mocks[p.id] || fallbackMock) + '</a>' +
+        '<a class="tg-thumb" href="' + u + '" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">' + (mocks[p.id] || fallbackMock) + '<img src="' + esc(thumbUrl(p.id)) + '" alt="" loading="lazy" decoding="async"></a>' +
         '<div class="tg-body"><h3><span data-l="en">' + esc(p.nameEn) + '</span><span data-l="ar">' + esc(p.nameAr) + '</span></h3>' +
         '<p><span data-l="en">' + esc(p.descEn) + '</span><span data-l="ar">' + esc(p.descAr) + '</span></p>' +
         '<a class="tg-prev" href="' + u + '" target="_blank" rel="noopener"><span data-l="en">Preview ↗</span><span data-l="ar">معاينة ↗</span></a></div>' +
         '</article>';
     }).join('');
     syncGallery();
+    buildFilters();
     if (ex.role) showExample(ex.role, ex.tpl, false);
   }).catch(function () { syncGallery(); });
 

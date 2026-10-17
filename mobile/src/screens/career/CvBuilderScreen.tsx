@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Switch, ScrollView, Pressable, Platform } from 'react-native';
+import { View, Switch, ScrollView, Pressable, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 import { authFetch } from '../../api/client';
 import { useAppTheme } from '../../theme/useTheme';
 import { Screen, Text, Card, Button, Input, SectionHeader, SkeletonCard, Badge } from '../../components';
 import { useBalance } from '../../store/balance';
 import {
-  careerApi, openDownload, openExternal, countryName, emptyCv, errorKind, templatePreviewUrl, TEMPLATES,
+  careerApi, openDownload, openExternal, countryName, emptyCv, errorKind, templatePreviewUrl, templateThumbUrl, TEMPLATES,
   type CvData, type CareerProfile, type Template, type TemplateInfo, type ExampleRole, type FreeTool,
 } from './careerApi';
 import { Chip, useCareerError, styles } from './careerUi';
@@ -21,29 +23,6 @@ const CV_TYPES = [
 ];
 const MAX_BYTES = 4 * 1024 * 1024;
 const COUNTRIES = ['AE', 'SA', 'EG', 'QA', 'KW', 'BH', 'OM', 'JO', 'MA', 'GB', 'DE', 'NL', 'FR', 'IE', 'US', 'CA', 'AU', 'SG'];
-
-/** Each template's accent, for the swatch on its card (matches services/career/template.js). */
-const ACCENT: Record<Template, string> = {
-  classic: '#111827', modern: '#1A56E8', compact: '#0F172A', executive: '#7C2D12', elegant: '#92400E',
-  minimal: '#9CA3AF', tech: '#0F766E', bold: '#1E293B', creative: '#6D28D9', emerald: '#047857',
-};
-
-/** A live, scaled-down render of the template — web only; native shows the swatch. */
-function TemplateThumb({ id, lang }: { id: Template; lang: string }) {
-  if (Platform.OS !== 'web') return null;
-  return React.createElement(
-    'div',
-    { style: { width: 132, height: 168, overflow: 'hidden', borderRadius: 8, background: '#fff', pointerEvents: 'none' } },
-    React.createElement('iframe', {
-      src: templatePreviewUrl(id, lang),
-      title: id,
-      loading: 'lazy',
-      tabIndex: -1,
-      'aria-hidden': true,
-      style: { width: 820, height: 1044, border: 0, transform: 'scale(0.161)', transformOrigin: '0 0' },
-    }),
-  );
-}
 
 type Exp = CvData['experience'][number];
 type Edu = CvData['education'][number];
@@ -87,6 +66,8 @@ export function CvBuilderScreen({ navigation }: any) {
   const [exampleLabel, setExampleLabel] = useState('');
   const [freeUses, setFreeUses] = useState<Partial<Record<FreeTool, boolean>>>({});
   const ar = i18n.language === 'ar';
+  const [tplFilter, setTplFilter] = useState<'all' | 'ats' | 'photo' | string>('all');
+  const [photoNote, setPhotoNote] = useState<{ text: string; tone: 'success' | 'danger' } | null>(null);
   const refreshFree = useCallback(() => { careerApi.freeUses().then(setFreeUses).catch(() => {}); }, []);
   useEffect(() => {
     careerApi.templates().then(setTemplates)
@@ -114,6 +95,25 @@ export function CvBuilderScreen({ navigation }: any) {
 
   const setBasics = (k: keyof CvData['basics'], v: string) =>
     setCv((c) => (c ? { ...c, basics: { ...c.basics, [k]: v } } : c));
+  /** Pick a photo, crop it square and shrink it to 400px JPEG before it goes into the CV. */
+  const pickPhoto = useCallback(async () => {
+    setPhotoNote(null);
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 1 });
+      if (res.canceled || !res.assets?.[0]) return;
+      const a = res.assets[0];
+      const side = Math.min(a.width || 400, a.height || 400);
+      const actions = a.width && a.height && a.width !== a.height
+        ? [{ crop: { originX: (a.width - side) / 2, originY: (a.height - side) / 2, width: side, height: side } }, { resize: { width: 400 } }]
+        : [{ resize: { width: 400 } }];
+      const out = await manipulateAsync(a.uri, actions, { compress: 0.72, format: SaveFormat.JPEG, base64: true });
+      if (!out.base64) throw new Error('no data');
+      setCv((c) => (c ? { ...c, basics: { ...c.basics, photo: `data:image/jpeg;base64,${out.base64}` } } : c));
+      setPhotoNote({ text: t('career.cv.photoAdded'), tone: 'success' });
+    } catch {
+      setPhotoNote({ text: t('career.cv.photoFailed'), tone: 'danger' });
+    }
+  }, [t]);
   const setExp = (i: number, patch: Partial<Exp>) =>
     setCv((c) => (c ? { ...c, experience: c.experience.map((e, j) => (j === i ? { ...e, ...patch } : e)) } : c));
   const setEdu = (i: number, patch: Partial<Edu>) =>
@@ -414,8 +414,13 @@ export function CvBuilderScreen({ navigation }: any) {
       <View style={gap}>
         <SectionHeader title={t('career.cv.templatesTitle')} />
         <Text role="bodySm" tone="secondary">{t('career.cv.templatesBody')}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs }}>
+          {[['all', t('career.cv.tplAll')], ['ats', t('career.cv.tplAts')], ['photo', t('career.cv.tplPhoto')],
+            ...Array.from(new Map(templates.filter((x) => x.category).map((x) => [x.category as string, (ar ? x.categoryAr : x.categoryEn) || x.category as string])).entries())]
+            .map(([k, label]) => <Chip key={k} label={label} active={tplFilter === k} onPress={() => setTplFilter(k)} />)}
+        </ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.md, paddingVertical: theme.spacing.xs }}>
-          {templates.map((tp) => {
+          {templates.filter((tp) => tplFilter === 'all' || (tplFilter === 'ats' ? tp.ats === 'best' : tplFilter === 'photo' ? tp.photo : tp.category === tplFilter)).map((tp) => {
             const on = tp.id === template;
             return (
               <Pressable
@@ -430,16 +435,15 @@ export function CvBuilderScreen({ navigation }: any) {
                   backgroundColor: theme.colors.surface,
                 }}
               >
-                {Platform.OS === 'web' ? <TemplateThumb id={tp.id} lang={ar ? 'ar' : 'en'} /> : (
-                  <View style={{ height: 96, borderRadius: theme.radii.md, backgroundColor: '#fff', padding: 10, gap: 5 }}>
-                    <View style={{ height: 10, width: '60%', borderRadius: 3, backgroundColor: ACCENT[tp.id] }} />
-                    <View style={{ height: 2, backgroundColor: ACCENT[tp.id], opacity: 0.5 }} />
-                    {[90, 75, 82, 60].map((w) => <View key={w} style={{ height: 5, width: `${w}%`, borderRadius: 2, backgroundColor: '#D1D5DB' }} />)}
-                  </View>
-                )}
+                <Image
+                  source={{ uri: templateThumbUrl(tp.id, ar ? 'ar' : 'en') }}
+                  accessibilityIgnoresInvertColors
+                  style={{ width: '100%', aspectRatio: 480 / 679, borderRadius: theme.radii.md, backgroundColor: '#fff', borderWidth: theme.layout.hairline, borderColor: theme.colors.border }}
+                />
                 <View style={[styles.row, { gap: theme.spacing.xs }]}>
-                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ACCENT[tp.id] }} />
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: tp.accent || theme.colors.primary }} />
                   <Text role="bodySm" weight="bold" flex numberOfLines={1}>{ar ? tp.nameAr : tp.nameEn}</Text>
+                  {tp.photo ? <Ionicons name="person-circle-outline" size={15} color={theme.colors.textSecondary} /> : null}
                   {on ? <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} /> : null}
                 </View>
                 <Text role="micro" tone="muted" numberOfLines={2}>{ar ? tp.descAr : tp.descEn}</Text>
@@ -450,6 +454,31 @@ export function CvBuilderScreen({ navigation }: any) {
             );
           })}
         </ScrollView>
+        {templates.find((x) => x.id === template)?.photo ? (
+          <Card>
+            <View style={[styles.row, { gap: theme.spacing.md }]}>
+              {cv.basics.photo ? (
+                <Image source={{ uri: cv.basics.photo }} style={{ width: 64, height: 64, borderRadius: 32 }} accessibilityIgnoresInvertColors />
+              ) : (
+                <View style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderStyle: 'dashed', borderColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="camera-outline" size={26} color={theme.colors.primary} />
+                </View>
+              )}
+              <View style={[styles.grow, { gap: 2 }]}>
+                <Text role="bodySm" weight="bold">{t('career.cv.photoTitle')}</Text>
+                <Text role="micro" tone="secondary">{t('career.cv.photoBody')}</Text>
+              </View>
+            </View>
+            <View style={[styles.row, { gap: theme.spacing.sm, marginTop: theme.spacing.md }]}>
+              <View style={styles.grow}>
+                <Button title={cv.basics.photo ? t('career.cv.photoChange') : t('career.cv.photoUpload')} size="sm" onPress={pickPhoto} fullWidth
+                  iconLeft={<Ionicons name="image-outline" size={16} color={theme.colors.textOnBrand} />} />
+              </View>
+              {cv.basics.photo ? <Button title={t('career.cv.photoRemove')} size="sm" variant="ghost" onPress={() => setBasics('photo', '')} /> : null}
+            </View>
+            {photoNote ? <Text role="micro" tone={photoNote.tone} style={{ marginTop: theme.spacing.xs }}>{photoNote.text}</Text> : null}
+          </Card>
+        ) : null}
       </View>
 
       <View style={gap}>

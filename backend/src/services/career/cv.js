@@ -14,6 +14,10 @@ import { canonicalSkills, extractSkills } from '../jobs/skills.js';
 const str = (v, max = 300) => (typeof v === 'string' ? v : v == null ? '' : String(v)).replace(/\s+/g, ' ').trim().slice(0, max);
 const longStr = (v, max = 2000) => (typeof v === 'string' ? v : v == null ? '' : String(v)).replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const arr = (v, max) => (Array.isArray(v) ? v.slice(0, max) : []);
+/** A profile photo: only a small JPEG/PNG/WebP data URL (the app resizes it to ~400px before saving). */
+const PHOTO_MAX = 300_000;
+const photo = (v) => (typeof v === 'string' && v.length <= PHOTO_MAX && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/.test(v) ? v : '');
+
 const url = (v) => {
   const s = str(v, 300);
   if (!s) return '';
@@ -39,7 +43,7 @@ export function normDate(v) {
 
 export function emptyCv() {
   return {
-    basics: { name: '', headline: '', email: '', phone: '', location: '', links: [], summary: '' },
+    basics: { name: '', headline: '', email: '', phone: '', location: '', links: [], summary: '', photo: '' },
     experience: [],
     education: [],
     skills: [],
@@ -64,6 +68,7 @@ export function sanitizeCv(input) {
         .map((l) => (typeof l === 'string' ? { label: '', url: url(l) } : { label: str(l?.label, 40), url: url(l?.url) }))
         .filter((l) => l.url),
       summary: longStr(b.summary, 1200),
+      photo: photo(b.photo),
     },
     experience: arr(d.experience, 15).map((e) => ({
       title: str(e?.title, 160),

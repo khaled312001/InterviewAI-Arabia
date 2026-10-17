@@ -77,6 +77,13 @@ const PINNED = new Set([
   'logo-mark.png', 'logo-mark-ondark.png', 'logo-horizontal.png',
 ]);
 
+/**
+ * Folders whose files are addressed by a computed name rather than from markup:
+ * the CV template thumbnails are `shots/cv/<template>-<lang>.webp`, built from
+ * the template id by the site's script and by the app. A hash there would 404.
+ */
+const PINNED_DIRS = ['shots/cv/'];
+
 /** Where references live. Rewriting only these is why .html keeps its name. */
 const REWRITE_IN = new Set(['.html', '.css', '.webmanifest', '.xml', '.txt']);
 
@@ -137,6 +144,7 @@ const isHashable = (rel) => {
   const ext = path.extname(rel).toLowerCase();
   return HASHED.has(ext)
     && !PINNED.has(path.basename(rel))
+    && !PINNED_DIRS.some((d) => rel.startsWith(d))
     // Already carries a hash (an upstream bundler's, or a re-run of this script).
     && !/\.[0-9a-f]{8,}\.[a-z0-9]+$/i.test(rel);
 };

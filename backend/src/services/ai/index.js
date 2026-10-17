@@ -458,7 +458,8 @@ export async function tailorCv({ cv, job, cvLanguage = 'en', uiLanguage = 'en', 
       content: [
         `CV language: ${langName(cvLanguage)}. Interface language: ${langName(uiLanguage)}.`,
         jobBlock(job),
-        `<cv>${fence(JSON.stringify(original), 20000)}</cv>`,
+        // The photo is not text to rewrite; lockFacts keeps it from the original.
+        `<cv>${fence(JSON.stringify({ ...original, basics: { ...original.basics, photo: undefined } }), 20000)}</cv>`,
       ].join('\n'),
     }],
     schema: TAILOR_SCHEMA,

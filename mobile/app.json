@@ -122,7 +122,9 @@
           "imageWidth": 150,
           "resizeMode": "contain",
           "backgroundColor": "#2D73FD",
-          "dark": { "backgroundColor": "#2D73FD" }
+          "dark": {
+            "backgroundColor": "#2D73FD"
+          }
         }
       ],
       [
@@ -135,7 +137,15 @@
       ],
       "expo-web-browser",
       "./plugins/withAndroidHardwareFeatures",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Interprova uses your photo only for the photo on your CV.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "https://interprova.com/api",

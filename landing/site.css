@@ -121,7 +121,7 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 }
 body{
   margin:0;font-family:var(--font);background:var(--bg);color:var(--text);
-  line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden;
+  line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden;overflow-x:clip;
 }
 img,svg{max-width:100%;height:auto;display:block}
 a{color:inherit;text-decoration:none}
@@ -142,8 +142,8 @@ html[lang="ar"] body{font-family:var(--font-ar)}
 html[lang="ar"] [data-l="ar"]{display:revert}
 html[lang="en"] [data-l="en"]{display:revert}
 
-.skip{position:absolute;inset-inline-start:-9999px;top:0;background:var(--primary-solid);color:#fff;padding:12px 20px;z-index:200;border-radius:0 0 var(--r-md) 0}
-.skip:focus{inset-inline-start:0}
+.skip{position:absolute;inset-inline-start:0;top:0;transform:translateY(-110%);background:var(--primary-solid);color:#fff;padding:12px 20px;z-index:200;border-radius:0 0 var(--r-md) 0}
+.skip:focus{transform:none}
 
 .wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:var(--sp-5)}
 .section{padding-block:var(--sp-24)}
@@ -1605,6 +1605,10 @@ html[lang="ar"] .cvdoc{font-family:var(--font-ar)}
 .desk-win{aspect-ratio:16/11}.desk-tile{padding-bottom:20px}.desk-tile b{width:46px;height:46px;font-size:17px}
 .hp-screen .live-dot{color:#EF4444}
 
+/* Phones: nothing may push the page sideways (animations start offset,
+   decorations bleed). clip, unlike hidden, keeps position:sticky working. */
+html{overflow-x:clip}
+
 /* ── CV builder: live template gallery, examples, free-first-use note ───────
       Thumbnails are the real preview page rendered at 826px and scaled to the
       card by --tg-s (set from script); the drawn .tpl-page underneath is what
@@ -1619,6 +1623,10 @@ html[lang="ar"] .cvdoc{font-family:var(--font-ar)}
 .tg-thumb > iframe{position:absolute;top:0;left:0;width:826px;height:1100px;border:0;background:#E5E7EB;
   transform:scale(var(--tg-s));transform-origin:0 0;pointer-events:none;opacity:0}
 .tg-thumb.loaded > iframe{opacity:1}
+.tg-card .tg-thumb{aspect-ratio:480/679}
+.tg-thumb > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.tg-card[hidden]{display:none}
+.tg-filter{margin-bottom:var(--sp-6)}
 .tg-body{display:grid;gap:4px;align-content:start;flex:1;padding:12px 4px 2px}
 .tg-body > h3{margin:0;font-size:15.5px;font-weight:800}
 .tg-body > p{margin:0;color:var(--text-3);font-size:13px;line-height:1.55}

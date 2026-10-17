@@ -16,8 +16,9 @@ export type AppStatus = 'saved' | 'applied' | 'screening' | 'interview' | 'offer
 export const APP_STATUSES: AppStatus[] = ['saved', 'applied', 'screening', 'interview', 'offer', 'accepted', 'rejected', 'withdrawn'];
 export const CV_LANGUAGES = ['en', 'ar', 'de', 'fr', 'es'] as const;
 export type CvLanguage = (typeof CV_LANGUAGES)[number];
-export const TEMPLATES = ['classic', 'modern', 'compact', 'executive', 'elegant', 'minimal', 'tech', 'bold', 'creative', 'emerald'] as const;
-export type Template = (typeof TEMPLATES)[number];
+/** The offline fallback; the server's /career/templates is the real list (it grows). */
+export const TEMPLATES: readonly string[] = ['classic', 'modern', 'compact', 'executive', 'elegant', 'minimal', 'tech', 'bold', 'creative', 'emerald'];
+export type Template = string;
 
 export interface Skill { key: string; label: string }
 
@@ -56,7 +57,12 @@ export interface SearchResult {
   checkedAt?: string;
 }
 
-export interface TemplateInfo { id: Template; nameEn: string; nameAr: string; descEn: string; descAr: string }
+export interface TemplateInfo {
+  id: Template; nameEn: string; nameAr: string; descEn: string; descAr: string;
+  accent?: string; category?: string; categoryEn?: string; categoryAr?: string;
+  /** The design has a photo circle — the builder asks for a photo. */
+  photo?: boolean; ats?: 'best' | 'good'; columns?: number;
+}
 export interface ExampleRole { id: string; labelEn: string; labelAr: string }
 
 /** AI tools whose first use is still free for this account. */
@@ -101,7 +107,7 @@ export interface AtsReport {
 }
 
 export interface CvData {
-  basics: { name: string; headline: string; email: string; phone: string; location: string; links: { label: string; url: string }[]; summary: string };
+  basics: { name: string; headline: string; email: string; phone: string; location: string; links: { label: string; url: string }[]; summary: string; photo?: string };
   experience: { title: string; company: string; location: string; start: string; end: string; current: boolean; bullets: string[] }[];
   education: { degree: string; field: string; school: string; location: string; start: string; end: string; details: string }[];
   skills: string[];
@@ -300,6 +306,12 @@ export async function openDownload(body: {
   }
   const { data } = await api.post<{ url: string }>('/career/print-link', body);
   await WebBrowser.openBrowserAsync(`${apiOrigin()}${data.url}`);
+}
+
+/** A small picture of the template (made at build time, served next to the site). */
+export function templateThumbUrl(id: Template, lang: string): string {
+  const origin = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : apiOrigin();
+  return `${origin}/shots/cv/${encodeURIComponent(id)}-${lang === 'ar' ? 'ar' : 'en'}.webp`;
 }
 
 /** A template rendered with an example CV — for the gallery's "Preview". Public, no auth. */
