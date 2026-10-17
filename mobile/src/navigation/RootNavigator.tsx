@@ -41,6 +41,8 @@ import type { AssistSession, AssistSetup } from '../screens/assist/assistApi';
 import { CalendarScreen } from '../screens/calendar/CalendarScreen';
 import { ScheduleInterviewScreen } from '../screens/calendar/ScheduleInterviewScreen';
 import { PrepTaskScreen } from '../screens/calendar/PrepTaskScreen';
+import { DashboardScreen } from '../screens/account/DashboardScreen';
+import { webAuthEntry } from './webEntry';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -89,6 +91,8 @@ export type RootStackParamList = {
     title?: string;
   } | undefined;
   PrepTask: { company?: string; role?: string; jobId?: string; title?: string } | undefined;
+  /** Everything the customer has with us: plans, career tools, desktop app. */
+  Dashboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -180,6 +184,8 @@ export function RootNavigator() {
 
   return (
     <Stack.Navigator
+      // "Create account" / "Sign in" on the website open those screens directly.
+      initialRouteName={!token ? (webAuthEntry() ?? 'Onboarding') : 'Main'}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: theme.colors.bg },
@@ -228,6 +234,7 @@ export function RootNavigator() {
           <Stack.Screen name="Calendar" component={CalendarScreen} options={{ ...headerOptions, title: t('calendar.title') }} />
           <Stack.Screen name="ScheduleInterview" component={ScheduleInterviewScreen} options={{ ...headerOptions, title: t('calendar.schedule.title') }} />
           <Stack.Screen name="PrepTask" component={PrepTaskScreen} options={{ ...headerOptions, title: t('calendar.task.title') }} />
+          <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ ...headerOptions, title: t('dashboard.title') }} />
         </>
       )}
     </Stack.Navigator>

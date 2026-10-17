@@ -328,3 +328,17 @@ export const calendarWriteLimiter = rateLimit({
   keyGenerator: userOrIpKey,
   message: { error: 'طلبات كثيرة هذه الساعة / Too many calendar changes this hour, please try again later' },
 });
+
+/**
+ * Linking a desktop account checks its password on the desktop server, so it is
+ * a password guess like any login: a few tries per person per quarter hour,
+ * failures only.
+ */
+export const desktopLinkLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max: 6,
+  keyGenerator: userOrIpKey,
+  skipSuccessfulRequests: true,
+  message: { error: 'محاولات كثيرة جدًا. حاول بعد ١٥ دقيقة / Too many attempts, try again in 15 minutes' },
+});

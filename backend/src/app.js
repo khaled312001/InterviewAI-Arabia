@@ -40,6 +40,7 @@ import jobsRoutes from './routes/jobs.js';
 import careerRoutes from './routes/career.js';
 import assistRoutes from './routes/assist.js';
 import calendarRoutes from './routes/calendar.js';
+import accountRoutes from './routes/account.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.resolve(__dirname, '..', 'public');
@@ -215,6 +216,7 @@ export function createApp() {
   app.use('/api/career', careerRoutes);
   app.use('/api/assist', assistRoutes);
   app.use('/api/calendar', calendarRoutes);
+  app.use('/api/account', accountRoutes);
 
   // Anything else under /api is a 404 as JSON — never fall through to the SPA
   // shell, which would return 200 + HTML to a broken API call and make client

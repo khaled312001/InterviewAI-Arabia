@@ -147,6 +147,9 @@ const schema = z.object({
   ADZUNA_APP_ID: z.string().optional().default(''),
   ADZUNA_APP_KEY: z.string().optional().default(''),
   JOOBLE_API_KEY: z.string().optional().default(''),
+  // The desktop app's server, read by the customer dashboard (routes/account.js).
+  MEETING_AI_API_URL: z.string().optional().default(''),
+  MEETING_AI_INTERNAL_SECRET: z.string().optional().default(''),
 
   /**
    * Google Calendar / Meet / Tasks (routes/calendar.js).

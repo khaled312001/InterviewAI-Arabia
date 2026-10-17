@@ -268,6 +268,17 @@ export function ProfileScreen({ navigation }: any) {
         />
       }
     >
+      {/* ------------------------- the dashboard ------------------------- */}
+      <Card padding="none">
+        <ListRow
+          icon="grid-outline"
+          iconTone="primary"
+          title={t('dashboard.open')}
+          subtitle={t('dashboard.openHint')}
+          onPress={() => navigation.navigate('Dashboard')}
+        />
+      </Card>
+
       {/* ---------------------------- identity --------------------------- */}
       <Card padding="lg">
         <View style={[styles.row, { gap: theme.spacing.lg }]}>

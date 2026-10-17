@@ -26,6 +26,7 @@ import { StreakCard } from './progressWidgets';
 import { AssistEntryCard } from './assist/AssistEntryCard';
 import { CalendarEntryCard } from './calendar/CalendarEntryCard';
 import { takeCalendarReturn } from './calendar/calendarReturn';
+import { takeWebOpenTarget } from '../navigation/webEntry';
 
 const RECENT_LIMIT = 5;
 
@@ -217,12 +218,19 @@ export function HomeScreen({ navigation }: any) {
   const goMeeting = useCallback(() => navigation.navigate('MeetingSetup'), [navigation]);
   const goAssist = useCallback(() => navigation.navigate('AssistSetup'), [navigation]);
   const goCalendar = useCallback(() => navigation.navigate('Calendar'), [navigation]);
+  const goDashboard = useCallback(() => navigation.navigate('Dashboard'), [navigation]);
 
   // Back from Google's consent page on the web: the SPA reloaded onto Home, so
   // carry the result on to the screen the person started from.
   useEffect(() => {
     const result = takeCalendarReturn();
-    if (result) navigation.navigate('Calendar', { result: result.status, reason: result.reason });
+    if (result) {
+      navigation.navigate('Calendar', { result: result.status, reason: result.reason });
+      return;
+    }
+    // A website link such as /app?open=dashboard, held through sign-in.
+    const target = takeWebOpenTarget();
+    if (target) navigation.navigate(target);
   }, [navigation]);
   const goHistory = useCallback(() => navigation.navigate('History'), [navigation]);
   const goStats = useCallback(() => navigation.navigate('Stats'), [navigation]);
@@ -703,6 +711,15 @@ export function HomeScreen({ navigation }: any) {
       {meetingCta}
       <AssistEntryCard onPress={goAssist} />
       <CalendarEntryCard onPress={goCalendar} />
+      <Card padding="none">
+        <ListRow
+          icon="grid-outline"
+          iconTone="primary"
+          title={t('dashboard.open')}
+          subtitle={t('dashboard.openHint')}
+          onPress={goDashboard}
+        />
+      </Card>
       {streakSection}
       {categoriesSection}
       {tipSection}
