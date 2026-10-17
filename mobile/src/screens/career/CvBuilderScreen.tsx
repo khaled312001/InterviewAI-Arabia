@@ -415,7 +415,7 @@ export function CvBuilderScreen({ navigation }: any) {
         <SectionHeader title={t('career.cv.templatesTitle')} />
         <Text role="bodySm" tone="secondary">{t('career.cv.templatesBody')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: theme.spacing.xs }}>
-          {[['all', t('career.cv.tplAll')], ['ats', t('career.cv.tplAts')], ['photo', t('career.cv.tplPhoto')],
+          {[['all', t('career.cv.tplAll')], ...(templates.some((x) => x.ats) ? [['ats', t('career.cv.tplAts')]] : []), ...(templates.some((x) => x.photo) ? [['photo', t('career.cv.tplPhoto')]] : []),
             ...Array.from(new Map(templates.filter((x) => x.category).map((x) => [x.category as string, (ar ? x.categoryAr : x.categoryEn) || x.category as string])).entries())]
             .map(([k, label]) => <Chip key={k} label={label} active={tplFilter === k} onPress={() => setTplFilter(k)} />)}
         </ScrollView>

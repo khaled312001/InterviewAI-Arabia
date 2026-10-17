@@ -748,7 +748,8 @@
   function buildFilters() {
     var cats = [], seen = {};
     tpls.forEach(function (p) { if (p.category && !seen[p.category]) { seen[p.category] = 1; cats.push(p); } });
-    var items = [['all', 'All', 'الكل'], ['ats', 'ATS-first', 'متوافق مع ATS'], ['photo', 'With photo', 'بصورة شخصية']]
+    var hasPhoto = tpls.some(function (p) { return p.photo; }), hasAts = tpls.some(function (p) { return p.ats; });
+    var items = [['all', 'All', 'الكل']].concat(hasAts ? [['ats', 'ATS-first', 'متوافق مع ATS']] : [], hasPhoto ? [['photo', 'With photo', 'بصورة شخصية']] : [])
       .concat(cats.map(function (p) { return [p.category, p.categoryEn || p.category, p.categoryAr || p.category]; }));
     filterBox.innerHTML = items.map(function (x) {
       return '<button type="button" class="ex-chip" data-f="' + esc(x[0]) + '" aria-pressed="false"><span data-l="en">' + esc(x[1]) + '</span><span data-l="ar">' + esc(x[2]) + '</span></button>';
@@ -761,7 +762,7 @@
     });
     applyFilter();
   }
-  getJson('/api/career/templates').then(function (d) {
+  getJson('/api/career/templates?v=2').then(function (d) {
     if (!d || !d.templates || !d.templates.length) return;
     tpls = d.templates;
     // Rebuild from the server's list (it is the source of truth), keeping each

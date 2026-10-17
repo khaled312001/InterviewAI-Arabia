@@ -200,7 +200,7 @@ export const careerApi = {
     api.get<SearchResult>('/jobs/search', { params, timeout: 30000 }).then((r) => r.data),
   newCount: (params: Record<string, string | number | undefined>) =>
     api.get<{ count: number; checkedAt: string }>('/jobs/new-count', { params }).then((r) => r.data),
-  templates: () => api.get<{ templates: TemplateInfo[] }>('/career/templates').then((r) => r.data.templates),
+  templates: () => api.get<{ templates: TemplateInfo[] }>('/career/templates?v=2').then((r) => r.data.templates),
   examples: () => api.get<{ roles: ExampleRole[] }>('/career/examples').then((r) => r.data.roles),
   example: (role: string, lang: string) =>
     api.get<{ role: string; labelEn: string; labelAr: string; cv: CvData }>(`/career/examples/${role}`, { params: { lang } }).then((r) => r.data),

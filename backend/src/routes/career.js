@@ -509,7 +509,10 @@ router.get('/print/:token', asyncHandler(async (req, res) => {
 
 /** GET /api/career/templates — the gallery: every template with its name and pitch. Public. */
 router.get('/templates', (_req, res) => {
-  res.set('Cache-Control', 'public, max-age=3600');
+  // Short: the list grows with new designs, and a browser holding an hour-old
+  // copy shows the new gallery with old metadata (no photo flag, no categories).
+  // Clients also ask with ?v=N, bumped when the shape changes.
+  res.set('Cache-Control', 'public, max-age=300');
   res.json({ templates: TEMPLATES.map((id) => ({ id, ...TEMPLATE_META[id] })) });
 });
 
